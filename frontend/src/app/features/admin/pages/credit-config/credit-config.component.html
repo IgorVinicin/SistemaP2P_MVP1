@@ -1,0 +1,156 @@
+<div class="credit-config-container">
+  <div class="header-row">
+    <div class="title-section">
+      <h1>Configuração de Crédito por Score</h1>
+      <p>Configure limites de empréstimo, taxas de juros e faixas de risco por faixa de score.</p>
+    </div>
+    <button mat-flat-button color="primary" class="action-btn" (click)="openRuleDialog()">
+      <mat-icon>add</mat-icon> Nova Regra
+    </button>
+  </div>
+
+  <!-- Bloco de Configuração Global -->
+  <mat-card class="config-section-card" style="margin-bottom: 2rem;">
+    <div class="card-header">
+      <h3 class="card-title">Configuração Geral de Crédito</h3>
+      <p class="card-subtitle">Parâmetros globais para validação de crédito de clientes.</p>
+    </div>
+    <div class="config-body">
+      <div class="config-inline-form">
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Score Mínimo para Solicitação</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.scoreMinimoParaSolicitacao" placeholder="Ex: 150">
+        </mat-form-field>
+        <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
+          Salvar Configuração Geral
+        </button>
+      </div>
+    </div>
+  </mat-card>
+
+  <!-- Lista de Regras de Crédito -->
+  <mat-card class="config-section-card">
+    <div class="card-header">
+      <div class="card-header-content">
+        <div>
+          <h3 class="card-title">Regras de Crédito Ativas</h3>
+          <p class="card-subtitle">Lista de regras por faixas de score.</p>
+        </div>
+      </div>
+    </div>
+    
+    <div *ngIf="isLoading" style="text-align: center; padding: 2rem;">
+      <p>Carregando regras de crédito...</p>
+    </div>
+
+    <div *ngIf="!isLoading && rules.length === 0" class="empty-state">
+      <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #cbd5e1;">rule</mat-icon>
+      <p>Nenhuma regra de crédito cadastrada.</p>
+    </div>
+
+    <table mat-table [dataSource]="rules" class="rules-table" *ngIf="!isLoading && rules.length > 0">
+      <!-- Coluna Faixa de Score -->
+      <ng-container matColumnDef="faixaScore">
+        <th mat-header-cell *matHeaderCellDef> Faixa de Score </th>
+        <td mat-cell *matCellDef="let rule"> {{ rule.scoreMin }} - {{ rule.scoreMax }} </td>
+      </ng-container>
+
+      <!-- Coluna Limite Máximo -->
+      <ng-container matColumnDef="limite">
+        <th mat-header-cell *matHeaderCellDef> Limite Máximo </th>
+        <td mat-cell *matCellDef="let rule"> {{ rule.limiteEmprestimo | currency:'BRL':'symbol':'1.2-2' }} </td>
+      </ng-container>
+
+      <!-- Coluna Taxa de Juros -->
+      <ng-container matColumnDef="juros">
+        <th mat-header-cell *matHeaderCellDef> Taxa de Juros </th>
+        <td mat-cell *matCellDef="let rule"> {{ rule.taxaJuros }}% </td>
+      </ng-container>
+
+      <!-- Coluna Risco -->
+      <ng-container matColumnDef="risco">
+        <th mat-header-cell *matHeaderCellDef> Risco </th>
+        <td mat-cell *matCellDef="let rule"> 
+          <span class="risk-badge" [class.alto]="rule.nivelRisco.toLowerCase() === 'alto'" [class.medio]="rule.nivelRisco.toLowerCase() === 'médio' || rule.nivelRisco.toLowerCase() === 'medio'" [class.baixo]="rule.nivelRisco.toLowerCase() === 'baixo'">
+            {{ rule.nivelRisco }} 
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Coluna Status -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef> Status </th>
+        <td mat-cell *matCellDef="let rule">
+          <span class="status-badge" [class.active]="rule.ativo" [class.inactive]="!rule.ativo">
+            {{ rule.ativo ? 'Ativo' : 'Inativo' }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Coluna Ações -->
+      <ng-container matColumnDef="acoes">
+        <th mat-header-cell *matHeaderCellDef> Ações </th>
+        <td mat-cell *matCellDef="let rule">
+          <button mat-icon-button color="primary" (click)="openRuleDialog(rule)" title="Editar">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteRule(rule.id!)" title="Excluir">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </mat-card>
+</div>
+
+<!-- Template de Dialog para Criar/Editar Regra -->
+<ng-template #ruleDialog>
+  <h2 mat-dialog-title>{{ editingRule ? 'Editar Regra de Crédito' : 'Nova Regra de Crédito' }}</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+      <div class="form-row">
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Score Mínimo</mat-label>
+          <input matInput type="number" [(ngModel)]="ruleForm.scoreMin">
+        </mat-form-field>
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Score Máximo</mat-label>
+          <input matInput type="number" [(ngModel)]="ruleForm.scoreMax">
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Limite de Empréstimo (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="ruleForm.limiteEmprestimo">
+        </mat-form-field>
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Taxa de Juros (%)</mat-label>
+          <input matInput type="number" step="0.01" [(ngModel)]="ruleForm.taxaJuros">
+        </mat-form-field>
+      </div>
+
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Nível de Risco</mat-label>
+        <mat-select [(ngModel)]="ruleForm.nivelRisco">
+          <mat-option value="Alto">Alto</mat-option>
+          <mat-option value="Médio">Médio</mat-option>
+          <mat-option value="Baixo">Baixo</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div style="margin-top: 10px;">
+        <mat-checkbox [(ngModel)]="ruleForm.ativo">Regra Ativa</mat-checkbox>
+      </div>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" (click)="saveRule()" [disabled]="ruleForm.scoreMin === null || ruleForm.scoreMax === null || !ruleForm.limiteEmprestimo || !ruleForm.taxaJuros || !ruleForm.nivelRisco">
+      Salvar
+    </button>
+  </mat-dialog-actions>
+</ng-template>

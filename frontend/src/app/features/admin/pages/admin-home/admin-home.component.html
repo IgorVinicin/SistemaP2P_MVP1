@@ -1,0 +1,214 @@
+
+<div class="admin-container">
+  <!-- Seção 1: Solicitações de Cadastro Pendentes (Análise Documental) -->
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Painel Administrativo - Análise de Cadastros</mat-card-title>
+      <mat-card-subtitle>Listagem de usuários com documentos enviados aguardando aprovação cadastral</mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content class="admin-content">
+      <div *ngIf="isLoadingPending" class="loading-state">
+        <p>Carregando solicitações...</p>
+      </div>
+
+      <div *ngIf="!isLoadingPending && pendingUsers.length === 0" class="no-pending-state">
+        <mat-icon class="no-pending-icon">done_all</mat-icon>
+        <h3>Excelente trabalho!</h3>
+        <p>Nenhuma solicitação pendente de análise no momento.</p>
+      </div>
+
+      <table mat-table [dataSource]="pendingUsers" class="mat-elevation-z1" *ngIf="!isLoadingPending && pendingUsers.length > 0">
+        <!-- Coluna Nome -->
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef> Nome </th>
+          <td mat-cell *matCellDef="let user"> {{ user.nome || 'Sem Nome' }} </td>
+        </ng-container>
+
+        <!-- Coluna Email -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef> E-mail </th>
+          <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
+        </ng-container>
+
+        <!-- Coluna Tipo -->
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef> Perfil </th>
+          <td mat-cell *matCellDef="let user"> {{ user.role }} </td>
+        </ng-container>
+
+        <!-- Coluna Score -->
+        <ng-container matColumnDef="scoreAtual">
+          <th mat-header-cell *matHeaderCellDef> Score </th>
+          <td mat-cell *matCellDef="let user"> {{ user.scoreAtual }} </td>
+        </ng-container>
+
+        <!-- Coluna Criado Em -->
+        <ng-container matColumnDef="createdAt">
+          <th mat-header-cell *matHeaderCellDef> Data Envio </th>
+          <td mat-cell *matCellDef="let user"> {{ user.createdAt | date:'dd/MM/yyyy HH:mm' }} </td>
+        </ng-container>
+
+        <!-- Coluna Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let user">
+            <button mat-flat-button color="primary" (click)="openAnalysis(user.id)">
+              <mat-icon>assignment_turned_in</mat-icon> Analisar
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Seção 2: Gestão de Usuários (Manutenção Administrativa) -->
+  <mat-card style="margin-top: 30px;">
+    <mat-card-header>
+      <mat-card-title>Gestão de Usuários</mat-card-title>
+      <mat-card-subtitle>Manutenção, controle manual de score, status e alteração de dados cadastrais</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="admin-content">
+      <div *ngIf="isLoadingAll" class="loading-state">
+        <p>Carregando usuários cadastrados...</p>
+      </div>
+
+      <div *ngIf="!isLoadingAll && allUsers.length === 0" class="no-pending-state">
+        <mat-icon class="no-pending-icon" style="color: #cbd5e1;">people</mat-icon>
+        <h3>Nenhum usuário cadastrado</h3>
+        <p>Não há usuários cadastrados no sistema.</p>
+      </div>
+
+      <table mat-table [dataSource]="allUsers" class="mat-elevation-z1" *ngIf="!isLoadingAll && allUsers.length > 0">
+        <!-- Coluna Nome -->
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef> Nome </th>
+          <td mat-cell *matCellDef="let user"> {{ user.nome || 'Sem Nome' }} </td>
+        </ng-container>
+
+        <!-- Coluna Email -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef> E-mail </th>
+          <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
+        </ng-container>
+
+        <!-- Coluna Tipo -->
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef> Perfil </th>
+          <td mat-cell *matCellDef="let user"> {{ user.role }} </td>
+        </ng-container>
+
+        <!-- Coluna Score -->
+        <ng-container matColumnDef="scoreAtual">
+          <th mat-header-cell *matHeaderCellDef> Score </th>
+          <td mat-cell *matCellDef="let user"> {{ user.scoreAtual }} </td>
+        </ng-container>
+
+        <!-- Coluna Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <td mat-cell *matCellDef="let user">
+            <span class="status-badge" [ngClass]="user.status.toLowerCase()">{{ user.status }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let user">
+            <button mat-flat-button color="accent" (click)="openEdit(user.id)">
+              <mat-icon>edit</mat-icon> Editar
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="gestaoColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: gestaoColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Seção 3: Gestão de Carteiras de Investidores -->
+  <mat-card style="margin-top: 30px;">
+    <mat-card-header>
+      <mat-card-title>Gestão de Carteiras de Investidores</mat-card-title>
+      <mat-card-subtitle>Acompanhamento de saldos de investidores e lançamentos de ajustes administrativos</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content class="admin-content">
+      <div *ngIf="isLoadingWallets" class="loading-state">
+        <p>Carregando carteiras...</p>
+      </div>
+
+      <div *ngIf="!isLoadingWallets && wallets.length === 0" class="no-pending-state">
+        <mat-icon class="no-pending-icon" style="color: #cbd5e1;">account_balance_wallet</mat-icon>
+        <h3>Nenhuma carteira ativa</h3>
+        <p>Não há investidores com carteiras cadastradas no momento.</p>
+      </div>
+
+      <table mat-table [dataSource]="wallets" class="mat-elevation-z1" *ngIf="!isLoadingWallets && wallets.length > 0">
+        <!-- Coluna Investidor -->
+        <ng-container matColumnDef="investor">
+          <th mat-header-cell *matHeaderCellDef> Investidor </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.nome || 'Sem Nome' }} </td>
+        </ng-container>
+
+        <!-- Coluna E-mail -->
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef> E-mail </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.email }} </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Disponível -->
+        <ng-container matColumnDef="saldoDisponivel">
+          <th mat-header-cell *matHeaderCellDef> Saldo Disponível </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.saldoDisponivel | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Investido -->
+        <ng-container matColumnDef="saldoInvestido">
+          <th mat-header-cell *matHeaderCellDef> Saldo Investido </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.saldoInvestido | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Rendimentos -->
+        <ng-container matColumnDef="rendimentos">
+          <th mat-header-cell *matHeaderCellDef> Rendimentos </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.rendimentos | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Total Aportado -->
+        <ng-container matColumnDef="totalAportado">
+          <th mat-header-cell *matHeaderCellDef> Total Aportado </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.totalAportado | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Total Sacado -->
+        <ng-container matColumnDef="totalSacado">
+          <th mat-header-cell *matHeaderCellDef> Total Sacado </th>
+          <td mat-cell *matCellDef="let wallet"> {{ wallet.totalSacado | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let wallet" style="display: flex; gap: 8px; align-items: center; justify-content: flex-start; padding: 8px 0;">
+            <button mat-flat-button color="primary" (click)="openWalletAdjustment(wallet)">
+              <mat-icon>build</mat-icon> Ajustar
+            </button>
+            <button mat-flat-button color="accent" (click)="openWalletHistory(wallet)">
+              <mat-icon>history</mat-icon> Histórico
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="walletColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: walletColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+</div>

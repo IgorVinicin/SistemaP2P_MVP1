@@ -1,0 +1,126 @@
+<div class="score-config-container">
+  <div class="header-row">
+    <div class="title-section">
+      <h1>Configuração de Score Dinâmico</h1>
+      <p>Gerencie as perguntas do questionário e atribua pontos a cada resposta.</p>
+    </div>
+    <button mat-flat-button color="primary" class="add-btn" (click)="openQuestionDialog()">
+      <mat-icon>add</mat-icon> Nova Pergunta
+    </button>
+  </div>
+
+  <div *ngIf="isLoading" style="display: flex; justify-content: center; padding: 3rem;">
+    <p>Carregando perguntas...</p>
+  </div>
+
+  <div *ngIf="!isLoading && questions.length === 0" style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
+    <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #94a3b8; margin-bottom: 1rem;">quiz</mat-icon>
+    <h3 style="margin: 0; color: #334155; font-size: 1.2rem;">Nenhuma pergunta cadastrada</h3>
+    <p style="color: #64748b; margin: 0.5rem 0 1.5rem 0;">Crie perguntas de score dinâmico para os clientes responderem.</p>
+    <button mat-flat-button color="primary" (click)="openQuestionDialog()">Cadastrar Primeira Pergunta</button>
+  </div>
+
+  <div class="questions-list" *ngIf="!isLoading && questions.length > 0">
+    <div *ngFor="let question of questions" class="question-card" [class.inactive-card]="!question.ativa">
+      <div class="question-header">
+        <div class="question-info">
+          <mat-icon [color]="question.ativa ? 'primary' : 'disabled'">help_outline</mat-icon>
+          <div>
+            <h3 class="question-title">{{ question.titulo }}</h3>
+            <span class="status-badge" [class.active]="question.ativa" [class.inactive]="!question.ativa">
+              {{ question.ativa ? 'Ativa' : 'Inativa' }}
+            </span>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button mat-icon-button color="primary" (click)="openQuestionDialog(question)" title="Editar Pergunta">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button [color]="question.ativa ? 'warn' : 'accent'" (click)="toggleQuestionStatus(question)" [title]="question.ativa ? 'Inativar' : 'Ativar'">
+            <mat-icon>{{ question.ativa ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" (click)="deleteQuestion(question.id!)" title="Excluir Pergunta">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </div>
+
+      <div class="options-section">
+        <div class="options-header">
+          <h4>Opções de Resposta ({{ question.options?.length || 0 }})</h4>
+          <button mat-button color="primary" (click)="openOptionDialog(question.id!)">
+            <mat-icon>add</mat-icon> Adicionar Resposta
+          </button>
+        </div>
+
+        <div *ngIf="!question.options || question.options.length === 0" class="empty-options">
+          Nenhuma opção cadastrada para esta pergunta. Os usuários não poderão pontuar aqui até que uma resposta seja cadastrada.
+        </div>
+
+        <div class="options-list" *ngIf="question.options && question.options.length > 0">
+          <div *ngFor="let opt of question.options" class="option-item">
+            <div class="option-text-wrapper">
+              <span class="option-bullet"></span>
+              <span class="option-text">{{ opt.texto }}</span>
+            </div>
+            <div class="option-details">
+              <span class="points-pill">{{ opt.pontuacao }} pontos</span>
+              <div>
+                <button mat-icon-button color="primary" size="small" (click)="openOptionDialog(question.id!, opt)" title="Editar Opção">
+                  <mat-icon style="font-size: 20px;">edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" size="small" (click)="deleteOption(opt.id!)" title="Deletar Opção">
+                  <mat-icon style="font-size: 20px;">delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Template para o Dialog de Question -->
+<ng-template #questionDialog>
+  <h2 mat-dialog-title>{{ editingQuestion ? 'Editar Pergunta' : 'Nova Pergunta' }}</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px;">
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Título / Pergunta</mat-label>
+        <input matInput [(ngModel)]="questionForm.titulo" placeholder="Ex: Há quanto tempo trabalha na empresa?">
+      </mat-form-field>
+
+      <div style="margin-bottom: 1rem;">
+        <mat-checkbox [(ngModel)]="questionForm.ativa">Pergunta Ativa (visível para clientes)</mat-checkbox>
+      </div>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" [disabled]="!questionForm.titulo" (click)="saveQuestion()">Salvar</button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Template para o Dialog de Option -->
+<ng-template #optionDialog>
+  <h2 mat-dialog-title>{{ editingOption ? 'Editar Opção de Resposta' : 'Nova Opção de Resposta' }}</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Texto da Resposta</mat-label>
+        <input matInput [(ngModel)]="optionForm.texto" placeholder="Ex: Mais de 3 anos">
+      </mat-form-field>
+
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Pontuação</mat-label>
+        <input matInput type="number" [(ngModel)]="optionForm.pontuacao" placeholder="Ex: 100">
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" [disabled]="!optionForm.texto || optionForm.pontuacao === null" (click)="saveOption()">Salvar</button>
+  </mat-dialog-actions>
+</ng-template>

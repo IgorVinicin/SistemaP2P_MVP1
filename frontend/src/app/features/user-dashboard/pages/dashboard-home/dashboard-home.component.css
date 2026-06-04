@@ -1,0 +1,72 @@
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  margin-top: 10px;
+}
+
+.status-summary-card {
+  width: 100%;
+}
+
+.status-content {
+  padding: 10px 0;
+}
+
+.user-status-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+.status-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+}
+
+.status-icon.aprovado {
+  color: #2e7d32;
+}
+
+.status-icon.reprovado {
+  color: #c62828;
+}
+
+.status-icon.emanalise {
+  color: #f57f17;
+}
+
+.status-icon.pendente {
+  color: #0277bd;
+}
+
+.status-text-details h2 {
+  margin: 0 0 5px 0;
+  font-weight: 600;
+}
+
+.status-text-details p {
+  margin: 0;
+  color: #555;
+  line-height: 1.5;
+}
+
+.document-section h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.documents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  .user-status-display {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}

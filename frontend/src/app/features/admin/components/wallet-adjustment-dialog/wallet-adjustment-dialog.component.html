@@ -1,0 +1,32 @@
+<h2 mat-dialog-title style="font-weight: 700; color: #1e293b;">Ajustar Carteira</h2>
+
+<mat-dialog-content style="min-width: 400px; padding-top: 10px;">
+  <div style="margin-bottom: 20px; background-color: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0;">
+    <p style="margin: 0; font-size: 0.95rem; color: #334155;"><strong>Investidor:</strong> {{ data.nome || 'Sem Nome' }}</p>
+    <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b;"><strong>E-mail:</strong> {{ data.email }}</p>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 15px;">
+    <!-- Entrada de Valor -->
+    <mat-form-field appearance="outline" class="full-width" style="width: 100%;">
+      <mat-label>Valor do Ajuste (R$)</mat-label>
+      <input matInput type="number" [(ngModel)]="valor" placeholder="Ex: 500 ou -200" [disabled]="isProcessing" />
+      <span matPrefix style="margin-right: 4px;">R$</span>
+      <mat-hint>Valores positivos adicionam saldo. Valores negativos reduzem saldo.</mat-hint>
+    </mat-form-field>
+
+    <!-- Descrição/Justificativa -->
+    <mat-form-field appearance="outline" class="full-width" style="width: 100%; margin-top: 10px;">
+      <mat-label>Descrição / Justificativa</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="descricao" placeholder="Escreva a justificativa para este ajuste..." [disabled]="isProcessing"></textarea>
+      <mat-hint>Mínimo de 5 caracteres.</mat-hint>
+    </mat-form-field>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 16px 24px;">
+  <button mat-button (click)="cancel()" [disabled]="isProcessing">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="confirmAdjustment()" [disabled]="isProcessing || !valor || valor === 0 || !descricao || descricao.trim().length < 5">
+    Confirmar Ajuste
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,71 @@
+<div class="history-container">
+  <div class="header-row">
+    <div class="title-section">
+      <h1>Histórico de Empréstimos</h1>
+      <p>Acompanhe todos os seus empréstimos ativos, finalizados, cancelados ou reprovados.</p>
+    </div>
+    <button mat-flat-button color="primary" routerLink="/dashboard">
+      <mat-icon>dashboard</mat-icon> Dashboard
+    </button>
+  </div>
+
+  <mat-card class="history-card">
+    <div *ngIf="isLoading" style="text-align: center; padding: 3rem;">
+      <p>Carregando histórico...</p>
+    </div>
+
+    <div *ngIf="!isLoading && loans.length === 0" class="empty-history">
+      <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">history</mat-icon>
+      <h3 style="margin: 0; color: #334155;">Nenhum histórico encontrado</h3>
+      <p style="color: #64748b; margin: 0.5rem 0 1.5rem 0;">Você ainda não possui nenhuma solicitação ou empréstimo em seu histórico.</p>
+    </div>
+
+    <table mat-table [dataSource]="loans" class="history-table" *ngIf="!isLoading && loans.length > 0">
+      <!-- Coluna Valor -->
+      <ng-container matColumnDef="valor">
+        <th mat-header-cell *matHeaderCellDef> Valor Solicitado </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.valorSolicitado | currency:'BRL' }} </td>
+      </ng-container>
+
+      <!-- Coluna Data Solicitação -->
+      <ng-container matColumnDef="dataSolicitacao">
+        <th mat-header-cell *matHeaderCellDef> Data Solicitação </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }} </td>
+      </ng-container>
+
+      <!-- Coluna Parcelas -->
+      <ng-container matColumnDef="parcelas">
+        <th mat-header-cell *matHeaderCellDef> Parcelas </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.quantidadeParcelas }}x </td>
+      </ng-container>
+
+      <!-- Coluna Status -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef> Status </th>
+        <td mat-cell *matCellDef="let loan">
+          <span class="status-badge" [class]="loan.status.toLowerCase()">
+            {{ loan.status }}
+          </span>
+          <p *ngIf="loan.status === 'Reprovado' && loan.observacaoAdmin" style="font-size: 0.75rem; color: #ef4444; margin: 0.25rem 0 0 0;">
+            Motivo: {{ loan.observacaoAdmin }}
+          </p>
+        </td>
+      </ng-container>
+
+      <!-- Coluna Data Aprovação -->
+      <ng-container matColumnDef="dataAprovacao">
+        <th mat-header-cell *matHeaderCellDef> Data Aprovação </th>
+        <td mat-cell *matCellDef="let loan"> {{ (loan.dataAprovacao | date:'dd/MM/yyyy HH:mm') || '-' }} </td>
+      </ng-container>
+
+      <!-- Coluna Data Encerramento -->
+      <ng-container matColumnDef="dataEncerramento">
+        <th mat-header-cell *matHeaderCellDef> Data Encerramento </th>
+        <td mat-cell *matCellDef="let loan"> {{ (loan.dataEncerramento | date:'dd/MM/yyyy HH:mm') || '-' }} </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </mat-card>
+</div>

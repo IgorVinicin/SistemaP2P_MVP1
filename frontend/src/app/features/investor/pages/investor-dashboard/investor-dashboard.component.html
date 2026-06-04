@@ -1,0 +1,202 @@
+<div class="investor-container">
+  <!-- Título e Introdução -->
+  <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1>Área do Investidor</h1>
+      <p>Acompanhe seus rendimentos e gerencie seus aportes simulados no ecossistema P2P.</p>
+    </div>
+    <div class="user-badge" style="background-color: #f1f5f9; padding: 0.75rem 1.25rem; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: flex-end;">
+      <span style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{ authService.currentUser()?.email }}</span>
+      <span style="font-size: 0.8rem; font-weight: 600; text-transform: uppercase; color: #10b981; margin-top: 0.2rem; display: flex; align-items: center; gap: 4px;">
+        <mat-icon style="font-size: 14px; width: 14px; height: 14px;">verified</mat-icon> {{ authService.userStatus() }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Cards de Resumo de Saldos -->
+  <div class="summary-cards" *ngIf="wallet">
+    <mat-card class="summary-card balance-card">
+      <div class="card-icon">
+        <mat-icon>account_balance_wallet</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label">Saldo Disponível</span>
+        <h2 class="card-value">{{ wallet.saldoDisponivel | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <mat-card class="summary-card invested-card">
+      <div class="card-icon">
+        <mat-icon>trending_up</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label">Saldo Investido</span>
+        <h2 class="card-value">{{ wallet.saldoInvestido | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <mat-card class="summary-card earnings-card">
+      <div class="card-icon">
+        <mat-icon>monetization_on</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label">Rendimentos Acumulados</span>
+        <h2 class="card-value">{{ wallet.rendimentos | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <mat-card class="summary-card total-card">
+      <div class="card-icon">
+        <mat-icon>savings</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label">Total Aportado</span>
+        <h2 class="card-value">{{ wallet.totalAportado | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <mat-card class="summary-card total-card" style="background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);">
+      <div class="card-icon">
+        <mat-icon>outbox</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label">Total Sacado</span>
+        <h2 class="card-value" style="color: white;">{{ wallet.totalSacado | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+  </div>
+
+  <!-- Ações Rápidas: Aporte, Saque e Perfil de Risco -->
+  <div class="actions-grid" *ngIf="wallet" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 20px;">
+    <!-- Card Aporte Simulado -->
+    <mat-card class="action-card">
+      <mat-card-header>
+        <mat-card-title>Realizar Aporte Simulado</mat-card-title>
+        <mat-card-subtitle>Adicione saldo fictício à sua carteira virtual para simular ganhos.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="action-content">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Valor do Aporte (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="aporteValor" placeholder="Ex: 5000" min="1" [disabled]="isProcessing" />
+          <span matPrefix style="margin-right: 4px;">R$</span>
+        </mat-form-field>
+      </mat-card-content>
+      <mat-card-actions align="end" style="padding: 16px;">
+        <button mat-raised-button color="primary" (click)="makeDeposit()" [disabled]="isProcessing || !aporteValor || aporteValor <= 0">
+          Adicionar Saldo
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Card Saque Simulado -->
+    <mat-card class="action-card">
+      <mat-card-header>
+        <mat-card-title>Solicitar Saque Simulado</mat-card-title>
+        <mat-card-subtitle>Retire saldo de sua carteira disponível para a sua conta bancária simulada.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="action-content">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Valor do Saque (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="saqueValor" placeholder="Ex: 1000" min="1" [disabled]="isProcessing" />
+          <span matPrefix style="margin-right: 4px;">R$</span>
+        </mat-form-field>
+      </mat-card-content>
+      <mat-card-actions align="end" style="padding: 16px;">
+        <button mat-raised-button color="warn" (click)="makeWithdraw()" [disabled]="isProcessing || !saqueValor || saqueValor <= 0">
+          Solicitar Saque
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <!-- Card Perfil de Investimento -->
+    <mat-card class="action-card">
+      <mat-card-header>
+        <mat-card-title>Perfil de Investimento</mat-card-title>
+        <mat-card-subtitle>Defina seu apetite de risco para alocação automática.</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content class="action-content">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Selecione o Perfil</mat-label>
+          <mat-select [(ngModel)]="selectedPerfil" [disabled]="isProcessing">
+            <mat-option value="Conservador">Conservador (Baixo Risco / Baixo Retorno)</mat-option>
+            <mat-option value="Moderado">Moderado (Médio Risco / Médio Retorno)</mat-option>
+            <mat-option value="Agressivo">Agressivo (Alto Risco / Alto Retorno)</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </mat-card-content>
+      <mat-card-actions align="end" style="padding: 16px;">
+        <button mat-raised-button color="accent" (click)="updateProfile()" [disabled]="isProcessing || selectedPerfil === wallet.perfilInvestimento">
+          Salvar Perfil
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+
+  <!-- Tabela do Histórico de Transações -->
+  <mat-card class="history-card" style="margin-top: 30px;">
+    <mat-card-header>
+      <mat-card-title>Histórico de Movimentações</mat-card-title>
+      <mat-card-subtitle>Todas as transações e rendimentos da sua carteira virtual.</mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content class="history-content">
+      <div *ngIf="isLoadingHistory" style="text-align: center; padding: 20px;">
+        <p>Carregando movimentações...</p>
+      </div>
+
+      <div *ngIf="!isLoadingHistory && transactions.length === 0" class="empty-state">
+        <mat-icon>history</mat-icon>
+        <p>Nenhuma movimentação registrada até o momento.</p>
+      </div>
+
+      <table mat-table [dataSource]="transactions" class="mat-elevation-z1" *ngIf="!isLoadingHistory && transactions.length > 0">
+        <!-- Coluna Data -->
+        <ng-container matColumnDef="data">
+          <th mat-header-cell *matHeaderCellDef> Data </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.dataMovimentacao | date:'dd/MM/yyyy HH:mm' }} </td>
+        </ng-container>
+
+        <!-- Coluna Tipo -->
+        <ng-container matColumnDef="tipo">
+          <th mat-header-cell *matHeaderCellDef> Tipo </th>
+          <td mat-cell *matCellDef="let tx">
+            <span class="tx-badge" [ngClass]="tx.tipo.toLowerCase()">{{ tx.tipo }}</span>
+          </td>
+        </ng-container>
+
+        <!-- Coluna Descrição -->
+        <ng-container matColumnDef="descricao">
+          <th mat-header-cell *matHeaderCellDef> Descrição </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.descricao }} </td>
+        </ng-container>
+
+        <!-- Coluna Valor -->
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef> Valor </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.valor | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Anterior -->
+        <ng-container matColumnDef="saldoAnterior">
+          <th mat-header-cell *matHeaderCellDef> Saldo Anterior </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.saldoAnterior | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Posterior -->
+        <ng-container matColumnDef="saldoPosterior">
+          <th mat-header-cell *matHeaderCellDef> Saldo Posterior </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.saldoPosterior | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Responsável -->
+        <ng-container matColumnDef="responsavel">
+          <th mat-header-cell *matHeaderCellDef> Responsável </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.usuarioResponsavel }} </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,187 @@
+.investor-container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1.5rem;
+}
+
+.header-section {
+  margin-bottom: 2rem;
+}
+
+.header-section h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.header-section p {
+  color: #64748b;
+  margin-top: 0.5rem;
+  font-size: 1rem;
+}
+
+/* Summary Cards Layout */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.summary-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background-color: white;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+}
+
+.card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  color: white;
+}
+
+.balance-card .card-icon {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+
+.invested-card .card-icon {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+}
+
+.earnings-card .card-icon {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+.total-card .card-icon {
+  background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+}
+
+.card-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.card-label {
+  font-size: 0.85rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.card-value {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #1e293b;
+  margin: 0.25rem 0 0 0;
+}
+
+/* Actions Grid Layout */
+.actions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.action-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.action-content {
+  padding: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* History Tabela */
+.history-card {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.history-content {
+  padding: 0 !important;
+}
+
+table {
+  width: 100%;
+}
+
+th.mat-mdc-header-cell {
+  font-weight: 700;
+  color: #334155;
+  background-color: #f8fafc;
+}
+
+.tx-badge {
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  display: inline-block;
+}
+
+.tx-badge.aporte {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.tx-badge.rendimento {
+  background-color: #fef3c7;
+  color: #d97706;
+}
+
+.tx-badge.investimento {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  color: #94a3b8;
+}
+
+.empty-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1rem;
+}
+
+.empty-state p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+@media (max-width: 650px) {
+  .actions-grid {
+    grid-template-columns: 1fr;
+  }
+}

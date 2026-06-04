@@ -1,0 +1,300 @@
+<div class="admin-loans-container">
+  <div class="title-section">
+    <h1>Análise de Solicitações de Empréstimos</h1>
+    <p>Avalie e processe os pedidos de empréstimos pendentes enviados pelos clientes.</p>
+  </div>
+
+  <mat-card class="loans-card">
+    <div *ngIf="isLoading" style="text-align: center; padding: 3rem;">
+      <p>Carregando solicitações pendentes...</p>
+    </div>
+
+    <div *ngIf="!isLoading && loans.length === 0" class="empty-loans">
+      <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">assignment_turned_in</mat-icon>
+      <h3 style="margin: 0; color: #334155;">Tudo limpo por aqui!</h3>
+      <p style="color: #64748b; margin-top: 0.5rem;">Nenhuma solicitação de empréstimo pendente de análise no momento.</p>
+    </div>
+
+    <table mat-table [dataSource]="loans" class="loans-table" *ngIf="!isLoading && loans.length > 0">
+      <!-- Coluna Nome -->
+      <ng-container matColumnDef="nome">
+        <th mat-header-cell *matHeaderCellDef> Cliente </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.nome || 'Sem Nome' }} </td>
+      </ng-container>
+
+      <!-- Coluna CPF -->
+      <ng-container matColumnDef="cpf">
+        <th mat-header-cell *matHeaderCellDef> CPF </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.cpf }} </td>
+      </ng-container>
+
+      <!-- Coluna Score -->
+      <ng-container matColumnDef="score">
+        <th mat-header-cell *matHeaderCellDef> Score </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.score }} </td>
+      </ng-container>
+
+      <!-- Coluna Valor -->
+      <ng-container matColumnDef="valor">
+        <th mat-header-cell *matHeaderCellDef> Valor Solicitado </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.valorSolicitado | currency:'BRL' }} </td>
+      </ng-container>
+
+      <!-- Coluna Parcelas -->
+      <ng-container matColumnDef="parcelas">
+        <th mat-header-cell *matHeaderCellDef> Parcelas </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.quantidadeParcelas }}x </td>
+      </ng-container>
+
+      <!-- Coluna Risco -->
+      <ng-container matColumnDef="risco">
+        <th mat-header-cell *matHeaderCellDef> Risco </th>
+        <td mat-cell *matCellDef="let loan">
+          <span class="risk-badge" [class.alto]="loan.risco.toLowerCase() === 'alto'" [class.medio]="loan.risco.toLowerCase() === 'médio' || loan.risco.toLowerCase() === 'medio'" [class.baixo]="loan.risco.toLowerCase() === 'baixo'">
+            {{ loan.risco }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Coluna Data -->
+      <ng-container matColumnDef="data">
+        <th mat-header-cell *matHeaderCellDef> Data </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }} </td>
+      </ng-container>
+
+      <!-- Coluna Ações -->
+      <ng-container matColumnDef="acoes">
+        <th mat-header-cell *matHeaderCellDef> Ações </th>
+        <td mat-cell *matCellDef="let loan">
+          <button mat-flat-button color="primary" size="small" style="margin-right: 0.5rem;" (click)="openDetailDialog(loan.id!)">
+            Analisar
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+  </mat-card>
+</div>
+
+<!-- Template de Dialog para Visualização Completa de Detalhes -->
+<ng-template #detailDialog>
+  <h2 mat-dialog-title>Análise da Solicitação de Empréstimo</h2>
+  
+  <mat-dialog-content *ngIf="selectedLoan">
+    <div class="dialog-content-details">
+      <!-- Dados do Cliente -->
+      <div class="detail-section">
+        <h4>Dados do Cliente</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Nome Completo</span>
+            <span class="detail-val">{{ selectedLoan.userProfile?.nome }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">CPF</span>
+            <span class="detail-val">{{ selectedLoan.userProfile?.cpf }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Telefone</span>
+            <span class="detail-val">{{ selectedLoan.userProfile?.telefone }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Score de Crédito</span>
+            <span class="detail-val" style="color: #4f46e5;">{{ selectedLoan.userProfile?.score }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico de Empréstimos -->
+      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+        <h4 style="margin-bottom: 0.75rem; color: #1e293b; font-weight: 600;">Histórico de Empréstimos do Cliente</h4>
+        <div *ngIf="!selectedLoan.outrosEmprestimos || selectedLoan.outrosEmprestimos.length === 0" style="color: #64748b; font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">
+          Nenhum outro empréstimo registrado para este cliente.
+        </div>
+        <div *ngIf="selectedLoan.outrosEmprestimos && selectedLoan.outrosEmprestimos.length > 0" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px;">
+          <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+                <th style="padding: 0.5rem;">Data Solicitação</th>
+                <th style="padding: 0.5rem;">Valor</th>
+                <th style="padding: 0.5rem;">Status / Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let outro of selectedLoan.outrosEmprestimos" style="border-bottom: 1px solid #f1f5f9; color: #334155;">
+                <td style="padding: 0.5rem;">{{ outro.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td style="padding: 0.5rem;">{{ outro.valorSolicitado | currency:'BRL' }}</td>
+                <td style="padding: 0.5rem;">
+                  <span class="status-badge" [class]="outro.status.toLowerCase()" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px; display: inline-block;">
+                    {{ outro.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Dados do Empréstimo -->
+      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+        <h4>Detalhes da Proposta</h4>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <span class="detail-label">Valor Solicitado</span>
+            <span class="detail-val" style="font-size: 1.1rem; color: #10b981;">
+              {{ selectedLoan.valorSolicitado | currency:'BRL' }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Parcelas</span>
+            <span class="detail-val">{{ selectedLoan.quantidadeParcelas }} parcelas</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Taxa de Juros</span>
+            <span class="detail-val">{{ selectedLoan.taxaJuros }}% a.m.</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Nível de Risco</span>
+            <div style="margin-top: 0.15rem;">
+              <span class="risk-badge" [class.alto]="selectedLoan.risco.toLowerCase() === 'alto'" [class.medio]="selectedLoan.risco.toLowerCase() === 'médio' || selectedLoan.risco.toLowerCase() === 'medio'" [class.baixo]="selectedLoan.risco.toLowerCase() === 'baixo'">
+                {{ selectedLoan.risco }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div>
+            <span class="detail-label">Finalidade</span>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; font-weight: 500; color: #334155;">
+              {{ selectedLoan.finalidade }}
+            </p>
+          </div>
+          <div *ngIf="selectedLoan.observacoes">
+            <span class="detail-label">Observações do Cliente</span>
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; color: #64748b; font-style: italic; white-space: pre-line;">
+              "{{ selectedLoan.observacoes }}"
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions class="dialog-actions" *ngIf="selectedLoan">
+    <button mat-button mat-dialog-close [disabled]="isActionProcessing">Fechar</button>
+    <span class="spacer"></span>
+    <ng-container *ngIf="selectedLoan.status === 'Pendente'">
+      <button mat-flat-button color="warn" (click)="openReproveDialog()" [disabled]="isActionProcessing">
+        Reprovar
+      </button>
+      <button mat-flat-button color="primary" (click)="approveLoan()" [disabled]="isActionProcessing">
+        Aprovar Solicitação
+      </button>
+    </ng-container>
+    <ng-container *ngIf="selectedLoan.status === 'Aprovado' || selectedLoan.status === 'Ativo' || selectedLoan.status === 'EmAnalise'">
+      <button mat-flat-button style="background-color: #2e7d32; color: white;" (click)="finishLoan(selectedLoan.id!)" [disabled]="isActionProcessing">
+        Finalizar / Quitar Empréstimo
+      </button>
+    </ng-container>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Tabela de Empréstimos Ativos / Em Andamento -->
+<mat-card class="loans-card" style="margin-top: 2rem;">
+  <div style="padding: 1.5rem 1.5rem 0 1.5rem;">
+    <h2 style="margin: 0; color: #1e293b; font-weight: 600;">Acompanhamento de Empréstimos em Andamento</h2>
+    <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.9rem;">Gerencie e finalize os empréstimos ativos ou aprovados dos clientes.</p>
+  </div>
+
+  <mat-card-content style="padding: 1.5rem 0 0 0;">
+    <div *ngIf="activeLoans.length === 0" class="empty-loans" style="text-align: center; padding: 3rem;">
+      <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">info</mat-icon>
+      <h3 style="margin: 0; color: #334155;">Nenhum empréstimo ativo</h3>
+      <p style="color: #64748b; margin-top: 0.5rem;">Nenhum empréstimo em andamento no momento.</p>
+    </div>
+
+    <table mat-table [dataSource]="activeLoans" class="loans-table" *ngIf="activeLoans.length > 0">
+      <!-- Coluna Nome -->
+      <ng-container matColumnDef="nome">
+        <th mat-header-cell *matHeaderCellDef> Cliente </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.nome || 'Sem Nome' }} </td>
+      </ng-container>
+
+      <!-- Coluna CPF -->
+      <ng-container matColumnDef="cpf">
+        <th mat-header-cell *matHeaderCellDef> CPF </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.cpf }} </td>
+      </ng-container>
+
+      <!-- Coluna Valor -->
+      <ng-container matColumnDef="valor">
+        <th mat-header-cell *matHeaderCellDef> Valor </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.valorSolicitado | currency:'BRL' }} </td>
+      </ng-container>
+
+      <!-- Coluna Parcelas -->
+      <ng-container matColumnDef="parcelas">
+        <th mat-header-cell *matHeaderCellDef> Parcelas </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.quantidadeParcelas }}x </td>
+      </ng-container>
+
+      <!-- Coluna Status -->
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef> Status </th>
+        <td mat-cell *matCellDef="let loan">
+          <span class="status-badge" [class]="loan.status.toLowerCase()" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px;">
+            {{ loan.status }}
+          </span>
+        </td>
+      </ng-container>
+
+      <!-- Coluna Data -->
+      <ng-container matColumnDef="data">
+        <th mat-header-cell *matHeaderCellDef> Data Solicitação </th>
+        <td mat-cell *matCellDef="let loan"> {{ loan.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }} </td>
+      </ng-container>
+
+      <!-- Coluna Ações -->
+      <ng-container matColumnDef="acoes">
+        <th mat-header-cell *matHeaderCellDef> Ações </th>
+        <td mat-cell *matCellDef="let loan">
+          <button mat-flat-button color="primary" size="small" style="margin-right: 0.5rem;" (click)="openDetailDialog(loan.id!)">
+            Analisar
+          </button>
+          <button mat-flat-button color="accent" size="small" (click)="finishLoan(loan.id!)">
+            Quitar
+          </button>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="activeDisplayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: activeDisplayedColumns;"></tr>
+    </table>
+  </mat-card-content>
+</mat-card>
+
+<!-- Template de Dialog de Reprovação (Justificativa) -->
+<ng-template #reproveDialog>
+  <h2 mat-dialog-title>Reprovar Solicitação de Empréstimo</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px;">
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">
+        Por favor, justifique o motivo da reprovação deste empréstimo. O cliente poderá visualizar este comentário.
+      </p>
+      
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Motivo da Reprovação</mat-label>
+        <textarea matInput rows="3" [(ngModel)]="reproveForm.observacao" placeholder="Ex: Inconsistência nos dados fornecidos ou score insatisfatório para a modalidade solicitada."></textarea>
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="closeReproveDialog()">Cancelar</button>
+    <button mat-flat-button color="warn" [disabled]="!reproveForm.observacao" (click)="confirmReproveLoan()">
+      Confirmar Reprovação
+    </button>
+  </mat-dialog-actions>
+</ng-template>

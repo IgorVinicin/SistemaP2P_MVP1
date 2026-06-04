@@ -1,0 +1,68 @@
+.upload-card {
+  padding: 10px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.status-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.status-label {
+  font-weight: 500;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.aprovado {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.reprovado {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.pendente {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+.status-badge.nenhum {
+  background-color: #eceff1;
+  color: #37474f;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.file-name {
+  font-size: 13px;
+  color: #666;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

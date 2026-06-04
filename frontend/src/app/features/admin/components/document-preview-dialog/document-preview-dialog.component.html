@@ -1,0 +1,15 @@
+<h2 mat-dialog-title>Visualizar Documento - {{ data.tipoDocumento }}</h2>
+
+<mat-dialog-content class="dialog-content">
+  <div *ngIf="isPdf" class="pdf-container">
+    <iframe [src]="safeUrl" width="100%" height="500px" frameborder="0"></iframe>
+  </div>
+
+  <div *ngIf="!isPdf" class="image-container">
+    <img [src]="safeUrl" alt="Documento {{ data.tipoDocumento }}" class="preview-img">
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="close()">Fechar</button>
+</mat-dialog-actions>

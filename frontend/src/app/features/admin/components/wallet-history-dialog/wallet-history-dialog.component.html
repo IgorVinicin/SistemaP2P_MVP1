@@ -1,0 +1,79 @@
+<h2 mat-dialog-title style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+  <mat-icon>history</mat-icon> Histórico de Movimentações
+</h2>
+
+<mat-dialog-content style="min-width: 800px; max-height: 450px;">
+  <div style="margin-bottom: 15px; background-color: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+    <div>
+      <p style="margin: 0; font-size: 0.95rem; color: #334155;"><strong>Investidor:</strong> {{ data.nome || 'Sem Nome' }}</p>
+      <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b;"><strong>E-mail:</strong> {{ data.email }}</p>
+    </div>
+    <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+      ID: {{ data.investorId }}
+    </div>
+  </div>
+
+  <div *ngIf="isLoading" style="text-align: center; padding: 30px;">
+    <p>Carregando movimentações...</p>
+  </div>
+
+  <div *ngIf="!isLoading && transactions.length === 0" style="text-align: center; padding: 30px; color: #64748b;">
+    <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #cbd5e1;">folder_open</mat-icon>
+    <p style="margin-top: 10px; font-weight: 500;">Nenhuma movimentação financeira encontrada para este investidor.</p>
+  </div>
+
+  <table mat-table [dataSource]="transactions" class="history-table mat-elevation-z1" *ngIf="!isLoading && transactions.length > 0">
+    <!-- Coluna Data -->
+    <ng-container matColumnDef="data">
+      <th mat-header-cell *matHeaderCellDef> Data </th>
+      <td mat-cell *matCellDef="let tx"> {{ tx.dataMovimentacao | date:'dd/MM/yyyy HH:mm' }} </td>
+    </ng-container>
+
+    <!-- Coluna Tipo -->
+    <ng-container matColumnDef="tipo">
+      <th mat-header-cell *matHeaderCellDef> Tipo </th>
+      <td mat-cell *matCellDef="let tx">
+        <span class="tx-badge" [ngClass]="tx.tipo.toLowerCase()">{{ tx.tipo }}</span>
+      </td>
+    </ng-container>
+
+    <!-- Coluna Descrição -->
+    <ng-container matColumnDef="descricao">
+      <th mat-header-cell *matHeaderCellDef> Descrição </th>
+      <td mat-cell *matCellDef="let tx" style="max-width: 250px; white-space: normal; word-wrap: break-word;"> {{ tx.descricao }} </td>
+    </ng-container>
+
+    <!-- Coluna Valor -->
+    <ng-container matColumnDef="valor">
+      <th mat-header-cell *matHeaderCellDef> Valor </th>
+      <td mat-cell *matCellDef="let tx" [style.color]="tx.valor >= 0 ? '#059669' : '#dc2626'" style="font-weight: 600;">
+        {{ tx.valor | currency:'BRL' }}
+      </td>
+    </ng-container>
+
+    <!-- Coluna Saldo Anterior -->
+    <ng-container matColumnDef="saldoAnterior">
+      <th mat-header-cell *matHeaderCellDef> Saldo Anterior </th>
+      <td mat-cell *matCellDef="let tx"> {{ tx.saldoAnterior | currency:'BRL' }} </td>
+    </ng-container>
+
+    <!-- Coluna Saldo Posterior -->
+    <ng-container matColumnDef="saldoPosterior">
+      <th mat-header-cell *matHeaderCellDef> Saldo Posterior </th>
+      <td mat-cell *matCellDef="let tx"> {{ tx.saldoPosterior | currency:'BRL' }} </td>
+    </ng-container>
+
+    <!-- Coluna Responsável -->
+    <ng-container matColumnDef="responsavel">
+      <th mat-header-cell *matHeaderCellDef> Responsável </th>
+      <td mat-cell *matCellDef="let tx"> {{ tx.usuarioResponsavel }} </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" style="padding: 16px 24px;">
+  <button mat-flat-button color="primary" (click)="close()">Fechar</button>
+</mat-dialog-actions>

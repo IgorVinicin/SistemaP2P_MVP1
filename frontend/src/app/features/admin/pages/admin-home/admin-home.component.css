@@ -1,0 +1,85 @@
+.debug-bar {
+  background: #1e1e1e;
+  color: #00ff88;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 8px 16px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+}
+
+.admin-container {
+  margin-top: 10px;
+}
+
+.admin-content {
+  padding: 20px 0;
+}
+
+table {
+  width: 100%;
+  margin-top: 15px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.no-pending-state {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.no-pending-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  color: #2e7d32;
+  margin-bottom: 15px;
+}
+
+.no-pending-state h3 {
+  font-size: 20px;
+  margin: 0 0 10px 0;
+  color: #333;
+}
+
+.no-pending-state p {
+  color: #666;
+  margin: 0;
+}
+
+th.mat-mdc-header-cell {
+  font-weight: bold;
+}
+
+.status-badge {
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.status-badge.pendente {
+  background-color: #fff3e0;
+  color: #ef6c00;
+}
+
+.status-badge.emanalise {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.status-badge.aprovado, .status-badge.ativo, .status-badge.quitado, .status-badge.concluido {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.reprovado, .status-badge.cancelado {
+  background-color: #fce8e6;
+  color: #c5221f;
+}

@@ -1,0 +1,154 @@
+<h2 mat-dialog-title>Editar Informações do Usuário</h2>
+
+<mat-dialog-content class="dialog-content">
+  <div *ngIf="isLoading" class="loading-state">
+    <p>Carregando dados do usuário...</p>
+  </div>
+
+  <div *ngIf="!isLoading && userDetail" class="detail-container">
+    
+    <!-- Formulário de Dados Cadastrais -->
+    <div class="detail-section">
+      <h3 class="section-title">Dados Cadastrais</h3>
+      <form (submit)="saveProfile()" class="edit-form-grid">
+        <mat-form-field appearance="outline">
+          <mat-label>Nome Completo</mat-label>
+          <input matInput [(ngModel)]="editForm.nome" name="nome" required [disabled]="isProcessing" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>CPF</mat-label>
+          <input matInput [(ngModel)]="editForm.cpf" name="cpf" required [disabled]="isProcessing" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Telefone</mat-label>
+          <input matInput [(ngModel)]="editForm.telefone" name="telefone" required [disabled]="isProcessing" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Data de Nascimento</mat-label>
+          <input matInput type="date" [(ngModel)]="editForm.dataNascimento" name="dataNascimento" required [disabled]="isProcessing" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Status do Cadastro</mat-label>
+          <mat-select [(ngModel)]="editForm.status" name="status" required [disabled]="isProcessing">
+            <mat-option value="Pendente">Pendente</mat-option>
+            <mat-option value="EmAnalise">Em Analise</mat-option>
+            <mat-option value="Aprovado">Aprovado</mat-option>
+            <mat-option value="Reprovado">Reprovado</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <div class="form-actions-row">
+          <button mat-raised-button color="primary" type="submit" [disabled]="isProcessing">
+            Salvar Dados Cadastrais
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Controle de Score Manual -->
+    <div class="detail-section">
+      <h3 class="section-title">Controle de Score</h3>
+      <div class="score-control-panel">
+        <div class="current-score-card">
+          <div class="card-label">Score Atual</div>
+          <div class="card-value">{{ userDetail.profile?.scoreAtual ?? 0 }}</div>
+        </div>
+
+        <div class="score-form-fields">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Novo Score</mat-label>
+            <input matInput type="number" [(ngModel)]="novoScore" name="novoScore" min="0" max="1000" placeholder="Ex: 750" [disabled]="isProcessing" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Motivo da Alteração</mat-label>
+            <textarea matInput [(ngModel)]="motivoAlteracao" name="motivoAlteracao" placeholder="Ex: Correção após análise manual" rows="2" [disabled]="isProcessing"></textarea>
+          </mat-form-field>
+
+          <button mat-raised-button color="accent" (click)="updateScore()" [disabled]="isProcessing || !motivoAlteracao || novoScore < 0 || novoScore > 1000">
+            Atualizar Score
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Histórico de Alterações de Score -->
+    <div class="detail-section">
+      <h3 class="section-title">Histórico de Alterações de Score</h3>
+      <div *ngIf="!userDetail.scoreHistory || userDetail.scoreHistory.length === 0" class="no-data-message">
+        Nenhuma alteração manual de score registrada.
+      </div>
+
+      <div *ngIf="userDetail.scoreHistory && userDetail.scoreHistory.length > 0" class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Score Anterior</th>
+              <th>Score Novo</th>
+              <th>Motivo</th>
+              <th>Administrador responsável</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let hist of userDetail.scoreHistory">
+              <td>{{ hist.dataAlteracao | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td class="old-score">{{ hist.scoreAnterior }}</td>
+              <td class="new-score">{{ hist.scoreNovo }}</td>
+              <td>{{ hist.motivo }}</td>
+              <td class="admin-email">{{ hist.adminEmail }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Histórico de Empréstimos -->
+    <div class="detail-section">
+      <h3 class="section-title">Histórico de Empréstimos</h3>
+      <div *ngIf="!userDetail.loans || userDetail.loans.length === 0" class="no-data-message">
+        Nenhum histórico de empréstimo encontrado para este usuário.
+      </div>
+
+      <div *ngIf="userDetail.loans && userDetail.loans.length > 0" class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Valor Solicitado</th>
+              <th>Valor Total</th>
+              <th>Parcelas</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let loan of userDetail.loans">
+              <td>{{ loan.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>R$ {{ loan.valorSolicitado | number:'1.2-2' }}</td>
+              <td>R$ {{ loan.valorTotal | number:'1.2-2' }}</td>
+              <td>{{ loan.quantidadeParcelas }}x</td>
+              <td>
+                <span class="status-badge" [ngClass]="loan.status.toLowerCase()">{{ loan.status }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="dialogRef.close()" [disabled]="isProcessing">Fechar</button>
+</mat-dialog-actions>

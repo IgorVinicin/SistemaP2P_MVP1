@@ -1,0 +1,188 @@
+.dialog-content {
+  min-width: 700px;
+  max-width: 95vw;
+  max-height: 80vh;
+  padding-bottom: 20px;
+}
+
+.detail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.detail-section {
+  padding: 8px 0;
+}
+
+.section-title {
+  margin: 0 0 16px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a73e8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-actions-row {
+  grid-column: span 2;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.score-control-panel {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 20px;
+  align-items: start;
+  background-color: #fcfcfc;
+  border: 1px solid #e0e0e0;
+  padding: 16px;
+  border-radius: 8px;
+}
+
+.current-score-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a73e8, #1557b0);
+  color: white;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2);
+}
+
+.card-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+.card-value {
+  font-size: 36px;
+  font-weight: 800;
+}
+
+.score-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  text-align: left;
+}
+
+.data-table th, .data-table td {
+  padding: 12px;
+  border-bottom: 1px solid #dadce0;
+}
+
+.data-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #3c4043;
+}
+
+.status-badge {
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.status-badge.pendente {
+  background-color: #fff3e0;
+  color: #ef6c00;
+}
+
+.status-badge.emanalise {
+  background-color: #e8f0fe;
+  color: #1a73e8;
+}
+
+.status-badge.aprovado, .status-badge.ativo, .status-badge.quitado, .status-badge.concluido {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.reprovado, .status-badge.cancelado {
+  background-color: #fce8e6;
+  color: #c5221f;
+}
+
+.old-score {
+  color: #c5221f;
+  font-weight: 600;
+}
+
+.new-score {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
+.admin-email {
+  font-family: monospace;
+  color: #5f6368;
+}
+
+.no-data-message {
+  padding: 16px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  color: #70757a;
+  text-align: center;
+  font-style: italic;
+  font-size: 14px;
+}
+
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+@media (max-width: 650px) {
+  .dialog-content {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .edit-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-actions-row {
+    grid-column: span 1;
+  }
+
+  .score-control-panel {
+    grid-template-columns: 1fr;
+  }
+}

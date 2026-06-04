@@ -1,0 +1,93 @@
+<div class="loan-req-container">
+  <!-- Estado de Carregamento -->
+  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; min-height: 350px;">
+    <p>Verificando elegibilidade de crédito...</p>
+  </div>
+
+  <!-- Cliente Não Elegível -->
+  <div *ngIf="!isLoading && eligibility && !eligibility.podeSolicitar" class="blocked-card">
+    <mat-icon class="blocked-icon">block</mat-icon>
+    <h2 class="blocked-title">Solicitação Indisponível</h2>
+    <p class="blocked-text">
+      {{ eligibility.mensagemBlock || 'Você não possui permissão para solicitar empréstimo no momento.' }}
+    </p>
+    <button mat-flat-button color="primary" routerLink="/dashboard">Voltar ao Dashboard</button>
+  </div>
+
+  <!-- Cliente Elegível (Formulário) -->
+  <div *ngIf="!isLoading && eligibility && eligibility.podeSolicitar">
+    <!-- Resumo de Elegibilidade -->
+    <div class="eligibility-card">
+      <div class="eligibility-header">
+        <h2>Seu Perfil de Crédito Disponível</h2>
+      </div>
+      <div class="eligibility-grid">
+        <div class="eligibility-item">
+          <span class="eligibility-label">Score Atual</span>
+          <span class="eligibility-val">{{ eligibility.scoreAtual }}</span>
+        </div>
+        <div class="eligibility-item">
+          <span class="eligibility-label">Classificação Risco</span>
+          <div style="margin-top: 0.25rem;">
+            <span class="risk-badge" [class.alto]="eligibility.risco.toLowerCase() === 'alto'" [class.medio]="eligibility.risco.toLowerCase() === 'médio' || eligibility.risco.toLowerCase() === 'medio'" [class.baixo]="eligibility.risco.toLowerCase() === 'baixo'">
+              {{ eligibility.risco }}
+            </span>
+          </div>
+        </div>
+        <div class="eligibility-item">
+          <span class="eligibility-label">Taxa de Juros</span>
+          <span class="eligibility-val">{{ eligibility.taxaJuros }}% a.m.</span>
+        </div>
+        <div class="eligibility-item">
+          <span class="eligibility-label">Limite Disponível</span>
+          <span class="eligibility-val" style="color: #4f46e5;">
+            {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulário de Solicitação -->
+    <div class="form-card">
+      <h2 class="form-title">Preencha os Dados da Solicitação</h2>
+      
+      <form (submit)="submitRequest()">
+        <div class="form-row">
+          <mat-form-field class="form-field-full" appearance="outline">
+            <mat-label>Valor Solicitado (R$)</mat-label>
+            <input matInput type="number" [(ngModel)]="loanForm.valorSolicitado" name="valorSolicitado" [max]="eligibility.limiteDisponivel" min="1" placeholder="Ex: 5000">
+            <mat-hint>Limite máximo: {{ eligibility.limiteDisponivel | currency:'BRL' }}</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field class="form-field-full" appearance="outline">
+            <mat-label>Quantidade de Parcelas</mat-label>
+            <input matInput type="number" [(ngModel)]="loanForm.quantidadeParcelas" name="quantidadeParcelas" min="1" max="60" placeholder="Ex: 12">
+            <mat-hint>Faixa recomendada: 1 a 60 parcelas</mat-hint>
+          </mat-form-field>
+        </div>
+
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Finalidade do Empréstimo</mat-label>
+          <mat-select [(ngModel)]="loanForm.finalidade" name="finalidade" required>
+            <mat-option value="Capital de Giro">Capital de Giro</mat-option>
+            <mat-option value="Expansão de Negócio">Expansão de Negócio</mat-option>
+            <mat-option value="Pagamento de Dívidas">Pagamento de Dívidas</mat-option>
+            <mat-option value="Compra de Equipamentos">Compra de Equipamentos</mat-option>
+            <mat-option value="Outros">Outros</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field class="form-field-full" appearance="outline">
+          <mat-label>Observações / Justificativa</mat-label>
+          <textarea matInput rows="4" [(ngModel)]="loanForm.observacoes" name="observacoes" placeholder="Explique resumidamente a necessidade do crédito..."></textarea>
+        </mat-form-field>
+
+        <div class="submit-btn-row">
+          <button mat-flat-button color="primary" class="submit-btn" type="submit" [disabled]="isSubmitting || !loanForm.valorSolicitado || !loanForm.quantidadeParcelas || !loanForm.finalidade">
+            {{ isSubmitting ? 'Processando solicitação...' : 'Solicitar Empréstimo' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

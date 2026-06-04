@@ -1,0 +1,92 @@
+<h2 mat-dialog-title>Detalhes do Usuário e Solicitação</h2>
+
+<mat-dialog-content class="dialog-content">
+  <div *ngIf="isLoading" class="loading-state">
+    <p>Carregando detalhes do usuário...</p>
+  </div>
+
+  <div *ngIf="!isLoading && userDetail" class="detail-container">
+    
+    <!-- Seção de Dados Pessoais -->
+    <div class="detail-section">
+      <h3 class="section-title">Dados Pessoais ({{ userDetail.role }})</h3>
+      <div class="info-grid">
+        <div><strong>Nome:</strong> <span>{{ userDetail.profile?.nome || 'N/A' }}</span></div>
+        <div><strong>CPF:</strong> <span>{{ userDetail.profile?.cpf || 'N/A' }}</span></div>
+        <div><strong>E-mail:</strong> <span>{{ userDetail.email }}</span></div>
+        <div><strong>Telefone:</strong> <span>{{ userDetail.profile?.telefone || 'N/A' }}</span></div>
+        <div><strong>Nascimento:</strong> <span>{{ userDetail.profile?.dataNascimento | date:'dd/MM/yyyy' }}</span></div>
+        <div><strong>Status da Conta:</strong> <span class="status-badge" [ngClass]="userDetail.status.toLowerCase()">{{ userDetail.status }}</span></div>
+        <div><strong>Score Calculado:</strong> <span class="score-value">{{ userDetail.profile?.scoreAtual ?? 0 }}</span></div>
+      </div>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Seção de Dados da Empresa se possuir empresa -->
+    <div class="detail-section" *ngIf="userDetail.profile?.possuiEmpresa || userDetail.company">
+      <h3 class="section-title">Dados da Empresa</h3>
+      <div class="info-grid">
+        <div><strong>Razão Social:</strong> <span>{{ userDetail.company?.razaoSocial || 'N/A' }}</span></div>
+        <div><strong>Nome Fantasia:</strong> <span>{{ userDetail.company?.nomeFantasia || 'N/A' }}</span></div>
+        <div><strong>CNPJ:</strong> <span>{{ userDetail.company?.cnpj || 'N/A' }}</span></div>
+        <div><strong>Tempo de Empresa:</strong> <span>{{ userDetail.company?.tempoEmpresa ?? 'N/A' }} meses</span></div>
+        <div><strong>Faturamento Mensal:</strong> <span>R$ {{ (userDetail.company?.faturamentoMensal || 0) | number:'1.2-2' }}</span></div>
+      </div>
+    </div>
+
+    <mat-divider *ngIf="userDetail.profile?.possuiEmpresa || userDetail.company"></mat-divider>
+
+    <!-- Seção de Documentos Enviados -->
+    <div class="detail-section">
+      <h3 class="section-title">Documentos Enviados</h3>
+      
+      <div *ngIf="!userDetail.documents || userDetail.documents.length === 0" class="no-data-message">
+        Nenhum documento foi enviado ainda por este usuário.
+      </div>
+      
+      <mat-list *ngIf="userDetail.documents && userDetail.documents.length > 0">
+        <mat-list-item *ngFor="let doc of userDetail.documents" class="doc-item">
+          <mat-icon matListItemIcon>description</mat-icon>
+          <div matListItemTitle>{{ doc.tipoDocumento }}</div>
+          <div matListItemLine>Enviado em: {{ doc.createdAt | date:'dd/MM/yyyy HH:mm' }} | Status: {{ doc.status }}</div>
+          
+          <button mat-icon-button matListItemMeta (click)="viewDocument(doc.id, doc.tipoDocumento)" title="Visualizar documento">
+            <mat-icon color="primary">visibility</mat-icon>
+          </button>
+        </mat-list-item>
+      </mat-list>
+    </div>
+
+    <mat-divider></mat-divider>
+
+    <!-- Seção do Questionário de Score -->
+    <div class="detail-section">
+      <h3 class="section-title">Questionário de Score</h3>
+      <div *ngIf="!userDetail.answers || userDetail.answers.length === 0" class="no-data-message">
+        O usuário ainda não respondeu ao questionário de score.
+      </div>
+
+      <div *ngIf="userDetail.answers && userDetail.answers.length > 0" class="answers-list">
+        <div *ngFor="let ans of userDetail.answers" class="answer-item">
+          <div class="question-text"><strong>P:</strong> {{ ans.pergunta }}</div>
+          <div class="answer-text"><strong>R:</strong> {{ ans.respostaSelecionada }}</div>
+          <div class="points-text"><strong>Pontuação obtida:</strong> <span class="score-badge">{{ ans.pontuacao }} pontos</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end" *ngIf="userDetail">
+  <button mat-button (click)="dialogRef.close()" [disabled]="isProcessing">Cancelar</button>
+  
+  <button mat-raised-button color="warn" (click)="reprove()" [disabled]="isProcessing" *ngIf="userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise'">
+    Reprovar Cadastro
+  </button>
+  
+  <button mat-raised-button color="primary" (click)="approve()" [disabled]="isProcessing" *ngIf="userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise'">
+    Aprovar Cadastro
+  </button>
+</mat-dialog-actions>

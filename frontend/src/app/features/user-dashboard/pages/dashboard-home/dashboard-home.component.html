@@ -1,0 +1,115 @@
+<div class="dashboard-container">
+  <!-- Ações do Cliente Aprovado -->
+  <div class="actions-card" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Cliente'" style="margin-bottom: 1.5rem;">
+    <mat-card style="background: linear-gradient(135deg, #3f51b5 0%, #1a237e 100%); color: white; padding: 1rem; border-radius: 12px;">
+      <mat-card-content style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;">
+        <div>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: white;">Solicitações de Crédito</h3>
+          <p style="margin: 0.25rem 0 0 0; opacity: 0.9; font-size: 0.9rem; color: #e8eaf6;">Consulte seu histórico de propostas, acompanhe empréstimos ativos ou solicite novo crédito.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem;">
+          <button mat-flat-button style="background-color: #ff4081; color: white;" routerLink="/loans/my">
+            <mat-icon>receipt_long</mat-icon> Meus Empréstimos
+          </button>
+          <button mat-flat-button style="background-color: white; color: #1a237e;" routerLink="/loans/request">
+            <mat-icon>add</mat-icon> Solicitar Crédito
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Ações do Investidor Aprovado -->
+  <div class="actions-card" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Investidor'" style="margin-bottom: 1.5rem;">
+    <mat-card style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 1rem; border-radius: 12px;">
+      <mat-card-content style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;">
+        <div>
+          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: white;">Área do Investidor</h3>
+          <p style="margin: 0.25rem 0 0 0; opacity: 0.9; font-size: 0.9rem; color: #cbd5e1;">Acesse sua carteira e gerencie seus investimentos simulados.</p>
+        </div>
+        <div>
+          <button mat-flat-button style="background-color: #10b981; color: white;" routerLink="/investor/dashboard">
+            <mat-icon>trending_up</mat-icon> Acessar Carteira
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="status-summary-card">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Status da sua Conta</mat-card-title>
+      </mat-card-header>
+      
+      <mat-card-content class="status-content">
+        <div class="user-status-display">
+          <mat-icon [ngClass]="authService.userStatus().toLowerCase()" class="status-icon">
+            {{ authService.userStatus() === 'Aprovado' ? 'check_circle' : 
+               authService.userStatus() === 'Reprovado' ? 'cancel' : 
+               authService.userStatus() === 'EmAnalise' ? 'hourglass_empty' : 'info' }}
+          </mat-icon>
+          
+          <div class="status-text-details">
+            <h2>{{ authService.userStatus() === 'EmAnalise' ? 'Em Análise' : authService.userStatus() }}</h2>
+            <p *ngIf="authService.userStatus() === 'Pendente'">
+              Sua conta ainda possui pendências de validação. Por favor, envie todos os documentos obrigatórios listados abaixo para enviar sua conta para análise.
+            </p>
+            <p *ngIf="authService.userStatus() === 'EmAnalise'">
+              Seus documentos foram enviados e estão sendo analisados pela nossa equipe administrativa. O tempo estimado de análise é de até 24 horas úteis.
+            </p>
+            <p *ngIf="authService.userStatus() === 'Aprovado'">
+              Parabéns! Sua conta e documentos foram verificados e aprovados. Você está pronto para utilizar o sistema.
+            </p>
+            <p *ngIf="authService.userStatus() === 'Reprovado'">
+              Seu cadastro foi reprovado por inconsistência nos documentos. Por favor, revise e reenvie os documentos pendentes de correção.
+            </p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="document-section">
+    <h2>Upload de Documentos Obrigatórios</h2>
+    
+    <div class="documents-grid">
+      <div class="grid-item">
+        <app-document-upload-card
+          tipoDocumento="Frente"
+          label="Documento de Identidade (Frente)"
+          [currentStatus]="getDocStatus('Frente')"
+          (uploadSuccess)="onUploadSuccess($event)">
+        </app-document-upload-card>
+      </div>
+
+      <div class="grid-item">
+        <app-document-upload-card
+          tipoDocumento="Verso"
+          label="Documento de Identidade (Verso)"
+          [currentStatus]="getDocStatus('Verso')"
+          (uploadSuccess)="onUploadSuccess($event)">
+        </app-document-upload-card>
+      </div>
+
+      <div class="grid-item">
+        <app-document-upload-card
+          tipoDocumento="Selfie"
+          label="Selfie segurando o Documento"
+          [currentStatus]="getDocStatus('Selfie')"
+          (uploadSuccess)="onUploadSuccess($event)">
+        </app-document-upload-card>
+      </div>
+
+      <!-- Fachada da empresa (Exibida dinamicamente apenas se o usuário declarou possuir empresa) -->
+      <div class="grid-item" *ngIf="authService.possuiEmpresa()">
+        <app-document-upload-card
+          tipoDocumento="FachadaEmpresa"
+          label="Foto da Fachada da Empresa"
+          [currentStatus]="getDocStatus('FachadaEmpresa')"
+          (uploadSuccess)="onUploadSuccess($event)">
+        </app-document-upload-card>
+      </div>
+    </div>
+  </div>
+</div>

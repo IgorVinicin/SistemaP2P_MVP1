@@ -1,0 +1,88 @@
+<div class="score-form-container">
+  <!-- Estado de Carregamento -->
+  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; min-height: 300px;">
+    <p>Carregando questionário...</p>
+  </div>
+
+  <!-- Tela de Resultados do Score -->
+  <div *ngIf="!isLoading && showResult" class="result-card">
+    <div class="result-icon-wrapper">
+      <mat-icon class="result-icon">check_circle</mat-icon>
+    </div>
+    <h2 class="result-title">Questionário Enviado!</h2>
+    <p class="result-subtitle">Suas respostas foram processadas e seu score de crédito foi atualizado.</p>
+
+    <div class="score-display-ring" [style.--score-percentage]="(scoreResult / 10) + '%'">
+      <div class="score-value">
+        {{ scoreResult }}
+        <span class="score-label">Score</span>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 2rem;">
+      <h3 style="margin: 0; color: #334155; font-size: 1.1rem; font-weight: 600;">Sua faixa de classificação:</h3>
+      <p style="margin: 0.25rem 0 0 0; font-size: 1.25rem; font-weight: 700; color: #4f46e5;">
+        {{ scoreResult <= 300 ? 'Alto risco' : scoreResult <= 600 ? 'Médio risco' : 'Baixo risco' }}
+      </p>
+    </div>
+
+    <button mat-flat-button color="primary" class="back-btn" routerLink="/dashboard">
+      Ir para o Dashboard
+    </button>
+  </div>
+
+  <!-- Formulário de Questionário -->
+  <div *ngIf="!isLoading && !showResult">
+    <div class="welcome-card">
+      <div class="welcome-header">
+        <h1>Análise de Score de Crédito</h1>
+        <p>Responda às perguntas abaixo para calcular o seu limite de crédito no sistema P2P.</p>
+      </div>
+      <div class="welcome-content">
+        Para que seu cadastro seja aprovado e você consiga solicitar empréstimos, precisamos calcular seu score.
+        <ul>
+          <li>Responda todas as perguntas com sinceridade.</li>
+          <li>O score é calculado automaticamente de acordo com as respostas selecionadas.</li>
+          <li>Você poderá ver o resultado logo após o envio.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div *ngIf="questions.length === 0" style="text-align: center; padding: 3rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
+      <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #94a3b8;">sentiment_dissatisfied</mat-icon>
+      <h3 style="margin-top: 1rem; color: #334155;">Nenhum questionário ativo no momento.</h3>
+      <p style="color: #64748b; margin-bottom: 2rem;">Por favor, tente novamente mais tarde ou contate o administrador.</p>
+      <button mat-button color="primary" routerLink="/dashboard">Voltar ao Dashboard</button>
+    </div>
+
+    <!-- Banner de questionário concluído -->
+    <div *ngIf="isCompleted" class="completed-warning-banner" style="margin-bottom: 1.5rem; padding: 1.25rem; background-color: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; color: #0369a1;">
+      <mat-icon style="color: #0284c7;">info</mat-icon>
+      <span style="font-weight: 500; font-size: 0.95rem;">
+        Seu questionário já foi enviado e encontra-se registrado no sistema.
+      </span>
+    </div>
+
+    <form (submit)="submitForm()" *ngIf="questions.length > 0">
+      <div *ngFor="let question of questions; let i = index" class="question-card">
+        <mat-card-content style="padding: 1.5rem 2rem;">
+          <h3 class="question-title">
+            {{ i + 1 }}. {{ question.titulo }}
+          </h3>
+          
+          <mat-radio-group [(ngModel)]="answers[question.id!]" [name]="'question_' + question.id" class="options-group" [disabled]="isCompleted">
+            <mat-radio-button *ngFor="let opt of question.options" [value]="opt.id" class="radio-option">
+              {{ opt.texto }}
+            </mat-radio-button>
+          </mat-radio-group>
+        </mat-card-content>
+      </div>
+
+      <div class="submit-btn-row" *ngIf="!isCompleted">
+        <button mat-flat-button color="primary" class="submit-btn" type="submit" [disabled]="!isFormValid() || isSubmitting">
+          {{ isSubmitting ? 'Enviando...' : 'Finalizar e Ver Score' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

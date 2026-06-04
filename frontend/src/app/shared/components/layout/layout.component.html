@@ -1,0 +1,27 @@
+<mat-toolbar color="primary" class="app-toolbar">
+  <span>Sistema P2P - MVP1</span>
+  <span class="spacer"></span>
+  <div *ngIf="authService.isAuthenticated()" class="nav-container">
+    <span class="user-email">{{ authService.currentUser()?.email }} ({{ authService.userRole() }})</span>
+    
+    <button mat-button routerLink="/dashboard" *ngIf="authService.userRole() !== 'Administrador' && authService.userRole() !== 'Investidor'">Dashboard</button>
+    <button mat-button routerLink="/investor/dashboard" *ngIf="authService.userRole() === 'Investidor'">Área do Investidor</button>
+    <button mat-button routerLink="/score" *ngIf="authService.userRole() === 'Cliente'">Análise de Score</button>
+    <button mat-button routerLink="/loans/request" *ngIf="authService.userRole() === 'Cliente'">Solicitar Empréstimo</button>
+    <button mat-button routerLink="/loans/my" *ngIf="authService.userRole() === 'Cliente'">Meus Empréstimos</button>
+    <button mat-button routerLink="/loans/history" *ngIf="authService.userRole() === 'Cliente'">Histórico</button>
+    
+    <button mat-button routerLink="/admin" *ngIf="authService.userRole() === 'Administrador'">Painel Admin</button>
+    <button mat-button routerLink="/admin/questions" *ngIf="authService.userRole() === 'Administrador'">Configurar Score</button>
+    <button mat-button routerLink="/admin/credit" *ngIf="authService.userRole() === 'Administrador'">Configurar Crédito</button>
+    <button mat-button routerLink="/admin/loans" *ngIf="authService.userRole() === 'Administrador'">Análise de Empréstimos</button>
+    
+    <button mat-icon-button (click)="logout()" title="Sair">
+      <mat-icon>exit_to_app</mat-icon>
+    </button>
+  </div>
+</mat-toolbar>
+
+<div class="container">
+  <router-outlet></router-outlet>
+</div>
