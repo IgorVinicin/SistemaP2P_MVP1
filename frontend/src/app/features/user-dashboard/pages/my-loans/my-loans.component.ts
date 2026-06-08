@@ -9,6 +9,8 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { LoanService } from '../../../../core/services/loan.service';
 import { LoanRequest } from '../../../../core/models/loan.models';
+import { LoanInstallmentService } from '../../../../core/services/loan-installment.service';
+import { LoanInstallmentDto } from '../../../../core/models/installment.models';
 
 @Component({
   selector: 'app-my-loans',
@@ -27,11 +29,17 @@ import { LoanRequest } from '../../../../core/models/loan.models';
 })
 export class MyLoansComponent implements OnInit {
   private api = inject(LoanService);
+  private installmentService = inject(LoanInstallmentService);
   private snackBar = inject(MatSnackBar);
 
   public loans: LoanRequest[] = [];
-  public displayedColumns: string[] = ['valor', 'parcelas', 'taxa', 'status', 'data'];
+  public displayedColumns: string[] = ['valor', 'parcelas', 'taxa', 'status', 'data', 'acoes'];
   public isLoading = false;
+
+  public selectedLoan: LoanRequest | null = null;
+  public installments: LoanInstallmentDto[] = [];
+  public isLoadingInstallments = false;
+  public displayedInstallmentColumns: string[] = ['numero', 'vencimento', 'valor', 'principal', 'juros', 'multa', 'jurosMora', 'valorPago', 'status', 'acoes'];
 
   public get hasActiveLoan(): boolean {
     const statusAtivos = ['pendente', 'emanalise', 'aprovado', 'ativo'];
@@ -52,6 +60,45 @@ export class MyLoansComponent implements OnInit {
       error: () => {
         this.isLoading = false;
         this.snackBar.open('Erro ao carregar lista de empréstimos.', 'Fechar', { duration: 4000 });
+      }
+    });
+  }
+
+  public selectLoan(loan: LoanRequest): void {
+    if (loan.id) {
+      this.selectedLoan = loan;
+      this.loadInstallments(loan.id);
+    }
+  }
+
+  public loadInstallments(loanRequestId: string): void {
+    this.isLoadingInstallments = true;
+    this.installmentService.getInstallments(loanRequestId).subscribe({
+      next: (data) => {
+        this.installments = data;
+        this.isLoadingInstallments = false;
+      },
+      error: () => {
+        this.isLoadingInstallments = false;
+        this.snackBar.open('Erro ao carregar parcelas do empréstimo.', 'Fechar', { duration: 4000 });
+      }
+    });
+  }
+
+  public payInstallment(installmentId: string): void {
+    if (!confirm('Deseja realmente simular o pagamento desta parcela?')) {
+      return;
+    }
+    this.installmentService.payInstallment(installmentId).subscribe({
+      next: (res) => {
+        this.snackBar.open(res.message || 'Parcela paga com sucesso!', 'Fechar', { duration: 3000 });
+        if (this.selectedLoan && this.selectedLoan.id) {
+          this.loadInstallments(this.selectedLoan.id);
+        }
+      },
+      error: (err) => {
+        const msg = err.error?.message || 'Erro ao realizar pagamento da parcela.';
+        this.snackBar.open(msg, 'Fechar', { duration: 4000 });
       }
     });
   }

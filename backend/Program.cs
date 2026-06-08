@@ -154,6 +154,27 @@ using (var scope = app.Services.CreateScope())
                 ""DataAlteracao"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 ""AdminId"" uuid NOT NULL
             );
+
+            ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""PercentualMultaAtraso"" numeric(18,2) NOT NULL DEFAULT 2.00;
+            ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""PercentualJurosDiario"" numeric(18,4) NOT NULL DEFAULT 0.0330;
+
+            CREATE TABLE IF NOT EXISTS ""LoanInstallments"" (
+                ""Id"" uuid NOT NULL CONSTRAINT ""PK_LoanInstallments"" PRIMARY KEY,
+                ""LoanRequestId"" uuid NOT NULL,
+                ""NumeroParcela"" integer NOT NULL,
+                ""ValorParcela"" numeric(18,2) NOT NULL,
+                ""ValorPrincipal"" numeric(18,2) NOT NULL,
+                ""ValorJuros"" numeric(18,2) NOT NULL,
+                ""DataVencimento"" timestamp with time zone NOT NULL,
+                ""DataPagamento"" timestamp with time zone NULL,
+                ""Status"" text NOT NULL,
+                ""ValorPago"" numeric(18,2) NOT NULL DEFAULT 0,
+                ""DiasAtraso"" integer NOT NULL DEFAULT 0,
+                ""Multa"" numeric(18,2) NOT NULL DEFAULT 0,
+                ""JurosMora"" numeric(18,2) NOT NULL DEFAULT 0,
+                ""CreatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ""UpdatedAt"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
         ");
 
         // Seed das Regras de Score

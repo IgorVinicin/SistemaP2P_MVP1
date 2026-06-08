@@ -16,10 +16,18 @@
       <p class="card-subtitle">Parâmetros globais para validação de crédito de clientes.</p>
     </div>
     <div class="config-body">
-      <div class="config-inline-form">
+      <div class="config-inline-form" style="flex-wrap: wrap;">
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Score Mínimo para Solicitação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.scoreMinimoParaSolicitacao" placeholder="Ex: 150">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Multa por Atraso (%)</mat-label>
+          <input matInput type="number" step="0.01" [(ngModel)]="globalConfig.percentualMultaAtraso" placeholder="Ex: 2.00">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Juros Diários (%)</mat-label>
+          <input matInput type="number" step="0.001" [(ngModel)]="globalConfig.percentualJurosDiario" placeholder="Ex: 0.033">
         </mat-form-field>
         <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
           Salvar Configuração Geral

@@ -24,6 +24,7 @@ namespace backend.Infrastructure
         public DbSet<CreditConfig> CreditConfigs { get; set; }
         public DbSet<ScoreHistory> ScoreHistories { get; set; }
         public DbSet<InvestorTransaction> InvestorTransactions { get; set; }
+        public DbSet<LoanInstallment> LoanInstallments { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -181,6 +182,40 @@ namespace backend.Infrastructure
                 .WithMany()
                 .HasForeignKey(sh => sh.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Relacionamento N:1 entre LoanInstallment e LoanRequest
+            modelBuilder.Entity<LoanInstallment>()
+                .HasOne(li => li.LoanRequest)
+                .WithMany()
+                .HasForeignKey(li => li.LoanRequestId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Precisões decimais
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.ValorParcela)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.ValorPrincipal)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.ValorJuros)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.ValorPago)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.Multa)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>()
+                .Property(li => li.JurosMora)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<CreditConfig>()
+                .Property(cc => cc.PercentualMultaAtraso)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CreditConfig>()
+                .Property(cc => cc.PercentualJurosDiario)
+                .HasPrecision(18, 4);
         }
     }
 }

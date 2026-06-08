@@ -116,3 +116,24 @@
   padding: 4rem 2rem;
   color: #94a3b8;
 }
+
+.status-badge.paga {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.atrasada {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.selected-row {
+  background-color: #f8fafc;
+  font-weight: 500;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+

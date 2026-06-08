@@ -12,6 +12,7 @@ import { MatInputModule } from '@angular/material/input';
 
 import { LoanService } from '../../../../core/services/loan.service';
 import { LoanRequest } from '../../../../core/models/loan.models';
+import { LoanInstallmentService } from '../../../../core/services/loan-installment.service';
 
 @Component({
   selector: 'app-admin-loans',
@@ -33,6 +34,7 @@ import { LoanRequest } from '../../../../core/models/loan.models';
 })
 export class AdminLoansComponent implements OnInit {
   private api = inject(LoanService);
+  private installmentService = inject(LoanInstallmentService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -41,6 +43,18 @@ export class AdminLoansComponent implements OnInit {
   public displayedColumns: string[] = ['nome', 'cpf', 'score', 'valor', 'parcelas', 'risco', 'data', 'acoes'];
   public activeDisplayedColumns: string[] = ['nome', 'cpf', 'valor', 'parcelas', 'status', 'data', 'acoes'];
   public isLoading = false;
+
+  // Global Installments Section
+  public globalInstallments: any[] = [];
+  public isLoadingInstallments = false;
+  public installmentDisplayedColumns: string[] = ['cliente', 'numero', 'vencimento', 'valor', 'multa', 'jurosMora', 'valorPago', 'pagamento', 'status'];
+  public filters = {
+    cliente: '',
+    status: '',
+    periodoInicio: '',
+    periodoFim: '',
+    somenteAtrasadas: false
+  };
 
   // Dialog and details state
   @ViewChild('detailDialog') detailDialogTpl!: TemplateRef<any>;
@@ -59,6 +73,36 @@ export class AdminLoansComponent implements OnInit {
   ngOnInit(): void {
     this.loadPendingLoans();
     this.loadActiveLoans();
+    this.loadAdminInstallments();
+  }
+
+  public loadAdminInstallments(): void {
+    this.isLoadingInstallments = true;
+    this.installmentService.getAdminInstallments(this.filters).subscribe({
+      next: (data) => {
+        this.globalInstallments = data;
+        this.isLoadingInstallments = false;
+      },
+      error: () => {
+        this.isLoadingInstallments = false;
+        this.snackBar.open('Erro ao carregar lista geral de parcelas.', 'Fechar', { duration: 4000 });
+      }
+    });
+  }
+
+  public onFilterChange(): void {
+    this.loadAdminInstallments();
+  }
+
+  public clearFilters(): void {
+    this.filters = {
+      cliente: '',
+      status: '',
+      periodoInicio: '',
+      periodoFim: '',
+      somenteAtrasadas: false
+    };
+    this.loadAdminInstallments();
   }
 
   public loadPendingLoans(): void {
@@ -117,6 +161,7 @@ export class AdminLoansComponent implements OnInit {
           this.mainDialogRef?.close();
           this.loadPendingLoans();
           this.loadActiveLoans();
+          this.loadAdminInstallments();
         },
         error: (err) => {
           this.isActionProcessing = false;
@@ -155,6 +200,7 @@ export class AdminLoansComponent implements OnInit {
         this.mainDialogRef?.close();
         this.loadPendingLoans();
         this.loadActiveLoans();
+        this.loadAdminInstallments();
       },
       error: (err) => {
         this.isActionProcessing = false;
@@ -174,6 +220,7 @@ export class AdminLoansComponent implements OnInit {
           this.mainDialogRef?.close();
           this.loadPendingLoans();
           this.loadActiveLoans();
+          this.loadAdminInstallments();
         },
         error: (err) => {
           this.isActionProcessing = false;

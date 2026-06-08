@@ -45,7 +45,9 @@ export class CreditConfigComponent implements OnInit {
   public isLoading = false;
 
   public globalConfig: CreditConfig = {
-    scoreMinimoParaSolicitacao: 150
+    scoreMinimoParaSolicitacao: 150,
+    percentualMultaAtraso: 2.0,
+    percentualJurosDiario: 0.033
   };
 
   // Dialog and Form elements
@@ -97,13 +99,21 @@ export class CreditConfigComponent implements OnInit {
       this.snackBar.open('O score mínimo deve estar entre 0 e 1000.', 'Fechar', { duration: 4000 });
       return;
     }
+    if (this.globalConfig.percentualMultaAtraso === undefined || this.globalConfig.percentualMultaAtraso < 0 || this.globalConfig.percentualMultaAtraso > 100) {
+      this.snackBar.open('A multa deve estar entre 0% e 100%.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.percentualJurosDiario === undefined || this.globalConfig.percentualJurosDiario < 0 || this.globalConfig.percentualJurosDiario > 100) {
+      this.snackBar.open('Os juros diários devem estar entre 0% e 100%.', 'Fechar', { duration: 4000 });
+      return;
+    }
 
     this.api.updateConfig(this.globalConfig).subscribe({
       next: () => {
-        this.snackBar.open('Configuração de score mínimo salva com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open('Configuração geral de crédito salva com sucesso!', 'Fechar', { duration: 3000 });
       },
       error: (err) => {
-        const msg = err.error?.message || 'Erro ao salvar configuração de score mínimo.';
+        const msg = err.error?.message || 'Erro ao salvar configuração geral de crédito.';
         this.snackBar.open(msg, 'Fechar', { duration: 4000 });
       }
     });

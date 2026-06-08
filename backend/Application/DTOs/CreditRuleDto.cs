@@ -16,5 +16,7 @@ namespace backend.Application.DTOs
     public class CreditConfigDto
     {
         public int ScoreMinimoParaSolicitacao { get; set; }
+        public decimal PercentualMultaAtraso { get; set; }
+        public decimal PercentualJurosDiario { get; set; }
     }
 }

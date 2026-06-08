@@ -1,6 +1,7 @@
 using backend.Application.DTOs;
 using backend.Domain.Entities;
 using backend.Infrastructure;
+using backend.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -156,6 +157,13 @@ namespace backend.API.Controllers
                 loan.Status = "Aprovado";
                 loan.DataAnalise = DateTime.UtcNow;
                 loan.DataAprovacao = DateTime.UtcNow;
+
+                // Gerar parcelas automaticamente com o PriceCalculationService
+                var priceCalc = new PriceCalculationService();
+                int parcelasCount = loan.QuantidadeParcelas > 0 ? loan.QuantidadeParcelas : loan.Parcelas;
+                decimal taxa = loan.TaxaJuros > 0 ? loan.TaxaJuros : loan.TaxaJurosAplicada;
+                var installments = priceCalc.CalculateInstallments(loan.Id, loan.ValorSolicitado, parcelasCount, taxa);
+                _context.LoanInstallments.AddRange(installments);
 
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Solicitação de empréstimo aprovada com sucesso.", status = loan.Status });

@@ -11,4 +11,6 @@ export interface ScoreCreditRule {
 export interface CreditConfig {
   id?: string;
   scoreMinimoParaSolicitacao: number;
+  percentualMultaAtraso: number;
+  percentualJurosDiario: number;
 }

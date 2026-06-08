@@ -6,5 +6,7 @@ namespace backend.Domain.Entities
     {
         public Guid Id { get; set; }
         public int ScoreMinimoParaSolicitacao { get; set; } = 150; // Default
+        public decimal PercentualMultaAtraso { get; set; } = 2.00m; // 2%
+        public decimal PercentualJurosDiario { get; set; } = 0.033m; // 0.033%
     }
 }
