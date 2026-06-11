@@ -13,4 +13,7 @@ export interface CreditConfig {
   scoreMinimoParaSolicitacao: number;
   percentualMultaAtraso: number;
   percentualJurosDiario: number;
+  diasParaCobranca?: number;
+  diasParaCobrancaIntensiva?: number;
+  diasParaInadimplencia?: number;
 }

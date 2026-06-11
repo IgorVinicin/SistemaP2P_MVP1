@@ -159,6 +159,36 @@ th.mat-mdc-header-cell {
   color: #1d4ed8;
 }
 
+.tx-badge.ajuste_admin {
+  background-color: #f3e8ff;
+  color: #7e22ce;
+}
+
+.tx-badge.prejuizo {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.tx-badge.perda {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.tx-badge.saque {
+  background-color: #ffedd5;
+  color: #c2410c;
+}
+
+.text-danger {
+  color: #dc2626 !important;
+  font-weight: 600;
+}
+
+.text-success {
+  color: #10b981 !important;
+  font-weight: 600;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;

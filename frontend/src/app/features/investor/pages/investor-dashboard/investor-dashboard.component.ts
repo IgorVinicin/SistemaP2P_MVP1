@@ -46,6 +46,11 @@ export class InvestorDashboardComponent implements OnInit {
   public saqueValor: number | null = null;
   public selectedPerfil: string = 'Conservador';
 
+  public get rendimentosNormais(): number {
+    if (!this.wallet) return 0;
+    return Math.max(0, this.wallet.rendimentos - this.wallet.coberturasFundo);
+  }
+
   ngOnInit(): void {
     this.loadWallet();
     this.loadHistory();
@@ -136,5 +141,21 @@ export class InvestorDashboardComponent implements OnInit {
         this.snackBar.open(err.error?.message || 'Erro ao atualizar perfil.', 'Fechar', { duration: 4500 });
       }
     });
+  }
+
+  public getLossCount(): number {
+    return this.transactions.filter(t => 
+      t.tipo.toUpperCase() === 'PERDA' || 
+      t.tipo.toUpperCase() === 'PREJUIZO' || 
+      t.tipo.toUpperCase() === 'PERDA_DEFINITIVA'
+    ).length;
+  }
+
+  public getLossTransactions(): InvestorTransactionDto[] {
+    return this.transactions.filter(t => 
+      t.tipo.toUpperCase() === 'PERDA' || 
+      t.tipo.toUpperCase() === 'PREJUIZO' || 
+      t.tipo.toUpperCase() === 'PERDA_DEFINITIVA'
+    );
   }
 }

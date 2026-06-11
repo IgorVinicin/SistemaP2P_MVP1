@@ -125,6 +125,19 @@ namespace backend.API.Controllers
                 });
             }
 
+            // Regra 1.5: Impedir se o usuário possuir status Inadimplente
+            var hasInadimplencia = await _context.LoanRequests
+                .AnyAsync(l => l.UserId == userId && l.Status == "Inadimplente");
+            if (hasInadimplencia)
+            {
+                return Ok(new LoanEligibilityDto
+                {
+                    ScoreAtual = user.Profile.ScoreAtual,
+                    PodeSolicitar = false,
+                    MensagemBlock = "Você possui pendências financeiras e precisa regularizar sua situação para utilizar novamente a plataforma."
+                });
+            }
+
             // Regra: Impedir se possuir empréstimo ativo
             if (await _creditService.PossuiEmprestimoAtivo(userId))
             {
@@ -190,6 +203,14 @@ namespace backend.API.Controllers
                 if (user.Status != "Aprovado")
                 {
                     return BadRequest(new { message = "Seu cadastro ainda não está aprovado para solicitar empréstimos." });
+                }
+
+                // Regra 1.5: Impedir se o usuário possuir status Inadimplente
+                var hasInadimplencia = await _context.LoanRequests
+                    .AnyAsync(l => l.UserId == userId && l.Status == "Inadimplente");
+                if (hasInadimplencia)
+                {
+                    return BadRequest(new { message = "Você possui pendências financeiras e precisa regularizar sua situação para utilizar novamente a plataforma." });
                 }
 
                 // Regra: Impedir múltiplos empréstimos ativos concorrentes

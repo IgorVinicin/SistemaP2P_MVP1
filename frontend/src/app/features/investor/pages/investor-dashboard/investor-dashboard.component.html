@@ -66,6 +66,55 @@
     </mat-card>
   </div>
 
+  <!-- Indicadores de Risco e Proteção -->
+  <div class="protection-indicators" *ngIf="wallet" style="margin-top: 24px;">
+    <h3 style="font-size: 1.2rem; font-weight: 600; color: #1e293b; margin-bottom: 16px;">Métricas e Proteção de Investimentos</h3>
+    <div class="summary-cards" style="margin-bottom: 24px;">
+      <mat-card class="summary-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); display: flex; flex-direction: row; align-items: center; padding: 1.5rem; gap: 1rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <mat-icon style="color: white;">monetization_on</mat-icon>
+        </div>
+        <div class="card-details">
+          <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Rendimentos Normais</span>
+          <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ rendimentosNormais | currency:'BRL' }}</h2>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%); display: flex; flex-direction: row; align-items: center; padding: 1.5rem; gap: 1rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <mat-icon style="color: white;">shield</mat-icon>
+        </div>
+        <div class="card-details">
+          <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Coberturas do Fundo</span>
+          <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ wallet.coberturasFundo | currency:'BRL' }}</h2>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); display: flex; flex-direction: row; align-items: center; padding: 1.5rem; gap: 1rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <mat-icon style="color: white;">warning</mat-icon>
+        </div>
+        <div class="card-details">
+          <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Valor em Risco</span>
+          <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ wallet.valorEmRisco | currency:'BRL' }}</h2>
+        </div>
+      </mat-card>
+
+      <mat-card class="summary-card" style="background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); display: flex; flex-direction: row; align-items: center; padding: 1.5rem; gap: 1rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+        <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+          <mat-icon style="color: white;">trending_down</mat-icon>
+        </div>
+        <div class="card-details">
+          <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Perdas Definitivas</span>
+          <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ wallet.perdasDefinitivas | currency:'BRL' }}</h2>
+          <span style="color: rgba(255,255,255,0.9); font-size: 0.75rem; margin-top: 4px; display: block; font-weight: 600;">
+            Perdas registradas: {{ getLossCount() }}
+          </span>
+        </div>
+      </mat-card>
+    </div>
+  </div>
+
   <!-- Ações Rápidas: Aporte, Saque e Perfil de Risco -->
   <div class="actions-grid" *ngIf="wallet" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; margin-top: 20px;">
     <!-- Card Aporte Simulado -->
@@ -132,6 +181,55 @@
     </mat-card>
   </div>
 
+  <!-- Tabela do Histórico de Perdas -->
+  <mat-card class="history-card" style="margin-top: 30px; border-left: 4px solid #ef4444;" *ngIf="getLossCount() > 0">
+    <mat-card-header>
+      <mat-card-title style="color: #dc2626; display: flex; align-items: center; gap: 8px;">
+        <mat-icon style="color: #ef4444;">trending_down</mat-icon> Histórico de Perdas Definitivas
+      </mat-card-title>
+      <mat-card-subtitle>Detalhamento das perdas definitivas consolidadas por inadimplência (Total: {{ getLossCount() }} registro(s)).</mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content class="history-content">
+      <table mat-table [dataSource]="getLossTransactions()" class="mat-elevation-z1" style="width: 100%;">
+        <!-- Coluna Data -->
+        <ng-container matColumnDef="data">
+          <th mat-header-cell *matHeaderCellDef> Data da Perda </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.dataMovimentacao | date:'dd/MM/yyyy HH:mm' }} </td>
+        </ng-container>
+
+        <!-- Coluna Empréstimo / Operação -->
+        <ng-container matColumnDef="descricao">
+          <th mat-header-cell *matHeaderCellDef> Empréstimo / Justificativa </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.descricao }} </td>
+        </ng-container>
+
+        <!-- Coluna Valor da Perda -->
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef> Valor Perdido </th>
+          <td mat-cell *matCellDef="let tx" class="text-danger" style="font-weight: 700;"> 
+            {{ tx.valor | currency:'BRL' }} 
+          </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Anterior -->
+        <ng-container matColumnDef="saldoAnterior">
+          <th mat-header-cell *matHeaderCellDef> Saldo Anterior </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.saldoAnterior | currency:'BRL' }} </td>
+        </ng-container>
+
+        <!-- Coluna Saldo Posterior -->
+        <ng-container matColumnDef="saldoPosterior">
+          <th mat-header-cell *matHeaderCellDef> Saldo Posterior </th>
+          <td mat-cell *matCellDef="let tx"> {{ tx.saldoPosterior | currency:'BRL' }} </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['data', 'descricao', 'valor', 'saldoAnterior', 'saldoPosterior']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['data', 'descricao', 'valor', 'saldoAnterior', 'saldoPosterior'];"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
   <!-- Tabela do Histórico de Transações -->
   <mat-card class="history-card" style="margin-top: 30px;">
     <mat-card-header>
@@ -173,7 +271,9 @@
         <!-- Coluna Valor -->
         <ng-container matColumnDef="valor">
           <th mat-header-cell *matHeaderCellDef> Valor </th>
-          <td mat-cell *matCellDef="let tx"> {{ tx.valor | currency:'BRL' }} </td>
+          <td mat-cell *matCellDef="let tx" [ngClass]="{'text-danger': tx.valor < 0, 'text-success': tx.valor > 0 && tx.tipo !== 'SAQUE'}"> 
+            {{ tx.valor | currency:'BRL' }} 
+          </td>
         </ng-container>
 
         <!-- Coluna Saldo Anterior -->

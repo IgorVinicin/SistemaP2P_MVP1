@@ -5,6 +5,12 @@ export interface InvestorWalletDto {
   totalAportado: number;
   totalSacado: number;
   perfilInvestimento: string;
+  valorProtegido: number;
+  valorEmRisco: number;
+  valorPerdido: number;
+  coberturasRecebidas: number;
+  perdasDefinitivas: number;
+  coberturasFundo: number;
 }
 
 export interface InvestorTransactionDto {

@@ -47,7 +47,10 @@ export class CreditConfigComponent implements OnInit {
   public globalConfig: CreditConfig = {
     scoreMinimoParaSolicitacao: 150,
     percentualMultaAtraso: 2.0,
-    percentualJurosDiario: 0.033
+    percentualJurosDiario: 0.033,
+    diasParaCobranca: 16,
+    diasParaCobrancaIntensiva: 31,
+    diasParaInadimplencia: 61
   };
 
   // Dialog and Form elements
@@ -105,6 +108,18 @@ export class CreditConfigComponent implements OnInit {
     }
     if (this.globalConfig.percentualJurosDiario === undefined || this.globalConfig.percentualJurosDiario < 0 || this.globalConfig.percentualJurosDiario > 100) {
       this.snackBar.open('Os juros diários devem estar entre 0% e 100%.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.diasParaCobranca === undefined || this.globalConfig.diasParaCobranca < 0) {
+      this.snackBar.open('Os dias para cobrança devem ser maiores ou iguais a 0.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.diasParaCobrancaIntensiva === undefined || this.globalConfig.diasParaCobrancaIntensiva < 0) {
+      this.snackBar.open('Os dias para cobrança intensiva devem ser maiores ou iguais a 0.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.diasParaInadimplencia === undefined || this.globalConfig.diasParaInadimplencia < 0) {
+      this.snackBar.open('Os dias para inadimplência devem ser maiores ou iguais a 0.', 'Fechar', { duration: 4000 });
       return;
     }
 

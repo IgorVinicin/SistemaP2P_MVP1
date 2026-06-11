@@ -174,6 +174,12 @@ namespace backend.API.Controllers
                 }
 
                 config.ScoreMinimoParaSolicitacao = dto.ScoreMinimoParaSolicitacao;
+                config.PercentualMultaAtraso = dto.PercentualMultaAtraso;
+                config.PercentualJurosDiario = dto.PercentualJurosDiario;
+                config.DiasParaCobranca = dto.DiasParaCobranca;
+                config.DiasParaCobrancaIntensiva = dto.DiasParaCobrancaIntensiva;
+                config.DiasParaInadimplencia = dto.DiasParaInadimplencia;
+
                 await _context.SaveChangesAsync();
 
                 return Ok(config);

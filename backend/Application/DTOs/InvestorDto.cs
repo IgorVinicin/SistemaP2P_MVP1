@@ -10,6 +10,12 @@ namespace backend.Application.DTOs
         public decimal TotalAportado { get; set; }
         public decimal TotalSacado { get; set; }
         public string PerfilInvestimento { get; set; } = string.Empty;
+        public decimal ValorProtegido { get; set; }
+        public decimal ValorEmRisco { get; set; }
+        public decimal ValorPerdido { get; set; }
+        public decimal CoberturasRecebidas { get; set; }
+        public decimal PerdasDefinitivas { get; set; }
+        public decimal CoberturasFundo { get; set; }
     }
 
     public class MakeDepositDto

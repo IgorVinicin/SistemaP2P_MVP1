@@ -98,6 +98,14 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "Questionário já preenchido." });
                 }
 
+                // Regra 1.5: Impedir se o usuário possuir status Inadimplente
+                var hasInadimplencia = await _context.LoanRequests
+                    .AnyAsync(l => l.UserId == userId && l.Status == "Inadimplente");
+                if (hasInadimplencia)
+                {
+                    return BadRequest(new { message = "Você possui pendências financeiras e precisa regularizar sua situação para utilizar novamente a plataforma." });
+                }
+
                 // Limpar respostas anteriores do usuário
                 var existingAnswers = await _context.UserAnswers
                     .Where(ua => ua.UserId == userId)

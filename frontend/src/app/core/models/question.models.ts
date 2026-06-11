@@ -9,7 +9,7 @@ export interface QuestionDto {
   id?: string;
   titulo: string;
   ativa: boolean;
-  options: AnswerOptionDto[];
+  options?: AnswerOptionDto[];
 }
 
 export interface AnswerSubmissionDto {

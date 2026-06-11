@@ -157,6 +157,22 @@ using (var scope = app.Services.CreateScope())
 
             ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""PercentualMultaAtraso"" numeric(18,2) NOT NULL DEFAULT 2.00;
             ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""PercentualJurosDiario"" numeric(18,4) NOT NULL DEFAULT 0.0330;
+            ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""DiasParaCobranca"" integer NOT NULL DEFAULT 16;
+            ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""DiasParaCobrancaIntensiva"" integer NOT NULL DEFAULT 31;
+            ALTER TABLE ""CreditConfigs"" ADD COLUMN IF NOT EXISTS ""DiasParaInadimplencia"" integer NOT NULL DEFAULT 61;
+
+            ALTER TABLE ""ProtectionFunds"" ADD COLUMN IF NOT EXISTS ""TotalRecebido"" numeric(18,2) NOT NULL DEFAULT 0.00;
+            ALTER TABLE ""ProtectionFunds"" ADD COLUMN IF NOT EXISTS ""TotalUtilizado"" numeric(18,2) NOT NULL DEFAULT 0.00;
+
+            CREATE TABLE IF NOT EXISTS ""FinancialEventHistories"" (
+                ""Id"" uuid NOT NULL CONSTRAINT ""PK_FinancialEventHistories"" PRIMARY KEY,
+                ""Data"" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                ""UsuarioResponsavel"" text NOT NULL,
+                ""Observacao"" text NOT NULL,
+                ""EventoExecutado"" text NOT NULL,
+                ""LoanRequestId"" uuid NULL,
+                ""Valor"" numeric(18,2) NULL
+            );
 
             CREATE TABLE IF NOT EXISTS ""LoanInstallments"" (
                 ""Id"" uuid NOT NULL CONSTRAINT ""PK_LoanInstallments"" PRIMARY KEY,

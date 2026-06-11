@@ -53,6 +53,60 @@ namespace backend.API.Controllers
                 await _context.SaveChangesAsync();
             }
 
+            // Buscar investimentos
+            var investments = await _context.Investments
+                .Where(i => i.InvestorId == userId)
+                .ToListAsync();
+
+            // Buscar IDs de empréstimos com parcelas em atraso
+            var loanIdsWithOverdue = await _context.LoanInstallments
+                .Where(inst => inst.Status == "ATRASADO" || inst.Status == "COBRANCA" || inst.Status == "COBRANCA_INTENSIVA" || inst.Status == "INADIMPLENTE" || inst.Status == "Atrasada")
+                .Select(inst => inst.LoanRequestId)
+                .Distinct()
+                .ToListAsync();
+
+            decimal valorEmRisco = investments
+                .Where(i => loanIdsWithOverdue.Contains(i.LoanId))
+                .Sum(i => i.ValorInvestido);
+
+            decimal valorProtegido = wallet.SaldoInvestido - valorEmRisco;
+            if (valorProtegido < 0) valorProtegido = 0;
+
+            // Buscar transações para perdas e coberturas
+            var transactions = await _context.InvestorTransactions
+                .Where(t => t.InvestorId == userId)
+                .ToListAsync();
+
+            decimal valorPerdido = Math.Abs(transactions
+                .Where(t => t.Tipo.Equals("PERDA", StringComparison.OrdinalIgnoreCase) || 
+                            t.Tipo.Equals("PREJUIZO", StringComparison.OrdinalIgnoreCase) || 
+                            t.Tipo.Equals("PERDA_DEFINITIVA", StringComparison.OrdinalIgnoreCase) || 
+                            (t.Tipo.Equals("AJUSTE_ADMIN", StringComparison.OrdinalIgnoreCase) && t.Valor < 0 && 
+                             (t.Descricao.Contains("Perda", StringComparison.OrdinalIgnoreCase) || 
+                              t.Descricao.Contains("prejuízo", StringComparison.OrdinalIgnoreCase) || 
+                              t.Descricao.Contains("inadimplência", StringComparison.OrdinalIgnoreCase))))
+                .Sum(t => t.Valor));
+
+            decimal coberturasRecebidas = transactions
+                .Where(t => t.Valor > 0 && 
+                            (t.Tipo.Equals("RENDIMENTO", StringComparison.OrdinalIgnoreCase) || 
+                             t.Tipo.Equals("COBERTURA_PARCELA_FUNDO", StringComparison.OrdinalIgnoreCase) || 
+                             t.Tipo.Equals("COBERTURA_CONTRATO_FUNDO", StringComparison.OrdinalIgnoreCase) || 
+                             t.Descricao.Contains("Fundo de Proteção", StringComparison.OrdinalIgnoreCase) || 
+                             t.Descricao.Contains("Fundo de protecao", StringComparison.OrdinalIgnoreCase) || 
+                             t.Descricao.Contains("Proteção", StringComparison.OrdinalIgnoreCase) || 
+                             t.Descricao.Contains("cobertura", StringComparison.OrdinalIgnoreCase)))
+                .Sum(t => t.Valor);
+
+            decimal perdasDefinitivas = Math.Abs(transactions
+                .Where(t => t.Tipo.Equals("PERDA_DEFINITIVA", StringComparison.OrdinalIgnoreCase))
+                .Sum(t => t.Valor));
+
+            decimal coberturasFundo = transactions
+                .Where(t => t.Tipo.Equals("COBERTURA_PARCELA_FUNDO", StringComparison.OrdinalIgnoreCase) || 
+                            t.Tipo.Equals("COBERTURA_CONTRATO_FUNDO", StringComparison.OrdinalIgnoreCase))
+                .Sum(t => t.Valor);
+
             return Ok(new InvestorWalletDto
             {
                 SaldoDisponivel = wallet.SaldoDisponivel,
@@ -60,7 +114,13 @@ namespace backend.API.Controllers
                 Rendimentos = wallet.Rendimentos,
                 TotalAportado = wallet.TotalAportado,
                 TotalSacado = wallet.TotalSacado,
-                PerfilInvestimento = wallet.PerfilInvestimento
+                PerfilInvestimento = wallet.PerfilInvestimento,
+                ValorProtegido = valorProtegido,
+                ValorEmRisco = valorEmRisco,
+                ValorPerdido = valorPerdido,
+                CoberturasRecebidas = coberturasRecebidas,
+                PerdasDefinitivas = perdasDefinitivas,
+                CoberturasFundo = coberturasFundo
             });
         }
 

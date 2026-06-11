@@ -25,6 +25,7 @@ namespace backend.Infrastructure
         public DbSet<ScoreHistory> ScoreHistories { get; set; }
         public DbSet<InvestorTransaction> InvestorTransactions { get; set; }
         public DbSet<LoanInstallment> LoanInstallments { get; set; }
+        public DbSet<FinancialEventHistory> FinancialEventHistories { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -143,6 +144,18 @@ namespace backend.Infrastructure
 
             modelBuilder.Entity<ProtectionFund>()
                 .Property(pf => pf.SaldoAtual)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<ProtectionFund>()
+                .Property(pf => pf.TotalRecebido)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<ProtectionFund>()
+                .Property(pf => pf.TotalUtilizado)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<FinancialEventHistory>()
+                .Property(fe => fe.Valor)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<ScoreCreditRule>()

@@ -16,7 +16,7 @@
       <p class="card-subtitle">Parâmetros globais para validação de crédito de clientes.</p>
     </div>
     <div class="config-body">
-      <div class="config-inline-form" style="flex-wrap: wrap;">
+      <div class="config-inline-form" style="flex-wrap: wrap; gap: 1rem;">
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Score Mínimo para Solicitação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.scoreMinimoParaSolicitacao" placeholder="Ex: 150">
@@ -28,6 +28,18 @@
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Juros Diários (%)</mat-label>
           <input matInput type="number" step="0.001" [(ngModel)]="globalConfig.percentualJurosDiario" placeholder="Ex: 0.033">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Dias para Cobrança</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.diasParaCobranca" placeholder="Ex: 16">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Dias para Cobrança Intensiva</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.diasParaCobrancaIntensiva" placeholder="Ex: 31">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Dias para Inadimplência</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.diasParaInadimplencia" placeholder="Ex: 61">
         </mat-form-field>
         <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
           Salvar Configuração Geral

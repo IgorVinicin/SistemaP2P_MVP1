@@ -15,6 +15,7 @@
     <button mat-button routerLink="/admin/questions" *ngIf="authService.userRole() === 'Administrador'">Configurar Score</button>
     <button mat-button routerLink="/admin/credit" *ngIf="authService.userRole() === 'Administrador'">Configurar Crédito</button>
     <button mat-button routerLink="/admin/loans" *ngIf="authService.userRole() === 'Administrador'">Análise de Empréstimos</button>
+    <button mat-button routerLink="/admin/delinquency" *ngIf="authService.userRole() === 'Administrador'">Fundo & Inadimplência</button>
     
     <button mat-icon-button (click)="logout()" title="Sair">
       <mat-icon>exit_to_app</mat-icon>

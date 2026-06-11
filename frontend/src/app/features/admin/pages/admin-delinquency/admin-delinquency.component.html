@@ -1,0 +1,340 @@
+<div class="admin-delinquency-container">
+  <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+    <div>
+      <h1>Gestão de Inadimplência e Fundo de Proteção</h1>
+      <p class="subtitle">Acompanhe parcelas em atraso, gerencie coberturas de perdas e consulte o histórico do fundo.</p>
+    </div>
+    <div>
+      <button mat-raised-button color="accent" (click)="openFundAdjustmentDialog()">
+        <mat-icon>account_balance</mat-icon> Ajustar Saldo Manualmente
+      </button>
+    </div>
+  </div>
+
+  <!-- Cards de Resumo do Fundo -->
+  <div class="stats-grid" *ngIf="fundSummary">
+    <mat-card class="stat-card balance-card">
+      <mat-card-header>
+        <div mat-card-avatar class="card-icon-container">
+          <mat-icon>shield</mat-icon>
+        </div>
+        <mat-card-title>Saldo Atual do Fundo</mat-card-title>
+        <mat-card-subtitle>Disponível para cobertura de perdas</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">{{ fundSummary.saldoAtual | currency:'BRL':'symbol':'1.2-2' }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card received-card">
+      <mat-card-header>
+        <div mat-card-avatar class="card-icon-container">
+          <mat-icon>account_balance_wallet</mat-icon>
+        </div>
+        <mat-card-title>Total Recebido</mat-card-title>
+        <mat-card-subtitle>Total aportado no fundo</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">{{ fundSummary.totalRecebido | currency:'BRL':'symbol':'1.2-2' }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card used-card">
+      <mat-card-header>
+        <div mat-card-avatar class="card-icon-container">
+          <mat-icon>payment</mat-icon>
+        </div>
+        <mat-card-title>Total Utilizado</mat-card-title>
+        <mat-card-subtitle>Total em coberturas realizadas</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value text-orange">{{ fundSummary.totalUtilizado | currency:'BRL':'symbol':'1.2-2' }}</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="stat-card covers-card">
+      <mat-card-header>
+        <div mat-card-avatar class="card-icon-container">
+          <mat-icon>verified_user</mat-icon>
+        </div>
+        <mat-card-title>Coberturas Realizadas</mat-card-title>
+        <mat-card-subtitle>Quantidade total de acionamentos</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="stat-value">{{ fundSummary.coberturasRealizadasCount }}</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Tabs Principal -->
+  <mat-tab-group class="main-tabs" (selectedTabChange)="loadData()">
+    <!-- Tab Inadimplência -->
+    <mat-tab label="Carteira Inadimplente">
+      <div class="tab-content-container">
+        <!-- Filtros -->
+        <div class="filters-container glass-panel">
+          <mat-form-field appearance="outline">
+            <mat-label>Cliente / E-mail</mat-label>
+            <input matInput [(ngModel)]="filterCliente" (keyup.enter)="loadLoans()" placeholder="Filtrar por nome ou e-mail">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Status do Empréstimo</mat-label>
+            <mat-select [(ngModel)]="filterStatus" (selectionChange)="loadLoans()">
+              <mat-option value="">Todos</mat-option>
+              <mat-option value="Inadimplente">Inadimplente</mat-option>
+              <mat-option value="EmPagamento">Em Pagamento</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Vencimento Inicial</mat-label>
+            <input matInput type="date" [(ngModel)]="filterPeriodoInicio" (change)="loadLoans()">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Vencimento Final</mat-label>
+            <input matInput type="date" [(ngModel)]="filterPeriodoFim" (change)="loadLoans()">
+          </mat-form-field>
+
+          <button mat-raised-button color="primary" (click)="loadLoans()">
+            <mat-icon>search</mat-icon> Filtrar
+          </button>
+        </div>
+
+        <!-- Tabela de Inadimplentes -->
+        <div class="table-container glass-panel">
+          <div class="spinner-container" *ngIf="isLoadingLoans">
+            Carregando lista de inadimplência...
+          </div>
+
+          <table mat-table [dataSource]="delinquentLoans" class="delinquency-table" *ngIf="!isLoadingLoans && delinquentLoans.length > 0">
+            
+            <ng-container matColumnDef="cliente">
+              <th mat-header-cell *matHeaderCellDef>Cliente</th>
+              <td mat-cell *matCellDef = "let element">
+                <div class="client-info">
+                  <span class="client-name">{{ element.clienteNome }}</span>
+                  <span class="client-email">{{ element.clienteEmail }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="valorSolicitado">
+              <th mat-header-cell *matHeaderCellDef>Valor do Empréstimo</th>
+              <td mat-cell *matCellDef = "let element">{{ element.valorSolicitado | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="valorEmAberto">
+              <th mat-header-cell *matHeaderCellDef>Valor em Aberto (com multa/juros)</th>
+              <td mat-cell *matCellDef = "let element" class="text-bold text-red">{{ element.valorEmAberto | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="diasAtraso">
+              <th mat-header-cell *matHeaderCellDef>Dias em Atraso</th>
+              <td mat-cell *matCellDef = "let element">
+                <span class="delay-badge" [ngClass]="{
+                  'badge-red': element.diasAtraso > 60,
+                  'badge-orange': element.diasAtraso > 15 && element.diasAtraso <= 60,
+                  'badge-yellow': element.diasAtraso <= 15
+                }">
+                  {{ element.diasAtraso }} dias
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef = "let element">
+                <span class="status-badge badge-inadimplente">{{ element.status }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef>Ações de Resolução</th>
+              <td mat-cell *matCellDef = "let element">
+                <div class="action-buttons">
+                  <button mat-flat-button class="btn-success" (click)="handleCoverOverdue(element)" title="Cobrir parcelas vencidas integralmente pelo fundo">
+                    <mat-icon>shield</mat-icon> Cobrir Vencidas
+                  </button>
+                  <button mat-flat-button class="btn-warning" (click)="openPartialCoverDialog(element)" title="Cobrir valor parcial das parcelas vencidas pelo fundo">
+                    <mat-icon>remove_moderator</mat-icon> Cobrir Parcial Vencidas
+                  </button>
+                  <button mat-flat-button class="btn-danger" *ngIf="element.status === 'Inadimplente'" (click)="openTerminateContractDialog(element)" title="Encerrar contrato e liquidar saldo devedor">
+                    <mat-icon>gavel</mat-icon> Encerrar Contrato
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="loanColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: loanColumns;"></tr>
+          </table>
+
+          <div class="empty-state" *ngIf="!isLoadingLoans && delinquentLoans.length === 0">
+            <mat-icon>check_circle</mat-icon>
+            <h3>Nenhum cliente inadimplente encontrado</h3>
+            <p>Todas as parcelas estão em dia ou os filtros aplicados não retornaram resultados.</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- Tab Histórico -->
+    <mat-tab label="Histórico de Eventos">
+      <div class="tab-content-container">
+        <div class="table-container glass-panel">
+          <div class="spinner-container" *ngIf="isLoadingHistory">
+            Carregando histórico financeiro...
+          </div>
+
+          <table mat-table [dataSource]="eventHistory" class="history-table" *ngIf="!isLoadingHistory && eventHistory.length > 0">
+            
+            <ng-container matColumnDef="data">
+              <th mat-header-cell *matHeaderCellDef>Data</th>
+              <td mat-cell *matCellDef = "let element">{{ element.data | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="usuarioResponsavel">
+              <th mat-header-cell *matHeaderCellDef>Responsável</th>
+              <td mat-cell *matCellDef = "let element">{{ element.usuarioResponsavel }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="eventoExecutado">
+              <th mat-header-cell *matHeaderCellDef>Evento</th>
+              <td mat-cell *matCellDef = "let element">
+                <span class="event-badge" [ngClass]="{
+                  'badge-status': element.eventoExecutado === 'MUDANCA_STATUS',
+                  'badge-cobranca': element.eventoExecutado === 'ENTRADA_COBRANCA',
+                  'badge-inad': element.eventoExecutado === 'ENTRADA_INADIMPLENCIA',
+                  'badge-fundo': element.eventoExecutado === 'UTILIZACAO_FUNDO',
+                  'badge-perda': element.eventoExecutado === 'PERDA_INVESTIDOR',
+                  'badge-admin': element.eventoExecutado === 'INTERVENCAO_ADMIN'
+                }">
+                  {{ getEventLabel(element.eventoExecutado) }}
+                </span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="valor">
+              <th mat-header-cell *matHeaderCellDef>Valor</th>
+              <td mat-cell *matCellDef = "let element">
+                <span *ngIf="element.valor !== null && element.valor !== undefined" [ngClass]="{
+                  'text-red': element.eventoExecutado === 'PERDA_INVESTIDOR',
+                  'text-green': element.eventoExecutado === 'UTILIZACAO_FUNDO'
+                }">
+                  {{ element.valor | currency:'BRL' }}
+                </span>
+                <span *ngIf="element.valor === null || element.valor === undefined">-</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="observacao">
+              <th mat-header-cell *matHeaderCellDef>Observação / Detalhe</th>
+              <td mat-cell *matCellDef = "let element">{{ element.observacao }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: historyColumns;"></tr>
+          </table>
+
+          <div class="empty-state" *ngIf="!isLoadingHistory && eventHistory.length === 0">
+            <mat-icon>history</mat-icon>
+            <h3>Histórico vazio</h3>
+            <p>Nenhum evento financeiro ou alteração de inadimplência foi registrado ainda.</p>
+          </div>
+        </div>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+
+  <!-- Dialog Template para Cobertura Parcial / Declaração de Perda -->
+  <ng-template #actionDialog>
+    <div class="modal-container">
+      <h2 mat-dialog-title class="modal-title">{{ dialogTitle }}</h2>
+      <mat-dialog-content class="modal-content">
+        <p class="modal-subtitle">Cliente: <strong>{{ activeLoanClient }}</strong></p>
+        <p class="modal-subtitle">Saldo Devedor em Aberto: <strong class="text-red">{{ activeLoanBalance | currency:'BRL' }}</strong></p>
+        
+        <mat-form-field appearance="outline" class="full-width margin-top">
+          <mat-label>Valor a Aplicar (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="dialogValue" min="0.01" [max]="activeLoanBalance" step="0.01">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Observação / Justificativa</mat-label>
+          <textarea matInput [(ngModel)]="dialogObservation" rows="3"></textarea>
+        </mat-form-field>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end" class="modal-actions">
+        <button mat-button (click)="cancelDialog()">Cancelar</button>
+        <button mat-raised-button color="primary" (click)="submitAction()" [disabled]="dialogValue <= 0 || dialogValue > activeLoanBalance">
+          Confirmar Operação
+        </button>
+      </mat-dialog-actions>
+    </div>
+  </ng-template>
+
+  <!-- Dialog Template para Ajuste Manual do Fundo -->
+  <ng-template #fundDialog>
+    <div class="modal-container">
+      <h2 mat-dialog-title class="modal-title">Ajustar Saldo do Fundo de Proteção</h2>
+      <mat-dialog-content class="modal-content">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tipo de Ajuste</mat-label>
+          <mat-select [(ngModel)]="fundAdjustTipo">
+            <mat-option value="ADICIONAR">Adicionar Saldo (Aporte)</mat-option>
+            <mat-option value="REMOVER">Remover Saldo (Resgate)</mat-option>
+            <mat-option value="AJUSTAR">Definir Saldo Exato (Ajuste)</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width margin-top">
+          <mat-label>Valor (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="fundAdjustValor" min="0.01" step="0.01">
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Motivo / Justificativa</mat-label>
+          <textarea matInput [(ngModel)]="fundAdjustMotivo" rows="3"></textarea>
+        </mat-form-field>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end" class="modal-actions">
+        <button mat-button (click)="cancelDialog()">Cancelar</button>
+        <button mat-raised-button color="primary" (click)="submitFundAdjustment()" [disabled]="fundAdjustValor <= 0">
+          Confirmar Ajuste
+        </button>
+      </mat-dialog-actions>
+    </div>
+  </ng-template>
+
+  <!-- Dialog Template para Encerramento de Contrato -->
+  <ng-template #terminateDialog>
+    <div class="modal-container">
+      <h2 mat-dialog-title class="modal-title">Encerrar Contrato Definitivamente</h2>
+      <mat-dialog-content class="modal-content">
+        <p class="modal-subtitle">Cliente: <strong>{{ terminateLoanClient }}</strong></p>
+        <p class="modal-subtitle">Saldo Devedor Total (Vencido + Futuro): <strong class="text-red">{{ terminateLoanTotalDebt | currency:'BRL' }}</strong></p>
+        
+        <mat-form-field appearance="outline" class="full-width margin-top">
+          <mat-label>Forma de Resolução</mat-label>
+          <mat-select [(ngModel)]="terminateResolutionType">
+            <mat-option value="fundo">Cobrir Saldo Total pelo Fundo de Proteção</mat-option>
+            <mat-option value="perda">Declarar Perda e Ratear entre Investidores</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Observação / Justificativa</mat-label>
+          <textarea matInput [(ngModel)]="terminateObservation" rows="3"></textarea>
+        </mat-form-field>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end" class="modal-actions">
+        <button mat-button (click)="cancelDialog()">Cancelar</button>
+        <button mat-raised-button color="primary" (click)="submitTerminateContract()">
+          Confirmar Encerramento
+        </button>
+      </mat-dialog-actions>
+    </div>
+  </ng-template>
+</div>

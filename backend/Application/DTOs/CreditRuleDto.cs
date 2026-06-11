@@ -18,5 +18,8 @@ namespace backend.Application.DTOs
         public int ScoreMinimoParaSolicitacao { get; set; }
         public decimal PercentualMultaAtraso { get; set; }
         public decimal PercentualJurosDiario { get; set; }
+        public int DiasParaCobranca { get; set; }
+        public int DiasParaCobrancaIntensiva { get; set; }
+        public int DiasParaInadimplencia { get; set; }
     }
 }
