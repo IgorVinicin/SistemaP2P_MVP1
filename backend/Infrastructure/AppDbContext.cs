@@ -36,7 +36,7 @@ namespace backend.Infrastructure
                 .HasOne(it => it.Investor)
                 .WithMany()
                 .HasForeignKey(it => it.InvestorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<InvestorTransaction>()
                 .Property(it => it.Valor)
@@ -74,14 +74,14 @@ namespace backend.Infrastructure
                 .HasOne(iw => iw.User)
                 .WithOne(u => u.Wallet)
                 .HasForeignKey<InvestorWallet>(iw => iw.Id)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relacionamento N:1 entre Document e User
             modelBuilder.Entity<Document>()
                 .HasOne(d => d.User)
                 .WithMany(u => u.Documents)
                 .HasForeignKey(d => d.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relacionamento N:1 entre AnswerOption e Question
             modelBuilder.Entity<AnswerOption>()
@@ -95,27 +95,27 @@ namespace backend.Infrastructure
                 .HasOne(ua => ua.User)
                 .WithMany(u => u.Answers)
                 .HasForeignKey(ua => ua.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relacionamento N:1 entre LoanRequest e User
             modelBuilder.Entity<LoanRequest>()
                 .HasOne(lr => lr.User)
                 .WithMany(u => u.LoanRequests)
                 .HasForeignKey(lr => lr.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relacionamento de Investment
             modelBuilder.Entity<Investment>()
                 .HasOne(i => i.Investor)
                 .WithMany(u => u.Investments)
                 .HasForeignKey(i => i.InvestorId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Investment>()
                 .HasOne(i => i.Loan)
                 .WithMany(lr => lr.Investments)
                 .HasForeignKey(i => i.LoanId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Configurações de precisão decimal
             modelBuilder.Entity<CompanyProfile>()
@@ -194,14 +194,14 @@ namespace backend.Infrastructure
                 .HasOne(sh => sh.User)
                 .WithMany()
                 .HasForeignKey(sh => sh.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Relacionamento N:1 entre LoanInstallment e LoanRequest
             modelBuilder.Entity<LoanInstallment>()
                 .HasOne(li => li.LoanRequest)
                 .WithMany()
                 .HasForeignKey(li => li.LoanRequestId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Precisões decimais
             modelBuilder.Entity<LoanInstallment>()
@@ -229,6 +229,34 @@ namespace backend.Infrastructure
             modelBuilder.Entity<CreditConfig>()
                 .Property(cc => cc.PercentualJurosDiario)
                 .HasPrecision(18, 4);
+
+            // =================ÍNDICES CONFIGURADOS PARA PERFORMANCE=================
+            
+            // Índices em LoanInstallment (Status, DataVencimento, LoanRequestId)
+            modelBuilder.Entity<LoanInstallment>()
+                .HasIndex(li => li.LoanRequestId);
+            modelBuilder.Entity<LoanInstallment>()
+                .HasIndex(li => new { li.Status, li.DataVencimento });
+
+            // Índices em LoanRequest (UserId, Status)
+            modelBuilder.Entity<LoanRequest>()
+                .HasIndex(lr => lr.UserId);
+            modelBuilder.Entity<LoanRequest>()
+                .HasIndex(lr => lr.Status);
+
+            // Índices em InvestorTransaction (InvestorId, DataMovimentacao)
+            modelBuilder.Entity<InvestorTransaction>()
+                .HasIndex(it => new { it.InvestorId, it.DataMovimentacao });
+
+            // Índices em Investment (InvestorId, LoanId)
+            modelBuilder.Entity<Investment>()
+                .HasIndex(i => i.InvestorId);
+            modelBuilder.Entity<Investment>()
+                .HasIndex(i => i.LoanId);
+
+            // Índices em FinancialEventHistory (EventoExecutado, Data)
+            modelBuilder.Entity<FinancialEventHistory>()
+                .HasIndex(fe => new { fe.EventoExecutado, fe.Data });
         }
     }
 }

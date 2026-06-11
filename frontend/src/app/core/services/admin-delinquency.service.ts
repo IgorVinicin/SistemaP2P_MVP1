@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 export interface DelinquentLoanSummary {
   loanId: string;
@@ -38,14 +39,7 @@ export interface FinancialEventHistoryDto {
 })
 export class AdminDelinquencyService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:5141/api/admin/delinquency';
-
-  private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      Authorization: `Bearer ${token}`
-    });
-  }
+  private apiUrl = `${environment.apiUrl}/admin/delinquency`;
 
   public getDelinquentLoans(
     status?: string,
@@ -60,50 +54,35 @@ export class AdminDelinquencyService {
     if (periodoFim) params = params.set('periodoFim', periodoFim);
 
     return this.http.get<DelinquentLoanSummary[]>(`${this.apiUrl}/loans`, {
-      headers: this.getHeaders(),
       params
     });
   }
 
   public getProtectionFund(): Observable<ProtectionFundSummary> {
-    return this.http.get<ProtectionFundSummary>(`${this.apiUrl}/protection-fund`, {
-      headers: this.getHeaders()
-    });
+    return this.http.get<ProtectionFundSummary>(`${this.apiUrl}/protection-fund`);
   }
 
   public adjustProtectionFund(valor: number, tipo: string, motivo: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/protection-fund/adjust`, { valor, tipo, motivo }, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/protection-fund/adjust`, { valor, tipo, motivo });
   }
 
   public coverOverdue(loanId: string, observacao: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/cover-overdue`, { observacao }, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/cover-overdue`, { observacao });
   }
 
   public coverOverduePartial(loanId: string, valorCobertura: number, observacao: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/cover-overdue-partial`, { valorCobertura, observacao }, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/cover-overdue-partial`, { valorCobertura, observacao });
   }
 
   public terminateAndCover(loanId: string, observacao: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/terminate-and-cover`, { observacao }, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/terminate-and-cover`, { observacao });
   }
 
   public terminateAndLoss(loanId: string, observacao: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/terminate-and-loss`, { observacao }, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/terminate-and-loss`, { observacao });
   }
 
   public getHistory(): Observable<FinancialEventHistoryDto[]> {
-    return this.http.get<FinancialEventHistoryDto[]>(`${this.apiUrl}/history`, {
-      headers: this.getHeaders()
-    });
+    return this.http.get<FinancialEventHistoryDto[]>(`${this.apiUrl}/history`);
   }
 }

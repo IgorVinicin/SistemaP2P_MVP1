@@ -2,12 +2,13 @@ import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { LoginDto, RegisterDto, AuthResponseDto } from '../models/auth.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private apiUrl = 'http://localhost:5141/api/auth';
+  private apiUrl = `${environment.apiUrl}/auth`;
 
   // Signals para estado do usuário
   private _currentUser = signal<AuthResponseDto | null>(null);

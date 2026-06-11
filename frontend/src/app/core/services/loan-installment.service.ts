@@ -1,32 +1,22 @@
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { LoanInstallmentDto } from '../models/installment.models';
+import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class LoanInstallmentService {
   private http = inject(HttpClient);
-  private apiUrl = 'http://localhost:5141/api';
-
-  private getHeaders(): HttpHeaders {
-    const token = localStorage.getItem('token');
-    return new HttpHeaders({
-      Authorization: `Bearer ${token}`
-    });
-  }
+  private apiUrl = environment.apiUrl;
 
   public getInstallments(loanRequestId: string): Observable<LoanInstallmentDto[]> {
-    return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments`, {
-      headers: this.getHeaders()
-    });
+    return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments`);
   }
 
   public payInstallment(installmentId: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, {}, {
-      headers: this.getHeaders()
-    });
+    return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, {});
   }
 
   public getAdminInstallments(filters: {
@@ -54,7 +44,6 @@ export class LoanInstallmentService {
     }
 
     return this.http.get<any[]>(`${this.apiUrl}/admin/loans/installments`, {
-      headers: this.getHeaders(),
       params
     });
   }

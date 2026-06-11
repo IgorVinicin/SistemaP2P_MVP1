@@ -74,6 +74,37 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("CompanyProfiles");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.CreditConfig", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("DiasParaCobranca")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasParaCobrancaIntensiva")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("DiasParaInadimplencia")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("PercentualJurosDiario")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("numeric(18,4)");
+
+                    b.Property<decimal>("PercentualMultaAtraso")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("ScoreMinimoParaSolicitacao")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CreditConfigs");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.Document", b =>
                 {
                     b.Property<Guid>("Id")
@@ -105,6 +136,41 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("Documents");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.FinancialEventHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("Data")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EventoExecutado")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("LoanRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Observacao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UsuarioResponsavel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal?>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("EventoExecutado", "Data");
+
+                    b.ToTable("FinancialEventHistories");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.Investment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -133,10 +199,63 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("Investments");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.InvestorTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DataMovimentacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("InvestorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("SaldoAnterior")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("SaldoPosterior")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("UsuarioResponsavel")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvestorId", "DataMovimentacao");
+
+                    b.ToTable("InvestorTransactions");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.InvestorWallet", b =>
                 {
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DataAtualizacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PerfilInvestimento")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<decimal>("Rendimentos")
                         .HasPrecision(18, 2)
@@ -150,9 +269,81 @@ namespace backend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("TotalAportado")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalSacado")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.HasKey("Id");
 
                     b.ToTable("InvestorWallets");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.LoanInstallment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DataPagamento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DataVencimento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DiasAtraso")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("JurosMora")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("LoanRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Multa")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int>("NumeroParcela")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ValorJuros")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorPago")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorParcela")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ValorPrincipal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoanRequestId");
+
+                    b.HasIndex("Status", "DataVencimento");
+
+                    b.ToTable("LoanInstallments");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.LoanRequest", b =>
@@ -164,19 +355,60 @@ namespace backend.Infrastructure.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("DataAnalise")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DataAprovacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DataEncerramento")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("DataSolicitacao")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Finalidade")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("NivelRisco")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ObservacaoAdmin")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Observacoes")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<int>("Parcelas")
                         .HasColumnType("integer");
 
+                    b.Property<int>("QuantidadeParcelas")
+                        .HasColumnType("integer");
+
                     b.Property<int>("ScoreNaSolicitacao")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScoreNoMomento")
                         .HasColumnType("integer");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<decimal>("TaxaJuros")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TaxaJurosAplicada")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
@@ -185,7 +417,13 @@ namespace backend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("ValorTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Status");
 
                     b.HasIndex("UserId");
 
@@ -199,6 +437,14 @@ namespace backend.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal>("SaldoAtual")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalRecebido")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalUtilizado")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -226,6 +472,70 @@ namespace backend.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.ScoreCreditRule", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("Ativo")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("LimiteEmprestimo")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("NivelRisco")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ScoreMax")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScoreMin")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TaxaJuros")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ScoreCreditRules");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.ScoreHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AdminId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("DataAlteracao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Motivo")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("ScoreAnterior")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ScoreNovo")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ScoreHistories");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.User", b =>
@@ -303,6 +613,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<bool>("PossuiEmpresa")
                         .HasColumnType("boolean");
 
+                    b.Property<bool>("QuestionnaireCompleted")
+                        .HasColumnType("boolean");
+
                     b.Property<int>("ScoreAtual")
                         .HasColumnType("integer");
 
@@ -342,7 +655,7 @@ namespace backend.Infrastructure.Migrations
                     b.HasOne("backend.Domain.Entities.User", "User")
                         .WithMany("Documents")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -353,13 +666,13 @@ namespace backend.Infrastructure.Migrations
                     b.HasOne("backend.Domain.Entities.User", "Investor")
                         .WithMany("Investments")
                         .HasForeignKey("InvestorId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("backend.Domain.Entities.LoanRequest", "Loan")
                         .WithMany("Investments")
                         .HasForeignKey("LoanId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Investor");
@@ -367,15 +680,37 @@ namespace backend.Infrastructure.Migrations
                     b.Navigation("Loan");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.InvestorTransaction", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.User", "Investor")
+                        .WithMany()
+                        .HasForeignKey("InvestorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Investor");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.InvestorWallet", b =>
                 {
                     b.HasOne("backend.Domain.Entities.User", "User")
                         .WithOne("Wallet")
                         .HasForeignKey("backend.Domain.Entities.InvestorWallet", "Id")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.LoanInstallment", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.LoanRequest", "LoanRequest")
+                        .WithMany()
+                        .HasForeignKey("LoanRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LoanRequest");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.LoanRequest", b =>
@@ -383,7 +718,18 @@ namespace backend.Infrastructure.Migrations
                     b.HasOne("backend.Domain.Entities.User", "User")
                         .WithMany("LoanRequests")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.ScoreHistory", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("User");
@@ -406,7 +752,7 @@ namespace backend.Infrastructure.Migrations
                     b.HasOne("backend.Domain.Entities.User", "User")
                         .WithMany("Answers")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Option");
