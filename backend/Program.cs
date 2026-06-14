@@ -166,6 +166,33 @@ using (var scope = app.Services.CreateScope())
             context.Users.Add(admin);
         }
 
+        // Seed do novo administrador solicitado
+        if (!context.Users.Any(u => u.Email == "iaraujopecedossantos@gmail.com"))
+        {
+            var hasher = new PasswordHasher<User>();
+            var admin = new User
+            {
+                Id = Guid.NewGuid(),
+                Email = "iaraujopecedossantos@gmail.com",
+                Role = "Administrador",
+                Status = "Aprovado"
+            };
+            admin.PasswordHash = hasher.HashPassword(admin, "1234");
+
+            var profile = new UserProfile
+            {
+                Id = admin.Id,
+                Nome = "Administrador Iaraujo",
+                CPF = "99999999999",
+                Telefone = "99999999999",
+                DataNascimento = DateTime.UtcNow.AddYears(-30),
+                ScoreAtual = 1000
+            };
+            admin.Profile = profile;
+
+            context.Users.Add(admin);
+        }
+
         // 2. Seed Perguntas de Score
         if (!context.Questions.Any())
         {
