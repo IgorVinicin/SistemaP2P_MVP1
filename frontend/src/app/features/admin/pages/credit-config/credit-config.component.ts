@@ -50,7 +50,9 @@ export class CreditConfigComponent implements OnInit {
     percentualJurosDiario: 0.033,
     diasParaCobranca: 16,
     diasParaCobrancaIntensiva: 31,
-    diasParaInadimplencia: 61
+    diasParaInadimplencia: 61,
+    valorMinimoInvestimento: 5000.00,
+    minimoParcelasPagasNovaSolicitacao: 4
   };
 
   // Dialog and Form elements
@@ -120,6 +122,14 @@ export class CreditConfigComponent implements OnInit {
     }
     if (this.globalConfig.diasParaInadimplencia === undefined || this.globalConfig.diasParaInadimplencia < 0) {
       this.snackBar.open('Os dias para inadimplência devem ser maiores ou iguais a 0.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.valorMinimoInvestimento === undefined || this.globalConfig.valorMinimoInvestimento < 0) {
+      this.snackBar.open('O investimento mínimo deve ser maior ou igual a 0.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.minimoParcelasPagasNovaSolicitacao === undefined || this.globalConfig.minimoParcelasPagasNovaSolicitacao < 0) {
+      this.snackBar.open('A quantidade mínima de parcelas pagas deve ser maior ou igual a 0.', 'Fechar', { duration: 4000 });
       return;
     }
 

@@ -5,6 +5,7 @@ namespace backend.Application.DTOs
     public class InvestorWalletDto
     {
         public decimal SaldoDisponivel { get; set; }
+        public decimal SaldoComprometido { get; set; }
         public decimal SaldoInvestido { get; set; }
         public decimal Rendimentos { get; set; }
         public decimal TotalAportado { get; set; }
@@ -16,6 +17,8 @@ namespace backend.Application.DTOs
         public decimal CoberturasRecebidas { get; set; }
         public decimal PerdasDefinitivas { get; set; }
         public decimal CoberturasFundo { get; set; }
+        public decimal Rentabilidade { get; set; }
+        public string ObservacaoAdministrativa { get; set; } = string.Empty;
     }
 
     public class MakeDepositDto
@@ -50,5 +53,11 @@ namespace backend.Application.DTOs
         public DateTime DataMovimentacao { get; set; }
         public string Descricao { get; set; } = string.Empty;
         public string UsuarioResponsavel { get; set; } = string.Empty;
+    }
+
+    public class ApproveUserDto
+    {
+        public decimal? Rentabilidade { get; set; }
+        public string? ObservacaoAdministrativa { get; set; }
     }
 }

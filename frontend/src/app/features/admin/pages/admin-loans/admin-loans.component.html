@@ -5,6 +5,35 @@
   </div>
 
   <mat-card class="loans-card">
+    <div style="padding: 1.5rem 1.5rem 0 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+      <mat-form-field appearance="outline" style="flex: 2; min-width: 250px; margin-bottom: 0;">
+        <mat-label>Pesquisar Cliente (Nome, CPF ou E-mail)</mat-label>
+        <input matInput [(ngModel)]="pendingSearch" (keyup.enter)="searchPending()" placeholder="Digite a busca e aperte Enter">
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 150px; margin-bottom: 0;">
+        <mat-label>Risco</mat-label>
+        <mat-select [(ngModel)]="pendingRisco" (selectionChange)="searchPending()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="Baixo">Baixo</mat-option>
+          <mat-option value="Médio">Médio</mat-option>
+          <mat-option value="Alto">Alto</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 180px; margin-bottom: 0;">
+        <mat-label>Tipo Empréstimo</mat-label>
+        <mat-select [(ngModel)]="pendingTipo" (selectionChange)="searchPending()">
+          <mat-option value="">Todos</mat-option>
+          <mat-option value="Master">Master</mat-option>
+          <mat-option value="Plus">Plus</mat-option>
+          <mat-option value="Gold">Gold</mat-option>
+        </mat-select>
+      </mat-form-field>
+      
+      <button mat-flat-button color="primary" (click)="searchPending()">Buscar</button>
+    </div>
+
     <div *ngIf="isLoading" style="text-align: center; padding: 3rem;">
       <p>Carregando solicitações pendentes...</p>
     </div>
@@ -75,6 +104,14 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
+
+    <mat-paginator *ngIf="pendingTotal > 0"
+                   [length]="pendingTotal"
+                   [pageSize]="pendingPageSize"
+                   [pageSizeOptions]="[5, 10, 20]"
+                   (page)="onPendingPageChange($event)"
+                   style="margin-top: 15px;">
+    </mat-paginator>
   </mat-card>
 </div>
 
@@ -163,6 +200,14 @@
               </span>
             </div>
           </div>
+          <div class="detail-item" *ngIf="selectedLoan.tipoEmprestimo">
+            <span class="detail-label">Tipo de Empréstimo</span>
+            <span class="detail-val" style="font-weight: 600; color: #4f46e5;">{{ selectedLoan.tipoEmprestimo }}</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedLoan.periodicidade">
+            <span class="detail-label">Periodicidade</span>
+            <span class="detail-val" style="font-weight: 500;">{{ selectedLoan.periodicidade }}</span>
+          </div>
         </div>
 
         <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
@@ -190,7 +235,7 @@
       <button mat-flat-button color="warn" (click)="openReproveDialog()" [disabled]="isActionProcessing">
         Reprovar
       </button>
-      <button mat-flat-button color="primary" (click)="approveLoan()" [disabled]="isActionProcessing">
+      <button mat-flat-button color="primary" (click)="openApproveDialog()" [disabled]="isActionProcessing">
         Aprovar Solicitação
       </button>
     </ng-container>
@@ -207,6 +252,37 @@
   <div style="padding: 1.5rem 1.5rem 0 1.5rem;">
     <h2 style="margin: 0; color: #1e293b; font-weight: 600;">Acompanhamento de Empréstimos em Andamento</h2>
     <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.9rem;">Gerencie e finalize os empréstimos ativos ou aprovados dos clientes.</p>
+  </div>
+
+  <div style="padding: 1rem 1.5rem 0 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
+    <mat-form-field appearance="outline" style="flex: 2; min-width: 250px; margin-bottom: 0;">
+      <mat-label>Pesquisar Cliente (Nome, CPF ou E-mail)</mat-label>
+      <input matInput [(ngModel)]="activeSearch" (keyup.enter)="searchActive()" placeholder="Digite a busca e aperte Enter">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 160px; margin-bottom: 0;">
+      <mat-label>Status</mat-label>
+      <mat-select [(ngModel)]="activeStatus" (selectionChange)="searchActive()">
+        <mat-option value="">Todos</mat-option>
+        <mat-option value="EmAnalise">Em Análise</mat-option>
+        <mat-option value="Aprovado">Aprovado</mat-option>
+        <mat-option value="Ativo">Ativo</mat-option>
+        <mat-option value="EmPagamento">Em Pagamento</mat-option>
+        <mat-option value="Inadimplente">Inadimplente</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 160px; margin-bottom: 0;">
+      <mat-label>Tipo Empréstimo</mat-label>
+      <mat-select [(ngModel)]="activeTipo" (selectionChange)="searchActive()">
+        <mat-option value="">Todos</mat-option>
+        <mat-option value="Master">Master</mat-option>
+        <mat-option value="Plus">Plus</mat-option>
+        <mat-option value="Gold">Gold</mat-option>
+      </mat-select>
+    </mat-form-field>
+    
+    <button mat-flat-button color="primary" (click)="searchActive()">Buscar</button>
   </div>
 
   <mat-card-content style="padding: 1.5rem 0 0 0;">
@@ -273,6 +349,14 @@
       <tr mat-header-row *matHeaderRowDef="activeDisplayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: activeDisplayedColumns;"></tr>
     </table>
+
+    <mat-paginator *ngIf="activeTotal > 0"
+                   [length]="activeTotal"
+                   [pageSize]="activePageSize"
+                   [pageSizeOptions]="[5, 10, 20, 50]"
+                   (page)="onActivePageChange($event)"
+                   style="margin-top: 15px; padding: 0 1.5rem;">
+    </mat-paginator>
   </mat-card-content>
 </mat-card>
 
@@ -396,10 +480,28 @@
           </td>
         </ng-container>
 
+        <!-- Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let inst">
+            <button mat-flat-button color="accent" size="small" *ngIf="inst.status !== 'Paga'" (click)="payInstallment(inst.id)">
+              Quitar Parcela
+            </button>
+          </td>
+        </ng-container>
+
         <tr mat-header-row *matHeaderRowDef="installmentDisplayedColumns"></tr>
         <tr mat-row *matRowDef="let row; columns: installmentDisplayedColumns;"></tr>
       </table>
     </div>
+
+    <mat-paginator *ngIf="installmentsTotal > 0"
+                   [length]="installmentsTotal"
+                   [pageSize]="installmentsPageSize"
+                   [pageSizeOptions]="[5, 10, 25, 50]"
+                   (page)="onInstallmentsPageChange($event)"
+                   style="margin-top: 15px;">
+    </mat-paginator>
   </mat-card-content>
 </mat-card>
 
@@ -422,6 +524,54 @@
     <button mat-button (click)="closeReproveDialog()">Cancelar</button>
     <button mat-flat-button color="warn" [disabled]="!reproveForm.observacao" (click)="confirmReproveLoan()">
       Confirmar Reprovação
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Template de Dialog de Aprovação (Definições de Modalidade) -->
+<ng-template #approveDialog>
+  <h2 mat-dialog-title>Configurar e Aprovar Empréstimo</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 1rem;">
+      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">
+        Defina os parâmetros finais para a aprovação desta solicitação de empréstimo.
+      </p>
+
+      <mat-form-field class="form-field-full" appearance="outline">
+        <mat-label>Tipo do Empréstimo</mat-label>
+        <select matNativeControl [(ngModel)]="approveForm.tipoEmprestimo" name="tipoEmprestimo" required>
+          <option value="Master">Master (Diário Corrido)</option>
+          <option value="Plus">Plus (Diário em Dias Úteis)</option>
+          <option value="Gold">Gold (Semanal / Quinzenal / Mensal)</option>
+        </select>
+      </mat-form-field>
+
+      <div style="display: flex; gap: 1rem;">
+        <mat-form-field class="form-field-full" appearance="outline" style="flex: 1;">
+          <mat-label>Quantidade de Parcelas</mat-label>
+          <input matInput type="number" [(ngModel)]="approveForm.quantidadeParcelas" name="quantidadeParcelas" min="1" max="120" required>
+        </mat-form-field>
+
+        <mat-form-field class="form-field-full" appearance="outline" style="flex: 1;">
+          <mat-label>Taxa de Juros (%)</mat-label>
+          <input matInput type="number" [(ngModel)]="approveForm.taxaJuros" name="taxaJuros" step="0.01" min="0" required>
+        </mat-form-field>
+      </div>
+
+      <mat-form-field class="form-field-full" appearance="outline" *ngIf="approveForm.tipoEmprestimo === 'Gold'">
+        <mat-label>Periodicidade (Modalidade Gold)</mat-label>
+        <select matNativeControl [(ngModel)]="approveForm.periodicidadeGold" name="periodicidadeGold" required>
+          <option value="Semanal">Semanal (A cada 7 dias)</option>
+          <option value="Quinzenal">Quinzenal (A cada 15 dias)</option>
+          <option value="Mensal">Mensal (Mensalmente)</option>
+        </select>
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="closeApproveDialog()" [disabled]="isActionProcessing">Cancelar</button>
+    <button mat-flat-button color="primary" [disabled]="isActionProcessing || !approveForm.tipoEmprestimo || approveForm.quantidadeParcelas <= 0 || approveForm.taxaJuros < 0 || (approveForm.tipoEmprestimo === 'Gold' && !approveForm.periodicidadeGold)" (click)="confirmApproveLoan()">
+      Confirmar Aprovação
     </button>
   </mat-dialog-actions>
 </ng-template>

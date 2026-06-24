@@ -13,6 +13,8 @@ export interface LoanRequest {
   dataSolicitacao?: string;
   dataAprovacao?: string;
   observacaoAdmin?: string;
+  tipoEmprestimo?: string;
+  periodicidade?: string;
   outrosEmprestimos?: {
     id: string;
     valorSolicitado: number;
@@ -38,6 +40,9 @@ export interface LoanEligibility {
   limiteDisponivel: number;
   podeSolicitar: boolean;
   mensagemBlock?: string;
+  parcelasPagas?: number;
+  minimoExigido?: number;
+  temEmprestimoAtivo?: boolean;
 }
 
 export interface AdminReproveLoan {

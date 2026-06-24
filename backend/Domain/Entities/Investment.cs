@@ -8,6 +8,7 @@ namespace backend.Domain.Entities
         public Guid InvestorId { get; set; }
         public Guid LoanId { get; set; }
         public decimal ValorInvestido { get; set; }
+        public string Status { get; set; } = "Comprometido"; // Comprometido, Ativo
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public User? Investor { get; set; }

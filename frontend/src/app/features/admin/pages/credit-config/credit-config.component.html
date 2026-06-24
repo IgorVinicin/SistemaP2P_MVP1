@@ -41,6 +41,14 @@
           <mat-label>Dias para Inadimplência</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.diasParaInadimplencia" placeholder="Ex: 61">
         </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Investimento Mínimo (R$)</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.valorMinimoInvestimento" placeholder="Ex: 5000.00">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Parcelas Pagas Mínimas para Renovação</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.minimoParcelasPagasNovaSolicitacao" placeholder="Ex: 4">
+        </mat-form-field>
         <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
           Salvar Configuração Geral
         </button>

@@ -1,4 +1,4 @@
-import { Component, OnInit, TemplateRef, ViewChild, inject } from '@angular/core';
+import { Component, OnInit, TemplateRef, ViewChild, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,6 +35,7 @@ export class ScoreConfigComponent implements OnInit {
   private api = inject(AdminQuestionsService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private cdr = inject(ChangeDetectorRef);
 
   public questions: QuestionDto[] = [];
   public isLoading = false;
@@ -63,16 +64,20 @@ export class ScoreConfigComponent implements OnInit {
     this.loadQuestions();
   }
 
-  public loadQuestions(): void {
-    this.isLoading = true;
+  public loadQuestions(showSpinner: boolean = true): void {
+    if (showSpinner) {
+      this.isLoading = true;
+    }
     this.api.getAllQuestions().subscribe({
       next: (data) => {
         this.questions = data;
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.isLoading = false;
         this.snackBar.open('Erro ao carregar perguntas.', 'Fechar', { duration: 4000 });
+        this.cdr.detectChanges();
       }
     });
   }
@@ -109,7 +114,7 @@ export class ScoreConfigComponent implements OnInit {
         next: () => {
           this.snackBar.open('Pergunta atualizada com sucesso!', 'Fechar', { duration: 3000 });
           this.dialogRef?.close();
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao atualizar pergunta.', 'Fechar', { duration: 4000 });
@@ -126,7 +131,7 @@ export class ScoreConfigComponent implements OnInit {
         next: () => {
           this.snackBar.open('Pergunta criada com sucesso!', 'Fechar', { duration: 3000 });
           this.dialogRef?.close();
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao criar pergunta.', 'Fechar', { duration: 4000 });
@@ -147,7 +152,7 @@ export class ScoreConfigComponent implements OnInit {
           'Fechar',
           { duration: 3000 }
         );
-        this.loadQuestions();
+        this.loadQuestions(false);
       },
       error: () => {
         this.snackBar.open('Erro ao alterar status da pergunta.', 'Fechar', { duration: 4000 });
@@ -160,7 +165,7 @@ export class ScoreConfigComponent implements OnInit {
       this.api.deleteQuestion(id).subscribe({
         next: () => {
           this.snackBar.open('Pergunta excluída com sucesso!', 'Fechar', { duration: 3000 });
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao excluir pergunta.', 'Fechar', { duration: 4000 });
@@ -203,7 +208,7 @@ export class ScoreConfigComponent implements OnInit {
         next: () => {
           this.snackBar.open('Opção atualizada com sucesso!', 'Fechar', { duration: 3000 });
           this.dialogRef?.close();
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao atualizar opção.', 'Fechar', { duration: 4000 });
@@ -219,7 +224,7 @@ export class ScoreConfigComponent implements OnInit {
         next: () => {
           this.snackBar.open('Opção adicionada com sucesso!', 'Fechar', { duration: 3000 });
           this.dialogRef?.close();
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao adicionar opção.', 'Fechar', { duration: 4000 });
@@ -233,7 +238,7 @@ export class ScoreConfigComponent implements OnInit {
       this.api.deleteOption(optionId).subscribe({
         next: () => {
           this.snackBar.open('Opção excluída com sucesso!', 'Fechar', { duration: 3000 });
-          this.loadQuestions();
+          this.loadQuestions(false);
         },
         error: () => {
           this.snackBar.open('Erro ao excluir opção.', 'Fechar', { duration: 4000 });

@@ -1,7 +1,7 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -34,15 +34,17 @@ export class RegisterComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
   private snackBar = inject(MatSnackBar);
+  private route = inject(ActivatedRoute);
 
   public registerForm!: FormGroup;
   public isLoading = false;
+  public isRolePredefined = false;
 
   public ngOnInit(): void {
     this.registerForm = this.fb.group({
       nome: ['', Validators.required],
-      cpf: ['', [Validators.required, Validators.pattern(/^\d{11}$/)]], // 11 dígitos numéricos
-      telefone: ['', Validators.required],
+      cpf: ['', [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)]], // Máscara de CPF
+      telefone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{4,5}-\d{4}$/)]], // Máscara de Telefone
       dataNascimento: ['', Validators.required],
       email: ['', [Validators.required, Validators.email]],
       senha: ['', [Validators.required, Validators.minLength(4)]],
@@ -64,7 +66,7 @@ export class RegisterComponent implements OnInit {
           if (field === 'tempoEmpresa' || field === 'faturamentoMensal') {
             control?.setValidators([Validators.required, Validators.min(0)]);
           } else if (field === 'cnpj') {
-            control?.setValidators([Validators.required, Validators.pattern(/^\d{14}$/)]); // 14 dígitos numéricos
+            control?.setValidators([Validators.required, Validators.pattern(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)]); // Máscara de CNPJ
           } else {
             control?.setValidators([Validators.required]);
           }
@@ -75,6 +77,12 @@ export class RegisterComponent implements OnInit {
         control?.updateValueAndValidity();
       });
     });
+
+    const routeRole = this.route.snapshot.data['role'];
+    if (routeRole) {
+      this.isRolePredefined = true;
+      this.registerForm.patchValue({ role: routeRole });
+    }
   }
 
   public onSubmit(): void {
@@ -83,6 +91,13 @@ export class RegisterComponent implements OnInit {
     this.isLoading = true;
     const formValue = { ...this.registerForm.value };
     
+    // Limpar máscaras antes de enviar para o backend
+    formValue.cpf = formValue.cpf.replace(/\D/g, '');
+    formValue.telefone = formValue.telefone.replace(/\D/g, '');
+    if (formValue.cnpj) {
+      formValue.cnpj = formValue.cnpj.replace(/\D/g, '');
+    }
+
     // Garantir que a data esteja formatada no padrão que o backend C# espera (ISO string)
     formValue.dataNascimento = new Date(formValue.dataNascimento).toISOString();
 
@@ -103,5 +118,60 @@ export class RegisterComponent implements OnInit {
         this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  public onCpfInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.substring(0, 11);
+    
+    let formatted = value;
+    if (value.length > 9) {
+      formatted = `${value.substring(0, 3)}.${value.substring(3, 6)}.${value.substring(6, 9)}-${value.substring(9)}`;
+    } else if (value.length > 6) {
+      formatted = `${value.substring(0, 3)}.${value.substring(3, 6)}.${value.substring(6)}`;
+    } else if (value.length > 3) {
+      formatted = `${value.substring(0, 3)}.${value.substring(3)}`;
+    }
+    
+    this.registerForm.get('cpf')?.setValue(formatted, { emitEvent: false });
+  }
+
+  public onTelefoneInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.substring(0, 11);
+    
+    let formatted = value;
+    if (value.length > 10) {
+      formatted = `(${value.substring(0, 2)}) ${value.substring(2, 7)}-${value.substring(7)}`;
+    } else if (value.length > 6) {
+      formatted = `(${value.substring(0, 2)}) ${value.substring(2, 6)}-${value.substring(6)}`;
+    } else if (value.length > 2) {
+      formatted = `(${value.substring(0, 2)}) ${value.substring(2)}`;
+    } else if (value.length > 0) {
+      formatted = `(${value}`;
+    }
+    
+    this.registerForm.get('telefone')?.setValue(formatted, { emitEvent: false });
+  }
+
+  public onCnpjInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/\D/g, '');
+    if (value.length > 14) value = value.substring(0, 14);
+    
+    let formatted = value;
+    if (value.length > 12) {
+      formatted = `${value.substring(0, 2)}.${value.substring(2, 5)}.${value.substring(5, 8)}/${value.substring(8, 12)}-${value.substring(12)}`;
+    } else if (value.length > 8) {
+      formatted = `${value.substring(0, 2)}.${value.substring(2, 5)}.${value.substring(5, 8)}/${value.substring(8)}`;
+    } else if (value.length > 5) {
+      formatted = `${value.substring(0, 2)}.${value.substring(2, 5)}.${value.substring(5)}`;
+    } else if (value.length > 2) {
+      formatted = `${value.substring(0, 2)}.${value.substring(2)}`;
+    }
+    
+    this.registerForm.get('cnpj')?.setValue(formatted, { emitEvent: false });
   }
 }

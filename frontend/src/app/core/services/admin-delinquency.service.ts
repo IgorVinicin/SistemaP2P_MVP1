@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PagedResult } from '../models/user.models';
 import { environment } from '../../../environments/environment';
 
 export interface DelinquentLoanSummary {
@@ -42,18 +43,22 @@ export class AdminDelinquencyService {
   private apiUrl = `${environment.apiUrl}/admin/delinquency`;
 
   public getDelinquentLoans(
+    page: number = 1,
+    pageSize: number = 20,
     status?: string,
     cliente?: string,
     periodoInicio?: string,
     periodoFim?: string
-  ): Observable<DelinquentLoanSummary[]> {
-    let params = new HttpParams();
+  ): Observable<PagedResult<DelinquentLoanSummary>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
     if (status) params = params.set('status', status);
     if (cliente) params = params.set('cliente', cliente);
     if (periodoInicio) params = params.set('periodoInicio', periodoInicio);
     if (periodoFim) params = params.set('periodoFim', periodoFim);
 
-    return this.http.get<DelinquentLoanSummary[]>(`${this.apiUrl}/loans`, {
+    return this.http.get<PagedResult<DelinquentLoanSummary>>(`${this.apiUrl}/loans`, {
       params
     });
   }
@@ -82,7 +87,13 @@ export class AdminDelinquencyService {
     return this.http.post<any>(`${this.apiUrl}/loans/${loanId}/terminate-and-loss`, { observacao });
   }
 
-  public getHistory(): Observable<FinancialEventHistoryDto[]> {
-    return this.http.get<FinancialEventHistoryDto[]>(`${this.apiUrl}/history`);
+  public getHistory(page: number = 1, pageSize: number = 20, search?: string): Observable<PagedResult<FinancialEventHistoryDto>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) {
+      params = params.set('search', search);
+    }
+    return this.http.get<PagedResult<FinancialEventHistoryDto>>(`${this.apiUrl}/history`, { params });
   }
 }

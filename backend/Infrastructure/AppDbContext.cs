@@ -135,6 +135,10 @@ namespace backend.Infrastructure
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<InvestorWallet>()
+                .Property(iw => iw.SaldoComprometido)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<InvestorWallet>()
                 .Property(iw => iw.SaldoInvestido)
                 .HasPrecision(18, 2);
 
@@ -180,6 +184,10 @@ namespace backend.Infrastructure
 
             modelBuilder.Entity<InvestorWallet>()
                 .Property(iw => iw.TotalSacado)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<InvestorWallet>()
+                .Property(iw => iw.Rentabilidade)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<InvestorTransaction>()
@@ -229,6 +237,10 @@ namespace backend.Infrastructure
             modelBuilder.Entity<CreditConfig>()
                 .Property(cc => cc.PercentualJurosDiario)
                 .HasPrecision(18, 4);
+
+            modelBuilder.Entity<CreditConfig>()
+                .Property(cc => cc.ValorMinimoInvestimento)
+                .HasPrecision(18, 2);
 
             // =================ÍNDICES CONFIGURADOS PARA PERFORMANCE=================
             

@@ -2,6 +2,7 @@ using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace backend.Application.Services
@@ -67,6 +68,64 @@ namespace backend.Application.Services
             var statusAtivos = new[] { "pendente", "emanalise", "aprovado", "ativo" };
             return await _context.LoanRequests
                 .AnyAsync(l => l.UserId == userId && statusAtivos.Contains(l.Status.ToLower()));
+        }
+
+        public async Task<(bool PodeSolicitar, string MensagemBlock, int ParcelasPagas, int MinimoExigido)> VerificarElegibilidadeRenovacao(Guid userId)
+        {
+            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+            int minimoExigido = config?.MinimoParcelasPagasNovaSolicitacao ?? 4;
+
+            // Encontrar empréstimos pendentes ou ativos
+            var activeLoans = await _context.LoanRequests
+                .Where(l => l.UserId == userId &&
+                            (l.Status == "Pendente" ||
+                             l.Status == "EmAnalise" ||
+                             l.Status == "Aprovado" ||
+                             l.Status == "Ativo" ||
+                             l.Status == "EmPagamento" ||
+                             l.Status == "Inadimplente"))
+                .ToListAsync();
+
+            if (activeLoans.Count == 0)
+            {
+                return (true, string.Empty, 0, minimoExigido);
+            }
+
+            // Regra especial: se o tomador tem alguma solicitação paralela em andamento (Pendente ou EmAnalise), ele não pode solicitar outra
+            var pendente = activeLoans.FirstOrDefault(l => l.Status == "Pendente" || l.Status == "EmAnalise");
+            if (pendente != null)
+            {
+                return (false, "Você já possui uma solicitação de empréstimo em análise.", 0, minimoExigido);
+            }
+
+            // Para cada empréstimo ativo, verificar a quantidade de parcelas pagas
+            int menorParcelasPagas = int.MaxValue;
+            bool temEmprestimoBloqueante = false;
+
+            foreach (var loan in activeLoans)
+            {
+                int pagasCount = await _context.LoanInstallments
+                    .CountAsync(inst => inst.LoanRequestId == loan.Id && inst.Status == "Paga");
+
+                if (pagasCount < menorParcelasPagas)
+                {
+                    menorParcelasPagas = pagasCount;
+                }
+
+                if (pagasCount < minimoExigido)
+                {
+                    temEmprestimoBloqueante = true;
+                }
+            }
+
+            int pagasExibicao = menorParcelasPagas == int.MaxValue ? 0 : menorParcelasPagas;
+
+            if (temEmprestimoBloqueante)
+            {
+                return (false, $"Você precisa quitar pelo menos {minimoExigido} parcelas para solicitar um novo empréstimo.", pagasExibicao, minimoExigido);
+            }
+
+            return (true, string.Empty, pagasExibicao, minimoExigido);
         }
     }
 }

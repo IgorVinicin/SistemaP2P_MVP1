@@ -6,7 +6,7 @@ namespace backend.Application.Services
 {
     public class PriceCalculationService
     {
-        public List<LoanInstallment> CalculateInstallments(Guid loanRequestId, decimal valorSolicitado, int quantidadeParcelas, decimal taxaJurosMensal)
+        public List<LoanInstallment> CalculateInstallments(Guid loanRequestId, decimal valorSolicitado, int quantidadeParcelas, decimal taxaJurosMensal, string? periodicidade = "Mensal")
         {
             var installments = new List<LoanInstallment>();
 
@@ -27,6 +27,7 @@ namespace backend.Application.Services
             decimal valorParcela = Math.Round((decimal)pmt, 2);
             decimal remainingPrincipal = valorSolicitado;
             DateTime baseDate = DateTime.UtcNow;
+            DateTime currentDueDate = baseDate;
 
             for (int k = 1; k <= n; k++)
             {
@@ -55,6 +56,29 @@ namespace backend.Application.Services
                     remainingPrincipal -= principal;
                 }
 
+                // Cálculo do vencimento com base na periodicidade
+                string p = (periodicidade ?? "Mensal").Trim().ToLower();
+                if (p == "diario")
+                {
+                    currentDueDate = baseDate.AddDays(k);
+                }
+                else if (p == "diarioutil")
+                {
+                    currentDueDate = GetNextBusinessDay(currentDueDate);
+                }
+                else if (p == "semanal")
+                {
+                    currentDueDate = baseDate.AddDays(k * 7);
+                }
+                else if (p == "quinzenal")
+                {
+                    currentDueDate = baseDate.AddDays(k * 15);
+                }
+                else // Mensal (padrão)
+                {
+                    currentDueDate = baseDate.AddMonths(k);
+                }
+
                 installments.Add(new LoanInstallment
                 {
                     Id = Guid.NewGuid(),
@@ -63,7 +87,7 @@ namespace backend.Application.Services
                     ValorParcela = valorParcela,
                     ValorPrincipal = principal,
                     ValorJuros = juros,
-                    DataVencimento = baseDate.AddMonths(k),
+                    DataVencimento = currentDueDate,
                     Status = "Pendente",
                     ValorPago = 0,
                     DiasAtraso = 0,
@@ -75,6 +99,15 @@ namespace backend.Application.Services
             }
 
             return installments;
+        }
+
+        private DateTime GetNextBusinessDay(DateTime date)
+        {
+            do
+            {
+                date = date.AddDays(1);
+            } while (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday);
+            return date;
         }
     }
 }

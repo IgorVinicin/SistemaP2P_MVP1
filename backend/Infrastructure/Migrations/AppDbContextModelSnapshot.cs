@@ -89,6 +89,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<int>("DiasParaInadimplencia")
                         .HasColumnType("integer");
 
+                    b.Property<int>("MinimoParcelasPagasNovaSolicitacao")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("PercentualJurosDiario")
                         .HasPrecision(18, 4)
                         .HasColumnType("numeric(18,4)");
@@ -99,6 +102,10 @@ namespace backend.Infrastructure.Migrations
 
                     b.Property<int>("ScoreMinimoParaSolicitacao")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("ValorMinimoInvestimento")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.HasKey("Id");
 
@@ -186,6 +193,10 @@ namespace backend.Infrastructure.Migrations
                     b.Property<Guid>("LoanId")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<decimal>("ValorInvestido")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -253,11 +264,23 @@ namespace backend.Infrastructure.Migrations
                     b.Property<DateTime>("DataCriacao")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("ObservacaoAdministrativa")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("PerfilInvestimento")
                         .IsRequired()
                         .HasColumnType("text");
 
                     b.Property<decimal>("Rendimentos")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("Rentabilidade")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("SaldoComprometido")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -389,6 +412,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<int>("Parcelas")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Periodicidade")
+                        .HasColumnType("text");
+
                     b.Property<int>("QuantidadeParcelas")
                         .HasColumnType("integer");
 
@@ -409,6 +435,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<decimal>("TaxaJurosAplicada")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("TipoEmprestimo")
+                        .HasColumnType("text");
 
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");

@@ -11,6 +11,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { AdminDelinquencyService, DelinquentLoanSummary, ProtectionFundSummary, FinancialEventHistoryDto } from '../../../../core/services/admin-delinquency.service';
 
 @Component({
@@ -29,7 +30,8 @@ import { AdminDelinquencyService, DelinquentLoanSummary, ProtectionFundSummary, 
     MatInputModule,
     MatSelectModule,
     MatDialogModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatPaginatorModule
   ],
   templateUrl: './admin-delinquency.component.html',
   styleUrls: ['./admin-delinquency.component.css']
@@ -42,6 +44,16 @@ export class AdminDelinquencyComponent implements OnInit {
   public delinquentLoans: DelinquentLoanSummary[] = [];
   public fundSummary: ProtectionFundSummary | null = null;
   public eventHistory: FinancialEventHistoryDto[] = [];
+
+  // Paging states
+  public loansPage = 1;
+  public loansPageSize = 5;
+  public loansTotal = 0;
+
+  public historyPage = 1;
+  public historyPageSize = 10;
+  public historyTotal = 0;
+  public historySearch = '';
 
   // Filtros
   public filterStatus = '';
@@ -109,13 +121,16 @@ export class AdminDelinquencyComponent implements OnInit {
   public loadLoans(): void {
     this.isLoadingLoans = true;
     this.service.getDelinquentLoans(
+      this.loansPage,
+      this.loansPageSize,
       this.filterStatus || undefined,
       this.filterCliente || undefined,
       this.filterPeriodoInicio || undefined,
       this.filterPeriodoFim || undefined
     ).subscribe({
       next: (data) => {
-        this.delinquentLoans = data;
+        this.delinquentLoans = data.items;
+        this.loansTotal = data.totalCount;
         this.isLoadingLoans = false;
       },
       error: (err) => {
@@ -141,9 +156,10 @@ export class AdminDelinquencyComponent implements OnInit {
 
   public loadHistory(): void {
     this.isLoadingHistory = true;
-    this.service.getHistory().subscribe({
+    this.service.getHistory(this.historyPage, this.historyPageSize, this.historySearch).subscribe({
       next: (data) => {
-        this.eventHistory = data;
+        this.eventHistory = data.items;
+        this.historyTotal = data.totalCount;
         this.isLoadingHistory = false;
       },
       error: (err) => {
@@ -151,6 +167,28 @@ export class AdminDelinquencyComponent implements OnInit {
         this.snackBar.open(err.error?.message || 'Erro ao carregar histórico.', 'Fechar', { duration: 4000 });
       }
     });
+  }
+
+  public onLoansPageChange(event: PageEvent): void {
+    this.loansPage = event.pageIndex + 1;
+    this.loansPageSize = event.pageSize;
+    this.loadLoans();
+  }
+
+  public onHistoryPageChange(event: PageEvent): void {
+    this.historyPage = event.pageIndex + 1;
+    this.historyPageSize = event.pageSize;
+    this.loadHistory();
+  }
+
+  public onLoansFilterChange(): void {
+    this.loansPage = 1;
+    this.loadLoans();
+  }
+
+  public searchHistory(): void {
+    this.historyPage = 1;
+    this.loadHistory();
   }
 
   public handleCoverOverdue(loan: DelinquentLoanSummary): void {

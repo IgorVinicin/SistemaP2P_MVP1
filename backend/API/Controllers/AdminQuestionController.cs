@@ -26,6 +26,7 @@ namespace backend.API.Controllers
         public async Task<IActionResult> GetAllQuestions()
         {
             var questions = await _context.Questions
+                .AsNoTracking()
                 .Select(q => new
                 {
                     q.Id,
@@ -107,25 +108,6 @@ namespace backend.API.Controllers
 
                 question.Titulo = dto.Titulo;
                 question.Ativa = dto.Ativa;
-
-                // Remover as opções antigas
-                _context.AnswerOptions.RemoveRange(question.Options);
-                question.Options.Clear();
-
-                // Inserir as novas opções
-                if (dto.Options != null)
-                {
-                    foreach (var optDto in dto.Options)
-                    {
-                        question.Options.Add(new AnswerOption
-                        {
-                            Id = Guid.NewGuid(),
-                            QuestionId = question.Id,
-                            Texto = optDto.Texto,
-                            Pontuacao = optDto.Pontuacao
-                        });
-                    }
-                }
 
                 await _context.SaveChangesAsync();
 

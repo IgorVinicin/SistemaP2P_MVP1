@@ -24,12 +24,82 @@ namespace backend.API.Controllers
             _context = context;
         }
 
-        // Listar todos os usuários do sistema
+        // Listar todos os usuários do sistema com paginação, busca e filtros combinados
         [HttpGet]
-        public async Task<IActionResult> GetAllUsers()
+        public async Task<IActionResult> GetAllUsers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null,
+            [FromQuery] string? nome = null,
+            [FromQuery] string? cpf = null,
+            [FromQuery] string? email = null,
+            [FromQuery] string? role = null,
+            [FromQuery] string? status = null,
+            [FromQuery] int? minScore = null,
+            [FromQuery] int? maxScore = null)
         {
-            var users = await _context.Users
+            var query = _context.Users
+                .AsNoTracking()
                 .Include(u => u.Profile)
+                .AsQueryable();
+
+            // Busca rápida inteligente (Nome, CPF, Email)
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(u => u.Email.ToLower().Contains(term) ||
+                                         (u.Profile != null && u.Profile.Nome.ToLower().Contains(term)) ||
+                                         (u.Profile != null && u.Profile.CPF.Contains(term)));
+            }
+
+            // Filtros específicos combinados com AND
+            if (!string.IsNullOrWhiteSpace(nome))
+            {
+                var term = nome.Trim().ToLower();
+                query = query.Where(u => u.Profile != null && u.Profile.Nome.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(cpf))
+            {
+                var term = cpf.Trim().Replace(".", "").Replace("-", "");
+                query = query.Where(u => u.Profile != null && u.Profile.CPF.Replace(".", "").Replace("-", "").Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                var term = email.Trim().ToLower();
+                query = query.Where(u => u.Email.ToLower().Contains(term));
+            }
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                query = query.Where(u => u.Role == role);
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(u => u.Status == status);
+            }
+
+            if (minScore.HasValue)
+            {
+                query = query.Where(u => u.Profile != null && u.Profile.ScoreAtual >= minScore.Value);
+            }
+
+            if (maxScore.HasValue)
+            {
+                query = query.Where(u => u.Profile != null && u.Profile.ScoreAtual <= maxScore.Value);
+            }
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            var items = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(u => new
                 {
                     u.Id,
@@ -43,16 +113,48 @@ namespace backend.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(users);
+            var result = new PagedResultDto<object>
+            {
+                Items = items.Cast<object>().ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+
+            return Ok(result);
         }
 
-        // Listar usuários pendentes de análise (Status == "EmAnalise")
+        // Listar usuários pendentes de análise (Status == "EmAnalise") com paginação e busca
         [HttpGet("pending")]
-        public async Task<IActionResult> GetPendingUsers()
+        public async Task<IActionResult> GetPendingUsers(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
         {
-            var pendingUsers = await _context.Users
+            var query = _context.Users
+                .AsNoTracking()
                 .Include(u => u.Profile)
                 .Where(u => u.Status == "EmAnalise")
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(u => u.Email.ToLower().Contains(term) ||
+                                         (u.Profile != null && u.Profile.Nome.ToLower().Contains(term)) ||
+                                         (u.Profile != null && u.Profile.CPF.Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            var items = await query
+                .OrderByDescending(u => u.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(u => new
                 {
                     u.Id,
@@ -66,7 +168,16 @@ namespace backend.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(pendingUsers);
+            var result = new PagedResultDto<object>
+            {
+                Items = items.Cast<object>().ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+
+            return Ok(result);
         }
 
         // PUT /api/admin/users/{id}/profile
@@ -111,6 +222,7 @@ namespace backend.API.Controllers
         public async Task<IActionResult> GetUserById(Guid id)
         {
             var user = await _context.Users
+                .AsNoTracking()
                 .Include(u => u.Profile)
                 .Include(u => u.Company)
                 .Include(u => u.Documents)
@@ -243,10 +355,11 @@ namespace backend.API.Controllers
 
         // Aprovar Usuário
         [HttpPost("{id}/approve")]
-        public async Task<IActionResult> ApproveUser(Guid id)
+        public async Task<IActionResult> ApproveUser(Guid id, [FromBody] ApproveUserDto? dto)
         {
             var user = await _context.Users
                 .Include(u => u.Documents)
+                .Include(u => u.Wallet)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
@@ -260,6 +373,30 @@ namespace backend.API.Controllers
             foreach (var doc in user.Documents)
             {
                 doc.Status = "Aprovado";
+            }
+
+            // Se for investidor, configurar rentabilidade e observação
+            if (user.Role.Equals("Investidor", StringComparison.OrdinalIgnoreCase))
+            {
+                if (user.Wallet == null)
+                {
+                    user.Wallet = new InvestorWallet
+                    {
+                        Id = user.Id,
+                        SaldoDisponivel = 0,
+                        SaldoInvestido = 0,
+                        Rendimentos = 0,
+                        PerfilInvestimento = "Conservador"
+                    };
+                    _context.InvestorWallets.Add(user.Wallet);
+                }
+
+                if (dto != null)
+                {
+                    user.Wallet.Rentabilidade = dto.Rentabilidade ?? 0;
+                    user.Wallet.ObservacaoAdministrativa = dto.ObservacaoAdministrativa ?? string.Empty;
+                }
+                user.Wallet.DataAtualizacao = DateTime.UtcNow;
             }
 
             await _context.SaveChangesAsync();

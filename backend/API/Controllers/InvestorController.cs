@@ -110,6 +110,7 @@ namespace backend.API.Controllers
             return Ok(new InvestorWalletDto
             {
                 SaldoDisponivel = wallet.SaldoDisponivel,
+                SaldoComprometido = wallet.SaldoComprometido,
                 SaldoInvestido = wallet.SaldoInvestido,
                 Rendimentos = wallet.Rendimentos,
                 TotalAportado = wallet.TotalAportado,
@@ -120,7 +121,9 @@ namespace backend.API.Controllers
                 ValorPerdido = valorPerdido,
                 CoberturasRecebidas = coberturasRecebidas,
                 PerdasDefinitivas = perdasDefinitivas,
-                CoberturasFundo = coberturasFundo
+                CoberturasFundo = coberturasFundo,
+                Rentabilidade = wallet.Rentabilidade,
+                ObservacaoAdministrativa = wallet.ObservacaoAdministrativa
             });
         }
 
@@ -131,6 +134,13 @@ namespace backend.API.Controllers
             if (dto.Valor <= 0)
             {
                 return BadRequest(new { message = "O valor do aporte deve ser maior que zero." });
+            }
+
+            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+            decimal minInvestimento = config?.ValorMinimoInvestimento ?? 5000.00m;
+            if (dto.Valor < minInvestimento)
+            {
+                return BadRequest(new { message = $"O valor do aporte mínimo permitido é de R$ {minInvestimento:N2}." });
             }
 
             var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

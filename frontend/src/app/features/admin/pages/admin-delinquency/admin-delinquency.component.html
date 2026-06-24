@@ -75,12 +75,12 @@
         <div class="filters-container glass-panel">
           <mat-form-field appearance="outline">
             <mat-label>Cliente / E-mail</mat-label>
-            <input matInput [(ngModel)]="filterCliente" (keyup.enter)="loadLoans()" placeholder="Filtrar por nome ou e-mail">
+            <input matInput [(ngModel)]="filterCliente" (keyup.enter)="onLoansFilterChange()" placeholder="Filtrar por nome ou e-mail">
           </mat-form-field>
 
           <mat-form-field appearance="outline">
             <mat-label>Status do Empréstimo</mat-label>
-            <mat-select [(ngModel)]="filterStatus" (selectionChange)="loadLoans()">
+            <mat-select [(ngModel)]="filterStatus" (selectionChange)="onLoansFilterChange()">
               <mat-option value="">Todos</mat-option>
               <mat-option value="Inadimplente">Inadimplente</mat-option>
               <mat-option value="EmPagamento">Em Pagamento</mat-option>
@@ -89,15 +89,15 @@
 
           <mat-form-field appearance="outline">
             <mat-label>Vencimento Inicial</mat-label>
-            <input matInput type="date" [(ngModel)]="filterPeriodoInicio" (change)="loadLoans()">
+            <input matInput type="date" [(ngModel)]="filterPeriodoInicio" (change)="onLoansFilterChange()">
           </mat-form-field>
 
           <mat-form-field appearance="outline">
             <mat-label>Vencimento Final</mat-label>
-            <input matInput type="date" [(ngModel)]="filterPeriodoFim" (change)="loadLoans()">
+            <input matInput type="date" [(ngModel)]="filterPeriodoFim" (change)="onLoansFilterChange()">
           </mat-form-field>
 
-          <button mat-raised-button color="primary" (click)="loadLoans()">
+          <button mat-raised-button color="primary" (click)="onLoansFilterChange()">
             <mat-icon>search</mat-icon> Filtrar
           </button>
         </div>
@@ -171,6 +171,14 @@
             <tr mat-row *matRowDef="let row; columns: loanColumns;"></tr>
           </table>
 
+          <mat-paginator *ngIf="loansTotal > 0"
+                         [length]="loansTotal"
+                         [pageSize]="loansPageSize"
+                         [pageSizeOptions]="[5, 10, 20]"
+                         (page)="onLoansPageChange($event)"
+                         style="margin-top: 15px; background: transparent;">
+          </mat-paginator>
+
           <div class="empty-state" *ngIf="!isLoadingLoans && delinquentLoans.length === 0">
             <mat-icon>check_circle</mat-icon>
             <h3>Nenhum cliente inadimplente encontrado</h3>
@@ -183,6 +191,17 @@
     <!-- Tab Histórico -->
     <mat-tab label="Histórico de Eventos">
       <div class="tab-content-container">
+        <!-- Filtro Busca Rápida Histórico -->
+        <div class="filters-container glass-panel" style="margin-bottom: 20px; display: flex; gap: 15px; align-items: center; padding: 1rem 1.5rem;">
+          <mat-form-field appearance="outline" style="flex: 1; max-width: 400px; margin-bottom: 0;">
+            <mat-label>Pesquisar Histórico (Texto/Responsável/Evento)</mat-label>
+            <input matInput [(ngModel)]="historySearch" (keyup.enter)="searchHistory()" placeholder="Digite e aperte Enter">
+          </mat-form-field>
+          <button mat-raised-button color="primary" (click)="searchHistory()">
+            <mat-icon>search</mat-icon> Buscar
+          </button>
+        </div>
+
         <div class="table-container glass-panel">
           <div class="spinner-container" *ngIf="isLoadingHistory">
             Carregando histórico financeiro...
@@ -237,6 +256,14 @@
             <tr mat-header-row *matHeaderRowDef="historyColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: historyColumns;"></tr>
           </table>
+
+          <mat-paginator *ngIf="historyTotal > 0"
+                         [length]="historyTotal"
+                         [pageSize]="historyPageSize"
+                         [pageSizeOptions]="[5, 10, 25, 50]"
+                         (page)="onHistoryPageChange($event)"
+                         style="margin-top: 15px; background: transparent;">
+          </mat-paginator>
 
           <div class="empty-state" *ngIf="!isLoadingHistory && eventHistory.length === 0">
             <mat-icon>history</mat-icon>

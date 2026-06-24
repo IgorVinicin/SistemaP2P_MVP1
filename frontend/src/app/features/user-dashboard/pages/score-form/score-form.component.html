@@ -6,27 +6,15 @@
 
   <!-- Tela de Resultados do Score -->
   <div *ngIf="!isLoading && showResult" class="result-card">
-    <div class="result-icon-wrapper">
-      <mat-icon class="result-icon">check_circle</mat-icon>
-    </div>
-    <h2 class="result-title">Questionário Enviado!</h2>
-    <p class="result-subtitle">Suas respostas foram processadas e seu score de crédito foi atualizado.</p>
+    <mat-icon class="success-icon">check_circle</mat-icon>
+    <h2>Questionário Concluído com Sucesso!</h2>
+    <p class="result-subtitle">Suas respostas foram processadas e seu perfil de crédito foi atualizado.</p>
 
-    <div class="score-display-ring" [style.--score-percentage]="(scoreResult / 10) + '%'">
-      <div class="score-value">
-        {{ scoreResult }}
-        <span class="score-label">Score</span>
-      </div>
-    </div>
+    <p class="score-desc-text" style="font-size: 1.05rem; line-height: 1.6; max-width: 500px; margin: 1.5rem auto;">
+      Seu questionário foi processado e seu cadastro foi avaliado com sucesso. Os limites disponíveis foram liberados e você já pode prosseguir com a solicitação de empréstimo.
+    </p>
 
-    <div style="margin-bottom: 2rem;">
-      <h3 style="margin: 0; color: #334155; font-size: 1.1rem; font-weight: 600;">Sua faixa de classificação:</h3>
-      <p style="margin: 0.25rem 0 0 0; font-size: 1.25rem; font-weight: 700; color: #4f46e5;">
-        {{ scoreResult <= 300 ? 'Alto risco' : scoreResult <= 600 ? 'Médio risco' : 'Baixo risco' }}
-      </p>
-    </div>
-
-    <button mat-flat-button color="primary" class="back-btn" routerLink="/dashboard">
+    <button mat-flat-button color="primary" class="continue-btn" routerLink="/dashboard">
       Ir para o Dashboard
     </button>
   </div>
@@ -80,7 +68,7 @@
 
       <div class="submit-btn-row" *ngIf="!isCompleted">
         <button mat-flat-button color="primary" class="submit-btn" type="submit" [disabled]="!isFormValid() || isSubmitting">
-          {{ isSubmitting ? 'Enviando...' : 'Finalizar e Ver Score' }}
+          {{ isSubmitting ? 'Enviando...' : 'Finalizar Questionário' }}
         </button>
       </div>
     </form>

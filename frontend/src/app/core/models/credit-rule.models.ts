@@ -16,4 +16,6 @@ export interface CreditConfig {
   diasParaCobranca?: number;
   diasParaCobrancaIntensiva?: number;
   diasParaInadimplencia?: number;
+  valorMinimoInvestimento?: number;
+  minimoParcelasPagasNovaSolicitacao?: number;
 }

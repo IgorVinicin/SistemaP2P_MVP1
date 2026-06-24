@@ -12,6 +12,7 @@ import { MyLoansComponent } from './features/user-dashboard/pages/my-loans/my-lo
 import { LoanHistoryComponent } from './features/user-dashboard/pages/loan-history/loan-history.component';
 import { AdminLoansComponent } from './features/admin/pages/admin-loans/admin-loans.component';
 import { AdminDelinquencyComponent } from './features/admin/pages/admin-delinquency/admin-delinquency.component';
+import { AdminReportsComponent } from './features/admin/pages/admin-reports/admin-reports.component';
 import { authGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
 
@@ -22,7 +23,8 @@ import { investorGuard } from './core/guards/investor.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
+  { path: 'cadastro/tomador', component: RegisterComponent, data: { role: 'Cliente' } },
+  { path: 'cadastro/investidor', component: RegisterComponent, data: { role: 'Investidor' } },
   {
     path: '',
     component: LayoutComponent,
@@ -37,6 +39,7 @@ export const routes: Routes = [
       { path: 'admin/credit', component: CreditConfigComponent, canActivate: [adminGuard] },
       { path: 'admin/loans', component: AdminLoansComponent, canActivate: [adminGuard] },
       { path: 'admin/delinquency', component: AdminDelinquencyComponent, canActivate: [adminGuard] },
+      { path: 'admin/reports', component: AdminReportsComponent, canActivate: [adminGuard] },
       { path: 'score', component: ScoreFormComponent },
       { path: 'loans/request', component: LoanRequestComponent },
       { path: 'loans/my', component: MyLoansComponent },

@@ -21,5 +21,7 @@ namespace backend.Application.DTOs
         public int DiasParaCobranca { get; set; }
         public int DiasParaCobrancaIntensiva { get; set; }
         public int DiasParaInadimplencia { get; set; }
+        public decimal ValorMinimoInvestimento { get; set; }
+        public int MinimoParcelasPagasNovaSolicitacao { get; set; }
     }
 }

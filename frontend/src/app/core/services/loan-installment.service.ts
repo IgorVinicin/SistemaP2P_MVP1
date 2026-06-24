@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { LoanInstallmentDto } from '../models/installment.models';
+import { PagedResult } from '../models/user.models';
 import { environment } from '../../../environments/environment';
 
 @Injectable({
@@ -12,21 +13,27 @@ export class LoanInstallmentService {
   private apiUrl = environment.apiUrl;
 
   public getInstallments(loanRequestId: string): Observable<LoanInstallmentDto[]> {
-    return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments`);
+    return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments?t=${new Date().getTime()}`);
   }
 
   public payInstallment(installmentId: string): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, {});
   }
 
-  public getAdminInstallments(filters: {
-    cliente?: string;
-    status?: string;
-    periodoInicio?: string;
-    periodoFim?: string;
-    somenteAtrasadas?: boolean;
-  }): Observable<any[]> {
-    let params = new HttpParams();
+  public getAdminInstallments(
+    page: number = 1,
+    pageSize: number = 20,
+    filters: {
+      cliente?: string;
+      status?: string;
+      periodoInicio?: string;
+      periodoFim?: string;
+      somenteAtrasadas?: boolean;
+    }
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
     if (filters.cliente) {
       params = params.set('cliente', filters.cliente);
     }
@@ -43,7 +50,7 @@ export class LoanInstallmentService {
       params = params.set('somenteAtrasadas', filters.somenteAtrasadas.toString());
     }
 
-    return this.http.get<any[]>(`${this.apiUrl}/admin/loans/installments`, {
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/admin/loans/installments`, {
       params
     });
   }

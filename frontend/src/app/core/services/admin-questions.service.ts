@@ -12,7 +12,7 @@ export class AdminQuestionsService {
   private apiUrl = `${environment.apiUrl}/admin`;
 
   public getAllQuestions(): Observable<QuestionDto[]> {
-    return this.http.get<QuestionDto[]>(`${this.apiUrl}/questions`);
+    return this.http.get<QuestionDto[]>(`${this.apiUrl}/questions?t=${new Date().getTime()}`);
   }
 
   public createQuestion(dto: QuestionDto): Observable<QuestionDto> {

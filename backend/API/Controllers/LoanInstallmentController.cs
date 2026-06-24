@@ -17,10 +17,12 @@ namespace backend.API.Controllers
     public class LoanInstallmentController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly DelinquencyService _delinquencyService;
 
-        public LoanInstallmentController(AppDbContext context)
+        public LoanInstallmentController(AppDbContext context, DelinquencyService delinquencyService)
         {
             _context = context;
+            _delinquencyService = delinquencyService;
         }
 
         // POST /api/loans/installments/{id}/pay
@@ -82,55 +84,16 @@ namespace backend.API.Controllers
                     Valor = installment.ValorPago
                 });
 
-                // Verificar se existem outras parcelas em aberto
-                var allInstallments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == installment.LoanRequestId)
-                    .ToListAsync();
-
-                var hasInadimplente = allInstallments.Any(i => i.Id != installment.Id && i.Status == "INADIMPLENTE");
-                var allPaid = allInstallments.All(i => i.Id == installment.Id || i.Status == "Paga" || i.Status == "Cancelada");
-
-                var loan = installment.LoanRequest;
-                if (loan != null)
-                {
-                    if (allPaid)
-                    {
-                        loan.Status = "Quitado";
-                        loan.DataEncerramento = DateTime.UtcNow;
-
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = "Sistema",
-                            EventoExecutado = "MUDANCA_STATUS",
-                            Observacao = $"Empréstimo {loan.Id} foi totalmente quitado.",
-                            LoanRequestId = loan.Id,
-                            Valor = loan.ValorTotal
-                        });
-                    }
-                    else if (!hasInadimplente && loan.Status == "Inadimplente")
-                    {
-                        loan.Status = "EmPagamento";
-
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = "Sistema",
-                            EventoExecutado = "MUDANCA_STATUS",
-                            Observacao = $"Empréstimo {loan.Id} retornou ao status EmPagamento após o pagamento da parcela {installment.NumeroParcela}.",
-                            LoanRequestId = loan.Id
-                        });
-                    }
-                }
-
                 // Salvar as alterações
                 await _context.SaveChangesAsync();
 
+                // Recalcular status do empréstimo de forma centralizada
+                var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
+                await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(installment.LoanRequestId, userEmail);
+
                 // Integrar preparação de carteira de investidores
                 var distService = new WalletDistributionService(_context);
-                await distService.DistributeInstallmentPaymentAsync(installment.Id);
+                await distService.DistributeInstallmentPaymentAsync(installment.Id, userEmail);
 
                 return Ok(new { message = "Pagamento da parcela simulado com sucesso.", installment });
             }
@@ -147,7 +110,7 @@ namespace backend.API.Controllers
             try
             {
                 // Atualizar parcelas atrasadas antes de retornar
-                await UpdateOverdueInstallmentsAsync();
+                await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
                 var installments = await _context.LoanInstallments
                     .Where(i => i.LoanRequestId == loanRequestId)
@@ -166,18 +129,21 @@ namespace backend.API.Controllers
         [HttpGet("admin/loans/installments")]
         [Authorize(Roles = "Administrador")]
         public async Task<IActionResult> GetAdminInstallments(
-            [FromQuery] string? cliente,
-            [FromQuery] string? status,
-            [FromQuery] DateTime? periodoInicio,
-            [FromQuery] DateTime? periodoFim,
-            [FromQuery] bool? somenteAtrasadas)
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? cliente = null,
+            [FromQuery] string? status = null,
+            [FromQuery] DateTime? periodoInicio = null,
+            [FromQuery] DateTime? periodoFim = null,
+            [FromQuery] bool? somenteAtrasadas = null)
         {
             try
             {
                 // Atualizar parcelas atrasadas antes de retornar
-                await UpdateOverdueInstallmentsAsync();
+                await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
                 var query = _context.LoanInstallments
+                    .AsNoTracking()
                     .Include(i => i.LoanRequest)
                     .ThenInclude(l => l!.User)
                     .ThenInclude(u => u!.Profile)
@@ -210,8 +176,15 @@ namespace backend.API.Controllers
                     query = query.Where(i => i.Status == "ATRASADO" || i.Status == "COBRANCA" || i.Status == "COBRANCA_INTENSIVA" || i.Status == "INADIMPLENTE" || i.Status == "Atrasada");
                 }
 
+                var totalCount = await query.CountAsync();
+                var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+                if (page < 1) page = 1;
+                if (pageSize < 1) pageSize = 20;
+
                 var list = await query
                     .OrderBy(i => i.DataVencimento)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
                     .Select(i => new
                     {
                         i.Id,
@@ -232,7 +205,16 @@ namespace backend.API.Controllers
                     })
                     .ToListAsync();
 
-                return Ok(list);
+                var result = new backend.Application.DTOs.PagedResultDto<object>
+                {
+                    Items = list.Cast<object>().ToList(),
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = totalPages
+                };
+
+                return Ok(result);
             }
             catch (Exception ex)
             {
@@ -240,109 +222,6 @@ namespace backend.API.Controllers
             }
         }
 
-        private async Task UpdateOverdueInstallmentsAsync()
-        {
-            var today = DateTime.UtcNow.Date;
-            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-            decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
-            decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
-            int diasParaCobranca = config?.DiasParaCobranca ?? 16;
-            int diasParaCobrancaIntensiva = config?.DiasParaCobrancaIntensiva ?? 31;
-            int diasParaInadimplencia = config?.DiasParaInadimplencia ?? 61;
 
-            var unpaidInstallments = await _context.LoanInstallments
-                .Include(i => i.LoanRequest)
-                .Where(i => i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
-                .ToListAsync();
-
-            bool changed = false;
-
-            foreach (var inst in unpaidInstallments)
-            {
-                if (inst.DataVencimento.Date < today)
-                {
-                    int dias = (int)(today - inst.DataVencimento.Date).TotalDays;
-                    inst.DiasAtraso = dias;
-                    inst.Multa = Math.Round(inst.ValorParcela * (percentualMulta / 100m), 2);
-                    inst.JurosMora = Math.Round(inst.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
-                    inst.UpdatedAt = DateTime.UtcNow;
-
-                    string oldStatus = inst.Status;
-                    string newStatus = "ATRASADO";
-                    if (dias >= diasParaInadimplencia) newStatus = "INADIMPLENTE";
-                    else if (dias >= diasParaCobrancaIntensiva) newStatus = "COBRANCA_INTENSIVA";
-                    else if (dias >= diasParaCobranca) newStatus = "COBRANCA";
-
-                    if (oldStatus != newStatus)
-                    {
-                        inst.Status = newStatus;
-                        changed = true;
-
-                        // Log event
-                        string eventType = "MUDANCA_STATUS";
-                        if (newStatus == "COBRANCA") eventType = "ENTRADA_COBRANCA";
-                        else if (newStatus == "INADIMPLENTE") eventType = "ENTRADA_INADIMPLENCIA";
-
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = "Sistema",
-                            EventoExecutado = eventType,
-                            Observacao = $"Parcela {inst.NumeroParcela} do Empréstimo {inst.LoanRequestId} mudou de {oldStatus} para {newStatus} (dias de atraso: {dias}).",
-                            LoanRequestId = inst.LoanRequestId,
-                            Valor = inst.ValorParcela
-                        });
-
-                        // Se a parcela ficou inadimplente, o empréstimo/LoanRequest muda para Inadimplente
-                        if (newStatus == "INADIMPLENTE" && inst.LoanRequest != null && inst.LoanRequest.Status != "Inadimplente")
-                        {
-                            string oldLoanStatus = inst.LoanRequest.Status;
-                            inst.LoanRequest.Status = "Inadimplente";
-
-                            _context.FinancialEventHistories.Add(new FinancialEventHistory
-                            {
-                                Id = Guid.NewGuid(),
-                                Data = DateTime.UtcNow,
-                                UsuarioResponsavel = "Sistema",
-                                EventoExecutado = "ENTRADA_INADIMPLENCIA",
-                                Observacao = $"Empréstimo {inst.LoanRequestId} mudou de {oldLoanStatus} para Inadimplente devido ao atraso da parcela {inst.NumeroParcela}.",
-                                LoanRequestId = inst.LoanRequestId,
-                                Valor = inst.LoanRequest.ValorSolicitado
-                            });
-                        }
-                    }
-                }
-                else
-                {
-                    // Se não está vencida e o status anterior era algum de atraso, volta para Pendente
-                    if (inst.Status == "ATRASADO" || inst.Status == "COBRANCA" || inst.Status == "COBRANCA_INTENSIVA" || inst.Status == "INADIMPLENTE" || inst.Status == "Atrasada")
-                    {
-                        string oldStatus = inst.Status;
-                        inst.Status = "Pendente";
-                        inst.DiasAtraso = 0;
-                        inst.Multa = 0;
-                        inst.JurosMora = 0;
-                        inst.UpdatedAt = DateTime.UtcNow;
-                        changed = true;
-
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = "Sistema",
-                            EventoExecutado = "MUDANCA_STATUS",
-                            Observacao = $"Parcela {inst.NumeroParcela} do Empréstimo {inst.LoanRequestId} retornou para Pendente.",
-                            LoanRequestId = inst.LoanRequestId
-                        });
-                    }
-                }
-            }
-
-            if (changed)
-            {
-                await _context.SaveChangesAsync();
-            }
-        }
     }
 }

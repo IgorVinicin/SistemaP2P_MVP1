@@ -30,7 +30,7 @@ export class LoanHistoryComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   public loans: LoanRequest[] = [];
-  public displayedColumns: string[] = ['valor', 'dataSolicitacao', 'parcelas', 'status', 'dataAprovacao', 'dataEncerramento'];
+  public displayedColumns: string[] = ['valor', 'tipoEmprestimo', 'periodicidade', 'parcelas', 'status', 'dataSolicitacao', 'dataAprovacao', 'dataEncerramento'];
   public isLoading = false;
 
   ngOnInit(): void {

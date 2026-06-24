@@ -1,0 +1,737 @@
+<div class="reports-container">
+  <div class="header-section">
+    <h1>Relatórios Administrativos</h1>
+    <p class="subtitle">Painel de auditoria, conferência financeira, gestão operacional e exportação de dados.</p>
+  </div>
+
+  <mat-tab-group (selectedIndexChange)="onTabChange($event)">
+    <!-- 1. ABA TOMADORES -->
+    <mat-tab label="Tomadores">
+      <div class="tab-content" *ngIf="selectedTabIndex === 0">
+        <!-- KPIs Tomadores -->
+        <div class="kpi-grid" *ngIf="borrowersSummary">
+          <mat-card class="kpi-card blue">
+            <mat-card-header>
+              <mat-card-title>{{ borrowersSummary.totalTomadores }}</mat-card-title>
+              <mat-card-subtitle>Total de Tomadores</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card green">
+            <mat-card-header>
+              <mat-card-title>{{ borrowersSummary.ativos }}</mat-card-title>
+              <mat-card-subtitle>Ativos (Aprovados)</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card red">
+            <mat-card-header>
+              <mat-card-title>{{ borrowersSummary.inativos }}</mat-card-title>
+              <mat-card-subtitle>Inativos (Reprovados)</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card orange">
+            <mat-card-header>
+              <mat-card-title>{{ borrowersSummary.emAnalise }}</mat-card-title>
+              <mat-card-subtitle>Em Análise / Pendentes</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+        </div>
+
+        <!-- Filtros Tomadores -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Nome</mat-label>
+                <input matInput [(ngModel)]="borrowersFilters.nome" placeholder="Nome do tomador">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>CPF</mat-label>
+                <input matInput [(ngModel)]="borrowersFilters.cpf" placeholder="Apenas números">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Status</mat-label>
+                <mat-select [(ngModel)]="borrowersFilters.status">
+                  <mat-option value="">Todos</mat-option>
+                  <mat-option value="Pendente">Pendente</mat-option>
+                  <mat-option value="EmAnalise">Em Análise</mat-option>
+                  <mat-option value="Aprovado">Aprovado</mat-option>
+                  <mat-option value="Reprovado">Reprovado</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="date-field-container">
+                <label>Período Cadastro De:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="borrowersFilters.periodoInicio">
+              </div>
+
+              <div class="date-field-container">
+                <label>Até:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="borrowersFilters.periodoFim">
+              </div>
+            </div>
+
+            <div class="filter-actions">
+              <button mat-flat-button color="primary" (click)="applyBorrowersFilters()">Filtrar</button>
+              <button mat-stroked-button (click)="clearBorrowersFilters()">Limpar Filtros</button>
+              <span class="spacer"></span>
+              <button mat-raised-button color="accent" class="export-btn" (click)="exportBorrowersPdf()" [disabled]="borrowersList.length === 0">
+                <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
+              </button>
+              <button mat-raised-button color="primary" class="export-btn" (click)="exportBorrowersCsv()" [disabled]="borrowersList.length === 0">
+                <mat-icon>download</mat-icon> Exportar CSV
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Tabela Tomadores -->
+        <mat-card class="table-card">
+          <div class="loading-overlay" *ngIf="isLoadingBorrowers">
+            <span>Carregando dados...</span>
+          </div>
+
+          <table mat-table [dataSource]="borrowersList" class="report-table">
+            <ng-container matColumnDef="nome">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let element">{{ element.nome }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="cpf">
+              <th mat-header-cell *matHeaderCellDef>CPF</th>
+              <td mat-cell *matCellDef="let element">{{ element.cpf }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="limiteDisponivel">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Limite Disponível</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.limiteDisponivel | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="quantidadeEmprestimos">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Quantidade Empréstimos</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">{{ element.quantidadeEmprestimos }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="valorTotalSolicitado">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Valor Total Solicitado</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.valorTotalSolicitado | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="valorTotalAprovado">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Valor Total Aprovado</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.valorTotalAprovado | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Ações</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">
+                <button mat-icon-button color="accent" title="Gerar Relatório Individual" (click)="generateIndividualReport(element.id, 'Cliente')">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="borrowerColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: borrowerColumns;"></tr>
+          </table>
+
+          <div class="no-data" *ngIf="borrowersList.length === 0 && !isLoadingBorrowers">
+            Nenhum tomador encontrado para os filtros selecionados.
+          </div>
+
+          <mat-paginator [length]="borrowersTotal"
+                         [pageSize]="borrowersPageSize"
+                         [pageSizeOptions]="[5, 10, 20]"
+                         (page)="onBorrowersPageChange($event)">
+          </mat-paginator>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- 2. ABA INVESTIDORES -->
+    <mat-tab label="Investidores">
+      <div class="tab-content" *ngIf="selectedTabIndex === 1">
+        <!-- KPIs Investidores -->
+        <div class="kpi-grid" *ngIf="investorsSummary">
+          <mat-card class="kpi-card blue">
+            <mat-card-header>
+              <mat-card-title>{{ investorsSummary.totalInvestidores }}</mat-card-title>
+              <mat-card-subtitle>Total de Investidores</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card green">
+            <mat-card-header>
+              <mat-card-title>{{ investorsSummary.ativos }}</mat-card-title>
+              <mat-card-subtitle>Ativos (Aprovados)</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card orange">
+            <mat-card-header>
+              <mat-card-title>{{ investorsSummary.emAnalise }}</mat-card-title>
+              <mat-card-subtitle>Em Análise / Pendentes</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+        </div>
+
+        <!-- Filtros Investidores -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Nome</mat-label>
+                <input matInput [(ngModel)]="investorsFilters.nome" placeholder="Nome do investidor">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>CPF</mat-label>
+                <input matInput [(ngModel)]="investorsFilters.cpf" placeholder="Apenas números">
+              </mat-form-field>
+
+              <div class="date-field-container">
+                <label>Período Cadastro De:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="investorsFilters.periodoInicio">
+              </div>
+
+              <div class="date-field-container">
+                <label>Até:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="investorsFilters.periodoFim">
+              </div>
+            </div>
+
+            <div class="filter-actions">
+              <button mat-flat-button color="primary" (click)="applyInvestorsFilters()">Filtrar</button>
+              <button mat-stroked-button (click)="clearInvestorsFilters()">Limpar Filtros</button>
+              <span class="spacer"></span>
+              <button mat-raised-button color="accent" class="export-btn" (click)="exportInvestorsPdf()" [disabled]="investorsList.length === 0">
+                <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
+              </button>
+              <button mat-raised-button color="primary" class="export-btn" (click)="exportInvestorsCsv()" [disabled]="investorsList.length === 0">
+                <mat-icon>download</mat-icon> Exportar CSV
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Tabela Investidores -->
+        <mat-card class="table-card">
+          <div class="loading-overlay" *ngIf="isLoadingInvestors">
+            <span>Carregando dados...</span>
+          </div>
+
+          <table mat-table [dataSource]="investorsList" class="report-table">
+            <ng-container matColumnDef="nome">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let element">{{ element.nome }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="cpf">
+              <th mat-header-cell *matHeaderCellDef>CPF</th>
+              <td mat-cell *matCellDef="let element">{{ element.cpf }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="valorInvestido">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Valor Investido</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.valorInvestido | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="rentabilidade">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Rentabilidade Acordada</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">{{ element.rentabilidade | number:'1.2-2' }}%</td>
+            </ng-container>
+
+            <ng-container matColumnDef="saldoAtual">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Saldo Atual Conta</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.saldoAtual | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Ações</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">
+                <button mat-icon-button color="accent" title="Gerar Relatório Individual" (click)="generateIndividualReport(element.id, 'Investidor')">
+                  <mat-icon>picture_as_pdf</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="investorColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: investorColumns;"></tr>
+          </table>
+
+          <div class="no-data" *ngIf="investorsList.length === 0 && !isLoadingInvestors">
+            Nenhum investidor encontrado para os filtros selecionados.
+          </div>
+
+          <mat-paginator [length]="investorsTotal"
+                         [pageSize]="investorsPageSize"
+                         [pageSizeOptions]="[5, 10, 20]"
+                         (page)="onInvestorsPageChange($event)">
+          </mat-paginator>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- 3. ABA EMPRÉSTIMOS -->
+    <mat-tab label="Empréstimos">
+      <div class="tab-content" *ngIf="selectedTabIndex === 2">
+        <!-- KPIs Empréstimos -->
+        <div class="kpi-grid" *ngIf="loansSummary">
+          <mat-card class="kpi-card blue">
+            <mat-card-header>
+              <mat-card-title>{{ loansSummary.solicitados }}</mat-card-title>
+              <mat-card-subtitle>Solicitados</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card green">
+            <mat-card-header>
+              <mat-card-title>{{ loansSummary.aprovados }}</mat-card-title>
+              <mat-card-subtitle>Aprovados / Ativos</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card red">
+            <mat-card-header>
+              <mat-card-title>{{ loansSummary.reprovados }}</mat-card-title>
+              <mat-card-subtitle>Reprovados</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+
+          <mat-card class="kpi-card orange">
+            <mat-card-header>
+              <mat-card-title>{{ loansSummary.emAnalise }}</mat-card-title>
+              <mat-card-subtitle>Em Análise</mat-card-subtitle>
+            </mat-card-header>
+          </mat-card>
+        </div>
+
+        <!-- Filtros Empréstimos -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Modalidade</mat-label>
+                <mat-select [(ngModel)]="loansFilters.tipo">
+                  <mat-option value="">Todas</mat-option>
+                  <mat-option value="Master">Master (Diário)</mat-option>
+                  <mat-option value="Plus">Plus (Diário Útil)</mat-option>
+                  <mat-option value="Gold">Gold (Personalizado)</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Status</mat-label>
+                <mat-select [(ngModel)]="loansFilters.status">
+                  <mat-option value="">Todos</mat-option>
+                  <mat-option value="Pendente">Pendente</mat-option>
+                  <mat-option value="Aprovado">Aprovado</mat-option>
+                  <mat-option value="Reprovado">Reprovado</mat-option>
+                  <mat-option value="Ativo">Ativo</mat-option>
+                  <mat-option value="EmPagamento">Em Pagamento</mat-option>
+                  <mat-option value="Inadimplente">Inadimplente</mat-option>
+                  <mat-option value="Quitado">Quitado</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <div class="date-field-container">
+                <label>Data Solicitação De:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="loansFilters.periodoInicio">
+              </div>
+
+              <div class="date-field-container">
+                <label>Até:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="loansFilters.periodoFim">
+              </div>
+            </div>
+
+            <div class="filter-actions">
+              <button mat-flat-button color="primary" (click)="applyLoansFilters()">Filtrar</button>
+              <button mat-stroked-button (click)="clearLoansFilters()">Limpar Filtros</button>
+              <span class="spacer"></span>
+              <button mat-raised-button color="accent" class="export-btn" (click)="exportLoansPdf()" [disabled]="loansList.length === 0">
+                <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
+              </button>
+              <button mat-raised-button color="primary" class="export-btn" (click)="exportLoansCsv()" [disabled]="loansList.length === 0">
+                <mat-icon>download</mat-icon> Exportar CSV
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Tabela Empréstimos -->
+        <mat-card class="table-card">
+          <div class="loading-overlay" *ngIf="isLoadingLoans">
+            <span>Carregando dados...</span>
+          </div>
+
+          <table mat-table [dataSource]="loansList" class="report-table">
+            <ng-container matColumnDef="tomador">
+              <th mat-header-cell *matHeaderCellDef>Tomador</th>
+              <td mat-cell *matCellDef="let element">{{ element.tomador }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="tipoEmprestimo">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Tipo</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">
+                <span class="badge" [ngClass]="element.tipoEmprestimo?.toLowerCase()">{{ element.tipoEmprestimo }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="valor">
+              <th mat-header-cell *matHeaderCellDef class="number-cell">Valor Principal</th>
+              <td mat-cell *matCellDef="let element" class="number-cell">{{ element.valor | currency:'BRL' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="juros">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Taxa Juros</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">{{ element.juros | number:'1.2-2' }}%</td>
+            </ng-container>
+
+            <ng-container matColumnDef="parcelas">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Parcelas</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">{{ element.parcelas }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="status">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Status</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">
+                <span class="status-badge" [ngClass]="element.status?.toLowerCase()">{{ element.status }}</span>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="dataCriacao">
+              <th mat-header-cell *matHeaderCellDef class="center-cell">Data Solicitação</th>
+              <td mat-cell *matCellDef="let element" class="center-cell">{{ element.dataCriacao | date:'dd/MM/yyyy' }}</td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="loanColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: loanColumns;"></tr>
+          </table>
+
+          <div class="no-data" *ngIf="loansList.length === 0 && !isLoadingLoans">
+            Nenhum empréstimo encontrado para os filtros selecionados.
+          </div>
+
+          <mat-paginator [length]="loansTotal"
+                         [pageSize]="loansPageSize"
+                         [pageSizeOptions]="[5, 10, 20]"
+                         (page)="onLoansPageChange($event)">
+          </mat-paginator>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- 4. ABA FINANCEIRO -->
+    <mat-tab label="Financeiro">
+      <div class="tab-content" *ngIf="selectedTabIndex === 3">
+        <!-- Filtros Financeiro -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <div class="date-field-container">
+                <label>Período Financeiro De:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="financialFilters.periodoInicio">
+              </div>
+
+              <div class="date-field-container">
+                <label>Até:</label>
+                <input type="date" class="native-date-input" [(ngModel)]="financialFilters.periodoFim">
+              </div>
+            </div>
+
+            <div class="filter-actions">
+              <button mat-flat-button color="primary" (click)="applyFinancialFilters()">Gerar Relatório</button>
+              <button mat-stroked-button (click)="clearFinancialFilters()">Limpar Datas</button>
+              <span class="spacer"></span>
+              <button mat-raised-button color="accent" class="export-btn" (click)="exportFinancialPdf()" [disabled]="!financialReport">
+                <mat-icon>picture_as_pdf</mat-icon> Exportar PDF
+              </button>
+              <button mat-raised-button color="primary" class="export-btn" (click)="exportFinancialCsv()" [disabled]="!financialReport">
+                <mat-icon>download</mat-icon> Exportar CSV
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <div class="loading-overlay" *ngIf="isLoadingFinancial">
+          <span>Processando movimentações financeiras...</span>
+        </div>
+
+        <!-- Resultados Financeiros Consolidados -->
+        <div class="financial-grid" *ngIf="financialReport && !isLoadingFinancial">
+          <!-- Entradas -->
+          <mat-card class="financial-section-card entries">
+            <mat-card-header>
+              <mat-card-title>ENTRADAS (Recebimentos)</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <ul class="financial-list">
+                <li>
+                  <span class="label">Parcelas Recebidas (Principal)</span>
+                  <span class="value green">{{ financialReport.entradas.parcelasRecebidas | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Juros e Multas Recebidos</span>
+                  <span class="value green">{{ financialReport.entradas.jurosRecebidos | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Taxas Administrativas</span>
+                  <span class="value green">{{ financialReport.entradas.taxasAdministrativas | currency:'BRL' }}</span>
+                </li>
+                <li class="total-row">
+                  <span class="label">TOTAL RECEBIDO</span>
+                  <span class="value bold green">{{ financialReport.entradas.totalEntradas | currency:'BRL' }}</span>
+                </li>
+              </ul>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Saídas -->
+          <mat-card class="financial-section-card exits">
+            <mat-card-header>
+              <mat-card-title>SAÍDAS (Desembolsos)</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <ul class="financial-list">
+                <li>
+                  <span class="label">Empréstimos Liberados</span>
+                  <span class="value red">{{ financialReport.saidas.emprestimosLiberados | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Rendimentos Pagos</span>
+                  <span class="value red">{{ financialReport.saidas.rendimentosPagos | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Coberturas Administrativas</span>
+                  <span class="value red">{{ financialReport.saidas.coberturasAdministrativas | currency:'BRL' }}</span>
+                </li>
+                <li class="total-row">
+                  <span class="label">TOTAL DESEMBOLSADO</span>
+                  <span class="value bold red">{{ financialReport.saidas.totalSaidas | currency:'BRL' }}</span>
+                </li>
+              </ul>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Resumo e Resultado -->
+          <mat-card class="financial-section-card summary">
+            <mat-card-header>
+              <mat-card-title>RESUMO E RESULTADO OPERACIONAL</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <ul class="financial-list">
+                <li>
+                  <span class="label">Total Entradas</span>
+                  <span class="value">{{ financialReport.resumo.totalRecebido | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Total Emprestado</span>
+                  <span class="value">{{ financialReport.resumo.totalEmprestado | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Total em Atraso (Atual)</span>
+                  <span class="value orange">{{ financialReport.resumo.totalEmAtraso | currency:'BRL' }}</span>
+                </li>
+                <li>
+                  <span class="label">Total Inadimplente (Atual)</span>
+                  <span class="value bold red">{{ financialReport.resumo.totalInadimplente | currency:'BRL' }}</span>
+                </li>
+                <li class="total-row result" [ngClass]="{positive: financialReport.resumo.resultadoOperacional >= 0, negative: financialReport.resumo.resultadoOperacional < 0}">
+                  <span class="label">RESULTADO OPERACIONAL</span>
+                  <span class="value bold">{{ financialReport.resumo.resultadoOperacional | currency:'BRL' }}</span>
+                </li>
+              </ul>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </div>
+    </mat-tab>
+
+    <!-- 5. ABA RELATÓRIOS INDIVIDUAIS -->
+    <mat-tab label="Relatórios Individuais">
+      <div class="tab-content" *ngIf="selectedTabIndex === 4">
+        <!-- Campo de Pesquisa -->
+        <mat-card class="search-user-card" *ngIf="!selectedUser">
+          <mat-card-header>
+            <mat-card-title>Pesquisar Usuário</mat-card-title>
+            <mat-card-subtitle>Digite o Nome ou CPF do Tomador ou Investidor para emitir seu relatório individual.</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="search-form-row">
+              <mat-form-field appearance="outline" class="search-input">
+                <mat-label>Pesquisar por Nome, CPF ou Email</mat-label>
+                <input matInput [(ngModel)]="searchUserQuery" placeholder="Ex: João da Silva" (keyup.enter)="searchUsers()">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+              <button mat-flat-button color="primary" class="search-btn" (click)="searchUsers()">Pesquisar</button>
+            </div>
+
+            <!-- Tabela Resultados de Pesquisa -->
+            <div class="results-table-container" *ngIf="searchUserResults.length > 0">
+              <h3>Resultados da Pesquisa:</h3>
+              <table mat-table [dataSource]="searchUserResults" class="search-table">
+                <ng-container matColumnDef="nome">
+                  <th mat-header-cell *matHeaderCellDef>Nome</th>
+                  <td mat-cell *matCellDef="let element">{{ element.nome }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="email">
+                  <th mat-header-cell *matHeaderCellDef>Email</th>
+                  <td mat-cell *matCellDef="let element">{{ element.email }}</td>
+                </ng-container>
+
+                <ng-container matColumnDef="role">
+                  <th mat-header-cell *matHeaderCellDef class="center-cell">Perfil</th>
+                  <td mat-cell *matCellDef="let element" class="center-cell">
+                    <span class="badge" [ngClass]="element.role?.toLowerCase()">{{ element.role === 'Cliente' ? 'Tomador' : element.role }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef class="center-cell">Status</th>
+                  <td mat-cell *matCellDef="let element" class="center-cell">
+                    <span class="status-badge" [ngClass]="element.status?.toLowerCase()">{{ element.status }}</span>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="acoes">
+                  <th mat-header-cell *matHeaderCellDef class="center-cell">Ações</th>
+                  <td mat-cell *matCellDef="let element" class="center-cell">
+                    <button mat-stroked-button color="primary" (click)="selectUserForReport(element)">Selecionar</button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="searchColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: searchColumns;"></tr>
+              </table>
+            </div>
+
+            <div class="no-data" *ngIf="searchUserQuery && searchUserResults.length === 0 && !isLoadingIndividual">
+              Nenhum usuário correspondente encontrado.
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Detalhes do Usuário Selecionado -->
+        <mat-card class="user-selected-card" *ngIf="selectedUser">
+          <mat-card-header>
+            <mat-icon mat-card-avatar color="primary">person</mat-icon>
+            <mat-card-title>{{ selectedUser.nome || 'Sem Nome' }}</mat-card-title>
+            <mat-card-subtitle>{{ selectedUser.email }} | Perfil: {{ selectedUser.role === 'Cliente' ? 'Tomador' : selectedUser.role }}</mat-card-subtitle>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="user-detail-info">
+              <p><strong>CPF:</strong> {{ selectedUser.cpf || '-' }}</p>
+              <p><strong>Status Cadastral:</strong> <span class="status-badge" [ngClass]="selectedUser.status.toLowerCase()">{{ selectedUser.status }}</span></p>
+              <p><strong>Score Cadastral:</strong> {{ selectedUser.scoreAtual || '0' }} pts</p>
+            </div>
+
+            <div class="action-buttons-row">
+              <button mat-flat-button color="accent" class="action-btn" (click)="generateIndividualReport(selectedUser.id, selectedUser.role)">
+                <mat-icon>picture_as_pdf</mat-icon> Gerar Relatório Individual (PDF)
+              </button>
+              <button mat-stroked-button (click)="clearSelectedUser()">Alterar Usuário</button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- 6. ABA AUDITORIA DE ALOCAÇÃO -->
+    <mat-tab label="Auditoria de Alocação">
+      <div class="tab-content" *ngIf="selectedTabIndex === 5">
+        <!-- Filtros Auditoria de Alocação -->
+        <mat-card class="filters-card">
+          <mat-card-content>
+            <div class="filters-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Nome do Investidor</mat-label>
+                <input matInput [(ngModel)]="allocationsFilters.investorName" placeholder="Ex: João Silva">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Status do Investimento</mat-label>
+                <mat-select [(ngModel)]="allocationsFilters.status">
+                  <mat-option value="">Todos</mat-option>
+                  <mat-option value="Comprometido">Comprometido</mat-option>
+                  <mat-option value="Ativo">Ativo</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+
+            <div class="filter-actions">
+              <button mat-flat-button color="primary" (click)="applyAllocationsFilters()">Filtrar</button>
+              <button mat-stroked-button (click)="clearAllocationsFilters()">Limpar Filtros</button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <!-- Tabela Auditoria de Alocação -->
+        <mat-card class="table-card">
+          <div class="loading-overlay" *ngIf="isLoadingAllocations">
+            <span>Carregando dados...</span>
+          </div>
+
+          <div class="table-container" *ngIf="allocationsList.length > 0">
+            <table mat-table [dataSource]="allocationsList" class="report-table">
+              <!-- Nome do Investidor -->
+              <ng-container matColumnDef="investorName">
+                <th mat-header-cell *matHeaderCellDef>Investidor</th>
+                <td mat-cell *matCellDef="let element">{{ element.investorName }}</td>
+              </ng-container>
+
+              <!-- ID da Proposta (sem detalhes do tomador) -->
+              <ng-container matColumnDef="loanId">
+                <th mat-header-cell *matHeaderCellDef>ID do Empréstimo</th>
+                <td mat-cell *matCellDef="let element" style="font-family: monospace; font-size: 0.85rem;">{{ element.loanId }}</td>
+              </ng-container>
+
+              <!-- Valor Comprometido/Investido -->
+              <ng-container matColumnDef="valorInvestido">
+                <th mat-header-cell *matHeaderCellDef class="right-cell">Valor Alocado</th>
+                <td mat-cell *matCellDef="let element" class="right-cell" style="font-weight: 600; color: #1e293b;">
+                  {{ element.valorInvestido | currency:'BRL' }}
+                </td>
+              </ng-container>
+
+              <!-- Data da Alocação -->
+              <ng-container matColumnDef="createdAt">
+                <th mat-header-cell *matHeaderCellDef class="center-cell">Data da Alocação</th>
+                <td mat-cell *matCellDef="let element" class="center-cell">
+                  {{ element.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                </td>
+              </ng-container>
+
+              <!-- Status do Investimento -->
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef class="center-cell">Status</th>
+                <td mat-cell *matCellDef="let element" class="center-cell">
+                  <span class="status-badge" [ngClass]="element.status.toLowerCase()">{{ element.status }}</span>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="allocationColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: allocationColumns;"></tr>
+            </table>
+
+            <mat-paginator [length]="allocationsTotal"
+                           [pageSize]="allocationsPageSize"
+                           [pageSizeOptions]="[5, 10, 20]"
+                           (page)="onAllocationsPageChange($event)"
+                           aria-label="Selecionar página de alocações">
+            </mat-paginator>
+          </div>
+
+          <div class="no-data" *ngIf="allocationsList.length === 0 && !isLoadingAllocations">
+            Nenhuma alocação automática registrada até o momento.
+          </div>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

@@ -8,6 +8,8 @@ import { DocumentUploadCardComponent } from '../../components/document-upload-ca
 import { AuthService } from '../../../../core/services/auth.service';
 import { DocumentService } from '../../../../core/services/document.service';
 import { DocumentStatusDto } from '../../../../core/models/document.models';
+import { LoanService } from '../../../../core/services/loan.service';
+import { LoanEligibility } from '../../../../core/models/loan.models';
 
 @Component({
   selector: 'app-dashboard-home',
@@ -26,12 +28,17 @@ import { DocumentStatusDto } from '../../../../core/models/document.models';
 export class DashboardHomeComponent implements OnInit {
   public authService = inject(AuthService);
   private documentService = inject(DocumentService);
+  private loanService = inject(LoanService);
 
   public documents: DocumentStatusDto[] = [];
   public isLoading = false;
+  public eligibility: LoanEligibility | null = null;
 
   public ngOnInit(): void {
     this.loadDocumentsStatus();
+    if (this.authService.userStatus() === 'Aprovado' && this.authService.userRole() === 'Cliente') {
+      this.loadEligibility();
+    }
   }
 
   public loadDocumentsStatus(): void {
@@ -63,5 +70,14 @@ export class DashboardHomeComponent implements OnInit {
     this.authService.updateStatus(newStatus);
     // Recarrega lista de documentos
     this.loadDocumentsStatus();
+  }
+
+  public loadEligibility(): void {
+    this.loanService.getEligibility().subscribe({
+      next: (data) => {
+        this.eligibility = data;
+      },
+      error: () => {}
+    });
   }
 }

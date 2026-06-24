@@ -1,5 +1,6 @@
 export interface InvestorWalletDto {
   saldoDisponivel: number;
+  saldoComprometido: number;
   saldoInvestido: number;
   rendimentos: number;
   totalAportado: number;
@@ -11,6 +12,8 @@ export interface InvestorWalletDto {
   coberturasRecebidas: number;
   perdasDefinitivas: number;
   coberturasFundo: number;
+  rentabilidade: number;
+  observacaoAdministrativa: string;
 }
 
 export interface InvestorTransactionDto {

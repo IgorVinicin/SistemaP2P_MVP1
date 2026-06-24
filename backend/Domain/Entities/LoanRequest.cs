@@ -26,6 +26,8 @@ namespace backend.Domain.Entities
         public DateTime? DataAprovacao { get; set; }
         public DateTime? DataEncerramento { get; set; }
         public string ObservacaoAdmin { get; set; } = string.Empty;
+        public string? TipoEmprestimo { get; set; }
+        public string? Periodicidade { get; set; }
 
         public User? User { get; set; }
         public ICollection<Investment> Investments { get; set; } = new List<Investment>();

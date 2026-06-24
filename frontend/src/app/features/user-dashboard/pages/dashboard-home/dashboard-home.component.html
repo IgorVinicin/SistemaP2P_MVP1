@@ -17,6 +17,30 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Progresso de Elegibilidade / Renovação se possuir empréstimo ativo -->
+    <mat-card *ngIf="eligibility && eligibility.temEmprestimoAtivo" style="margin-top: 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1.25rem; border-radius: 12px; box-shadow: none;">
+      <mat-card-content style="padding: 0;">
+        <h4 style="margin: 0 0 0.75rem 0; color: #1e293b; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+          <mat-icon style="color: #4f46e5; font-size: 20px; width: 20px; height: 20px;">autorenew</mat-icon> Elegibilidade para Renovação de Crédito
+        </h4>
+        <div style="display: flex; flex-wrap: wrap; gap: 2rem; font-size: 0.9rem; color: #475569;">
+          <div>
+            <strong>Parcelas pagas no contrato ativo:</strong> 
+            <span style="font-weight: 600; color: #1e293b; margin-left: 0.25rem;">{{ eligibility.parcelasPagas }}</span>
+          </div>
+          <div>
+            <strong>Mínimo necessário:</strong> 
+            <span style="font-weight: 500; color: #1e293b; margin-left: 0.25rem;">{{ eligibility.minimoExigido }}</span>
+          </div>
+          <div>
+            <strong>Status de Renovação:</strong>
+            <span *ngIf="eligibility.podeSolicitar" style="color: #10b981; font-weight: 600; margin-left: 0.25rem;">Elegível para nova solicitação</span>
+            <span *ngIf="!eligibility.podeSolicitar" style="color: #ef4444; font-weight: 600; margin-left: 0.25rem;">Bloqueado (parcelas insuficientes)</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </div>
 
   <!-- Ações do Investidor Aprovado -->

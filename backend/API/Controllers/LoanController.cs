@@ -53,7 +53,9 @@ namespace backend.API.Controllers
                     l.DataCriacao,
                     l.DataSolicitacao,
                     l.DataAprovacao,
-                    l.ObservacaoAdmin
+                    l.ObservacaoAdmin,
+                    l.TipoEmprestimo,
+                    l.Periodicidade
                 })
                 .ToListAsync();
 
@@ -88,7 +90,9 @@ namespace backend.API.Controllers
                     l.DataSolicitacao,
                     l.DataAprovacao,
                     l.DataEncerramento,
-                    l.ObservacaoAdmin
+                    l.ObservacaoAdmin,
+                    l.TipoEmprestimo,
+                    l.Periodicidade
                 })
                 .ToListAsync();
 
@@ -119,7 +123,6 @@ namespace backend.API.Controllers
             {
                 return Ok(new LoanEligibilityDto
                 {
-                    ScoreAtual = user.Profile.ScoreAtual,
                     PodeSolicitar = false,
                     MensagemBlock = "Seu cadastro ainda não está aprovado para solicitar empréstimos."
                 });
@@ -132,20 +135,26 @@ namespace backend.API.Controllers
             {
                 return Ok(new LoanEligibilityDto
                 {
-                    ScoreAtual = user.Profile.ScoreAtual,
                     PodeSolicitar = false,
                     MensagemBlock = "Você possui pendências financeiras e precisa regularizar sua situação para utilizar novamente a plataforma."
                 });
             }
 
-            // Regra: Impedir se possuir empréstimo ativo
-            if (await _creditService.PossuiEmprestimoAtivo(userId))
+            var renovacaoVal = await _creditService.VerificarElegibilidadeRenovacao(userId);
+            
+            var statusAtivos = new[] { "pendente", "emanalise", "aprovado", "ativo", "empagamento", "inadimplente" };
+            var temEmprestimoAtivo = await _context.LoanRequests
+                .AnyAsync(l => l.UserId == userId && statusAtivos.Contains(l.Status.ToLower()));
+
+            if (!renovacaoVal.PodeSolicitar)
             {
                 return Ok(new LoanEligibilityDto
                 {
-                    ScoreAtual = user.Profile.ScoreAtual,
                     PodeSolicitar = false,
-                    MensagemBlock = "Você possui um empréstimo em andamento."
+                    MensagemBlock = renovacaoVal.MensagemBlock,
+                    ParcelasPagas = renovacaoVal.ParcelasPagas,
+                    MinimoExigido = renovacaoVal.MinimoExigido,
+                    TemEmprestimoAtivo = temEmprestimoAtivo
                 });
             }
 
@@ -162,19 +171,23 @@ namespace backend.API.Controllers
 
                 return Ok(new LoanEligibilityDto
                 {
-                    ScoreAtual = user.Profile.ScoreAtual,
                     PodeSolicitar = false,
-                    MensagemBlock = msg
+                    MensagemBlock = msg,
+                    ParcelasPagas = renovacaoVal.ParcelasPagas,
+                    MinimoExigido = renovacaoVal.MinimoExigido,
+                    TemEmprestimoAtivo = temEmprestimoAtivo
                 });
             }
 
             return Ok(new LoanEligibilityDto
             {
-                ScoreAtual = user.Profile.ScoreAtual,
                 Risco = validation.NivelRisco,
                 TaxaJuros = validation.TaxaJuros,
                 LimiteDisponivel = validation.LimiteMaximo,
-                PodeSolicitar = true
+                PodeSolicitar = true,
+                ParcelasPagas = renovacaoVal.ParcelasPagas,
+                MinimoExigido = renovacaoVal.MinimoExigido,
+                TemEmprestimoAtivo = temEmprestimoAtivo
             });
         }
 
@@ -214,9 +227,10 @@ namespace backend.API.Controllers
                 }
 
                 // Regra: Impedir múltiplos empréstimos ativos concorrentes
-                if (await _creditService.PossuiEmprestimoAtivo(userId))
+                var renovacaoVal = await _creditService.VerificarElegibilidadeRenovacao(userId);
+                if (!renovacaoVal.PodeSolicitar)
                 {
-                    return BadRequest(new { message = "Você já possui um empréstimo em andamento." });
+                    return BadRequest(new { message = renovacaoVal.MensagemBlock });
                 }
 
                 // Regra 2: Validação de Score

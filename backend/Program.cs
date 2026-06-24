@@ -15,6 +15,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CreditValidationService>();
+builder.Services.AddScoped<DelinquencyService>();
+builder.Services.AddScoped<AllocationEngineService>();
 
 // Configuração JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
@@ -135,7 +137,9 @@ using (var scope = app.Services.CreateScope())
             context.CreditConfigs.Add(new CreditConfig
             {
                 Id = Guid.NewGuid(),
-                ScoreMinimoParaSolicitacao = 150
+                ScoreMinimoParaSolicitacao = 150,
+                ValorMinimoInvestimento = 5000.00m,
+                MinimoParcelasPagasNovaSolicitacao = 4
             });
         }
 
@@ -247,6 +251,126 @@ using (var scope = app.Services.CreateScope())
                 SaldoAtual = 10000.00m,
                 UltimaAtualizacao = DateTime.UtcNow
             });
+        }
+
+        // 4. Seed Test Investors
+        var testInvestors = new[]
+        {
+            new { Email = "investidor1@p2p.com", Nome = "Investidor Alpha", CPF = "11111111111", Saldo = 10000.00m, Rentabilidade = 5.00m },
+            new { Email = "investidor2@p2p.com", Nome = "Investidor Beta", CPF = "22222222222", Saldo = 15000.00m, Rentabilidade = 6.00m },
+            new { Email = "investidor3@p2p.com", Nome = "Investidor Gamma", CPF = "33333333333", Saldo = 12000.00m, Rentabilidade = 4.00m },
+            new { Email = "investidor4@p2p.com", Nome = "Investidor LowBalance", CPF = "44444444444", Saldo = 1000.00m, Rentabilidade = 5.00m }
+        };
+
+        var testPasswordHasher = new PasswordHasher<User>();
+
+        foreach (var invData in testInvestors)
+        {
+            if (!context.Users.Any(u => u.Email == invData.Email))
+            {
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = invData.Email,
+                    Role = "Investidor",
+                    Status = "Aprovado"
+                };
+                user.PasswordHash = testPasswordHasher.HashPassword(user, "Senha123!");
+
+                var profile = new UserProfile
+                {
+                    Id = user.Id,
+                    Nome = invData.Nome,
+                    CPF = invData.CPF,
+                    Telefone = "11999999999",
+                    DataNascimento = DateTime.UtcNow.AddYears(-35),
+                    ScoreAtual = 800,
+                    QuestionnaireCompleted = true
+                };
+
+                var wallet = new InvestorWallet
+                {
+                    Id = user.Id,
+                    SaldoDisponivel = invData.Saldo,
+                    SaldoComprometido = 0,
+                    SaldoInvestido = 0,
+                    Rendimentos = 0,
+                    TotalAportado = invData.Saldo,
+                    TotalSacado = 0,
+                    PerfilInvestimento = "Moderado",
+                    Rentabilidade = invData.Rentabilidade,
+                    DataCriacao = DateTime.UtcNow,
+                    DataAtualizacao = DateTime.UtcNow
+                };
+
+                user.Profile = profile;
+                user.Wallet = wallet;
+
+                context.Users.Add(user);
+            }
+        }
+
+        // 5. Seed Test Borrowers
+        var testBorrowers = new[]
+        {
+            new { Email = "tomador1@p2p.com", Nome = "Tomador Um", CPF = "55555555555", Score = 800 },
+            new { Email = "tomador2@p2p.com", Nome = "Tomador Dois", CPF = "66666666666", Score = 250 }
+        };
+
+        foreach (var bData in testBorrowers)
+        {
+            if (!context.Users.Any(u => u.Email == bData.Email))
+            {
+                var user = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = bData.Email,
+                    Role = "Cliente",
+                    Status = "Aprovado"
+                };
+                user.PasswordHash = testPasswordHasher.HashPassword(user, "Senha123!");
+
+                var profile = new UserProfile
+                {
+                    Id = user.Id,
+                    Nome = bData.Nome,
+                    CPF = bData.CPF,
+                    Telefone = "11988888888",
+                    DataNascimento = DateTime.UtcNow.AddYears(-28),
+                    ScoreAtual = bData.Score,
+                    QuestionnaireCompleted = true
+                };
+
+                user.Profile = profile;
+                context.Users.Add(user);
+            }
+        }
+
+        // 6. Seed Test Loan Request for Tomador 1
+        var tomadorUser = context.Users.Include(u => u.LoanRequests).FirstOrDefault(u => u.Email == "tomador1@p2p.com");
+        if (tomadorUser != null && !tomadorUser.LoanRequests.Any())
+        {
+            var loan = new LoanRequest
+            {
+                Id = Guid.NewGuid(),
+                UserId = tomadorUser.Id,
+                ValorSolicitado = 6000.00m,
+                Parcelas = 12,
+                QuantidadeParcelas = 12,
+                Status = "Pendente",
+                ScoreNaSolicitacao = 800,
+                ScoreNoMomento = 800,
+                Finalidade = "Simulação e Teste de Alocação P2P",
+                Observacoes = "Criado automaticamente pelo seed de teste.",
+                TaxaJurosAplicada = 2.00m,
+                TaxaJuros = 2.00m,
+                ValorTotal = 7440.00m,
+                NivelRisco = "Baixo",
+                CreatedAt = DateTime.UtcNow,
+                DataCriacao = DateTime.UtcNow,
+                DataSolicitacao = DateTime.UtcNow
+            };
+            context.LoanRequests.Add(loan);
         }
 
         context.SaveChanges();

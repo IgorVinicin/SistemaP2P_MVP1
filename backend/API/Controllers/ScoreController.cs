@@ -35,6 +35,7 @@ namespace backend.API.Controllers
             {
                 // Verifica se existem respostas salvas para este usuário no banco
                 var answers = await _context.UserAnswers
+                    .AsNoTracking()
                     .Where(ua => ua.UserId == userId)
                     .ToListAsync();
 
@@ -50,6 +51,7 @@ namespace backend.API.Controllers
             }
 
             var questions = await _context.Questions
+                .AsNoTracking()
                 .Where(q => q.Ativa)
                 .Select(q => new
                 {

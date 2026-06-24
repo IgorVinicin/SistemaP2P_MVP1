@@ -10,16 +10,26 @@ namespace backend.Application.DTOs
 
     public class LoanEligibilityDto
     {
-        public int ScoreAtual { get; set; }
         public string Risco { get; set; } = string.Empty;
         public decimal TaxaJuros { get; set; }
         public decimal LimiteDisponivel { get; set; }
         public bool PodeSolicitar { get; set; }
         public string MensagemBlock { get; set; } = string.Empty;
+        public int ParcelasPagas { get; set; }
+        public int MinimoExigido { get; set; }
+        public bool TemEmprestimoAtivo { get; set; }
     }
 
     public class AdminReproveLoanDto
     {
         public string Observacao { get; set; } = string.Empty;
+    }
+
+    public class ApproveLoanRequestDto
+    {
+        public string TipoEmprestimo { get; set; } = string.Empty; // Master, Plus, Gold
+        public int QuantidadeParcelas { get; set; }
+        public decimal TaxaJuros { get; set; }
+        public string? PeriodicidadeGold { get; set; } // Semanal, Quinzenal, Mensal
     }
 }

@@ -51,6 +51,11 @@ export class InvestorDashboardComponent implements OnInit {
     return Math.max(0, this.wallet.rendimentos - this.wallet.coberturasFundo);
   }
 
+  public get saldoTotal(): number {
+    if (!this.wallet) return 0;
+    return (this.wallet.saldoDisponivel ?? 0) + (this.wallet.saldoComprometido ?? 0) + (this.wallet.saldoInvestido ?? 0);
+  }
+
   ngOnInit(): void {
     this.loadWallet();
     this.loadHistory();

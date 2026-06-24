@@ -143,7 +143,9 @@ namespace backend.API.Controllers
                 config = new CreditConfig
                 {
                     Id = Guid.NewGuid(),
-                    ScoreMinimoParaSolicitacao = 150
+                    ScoreMinimoParaSolicitacao = 150,
+                    ValorMinimoInvestimento = 5000.00m,
+                    MinimoParcelasPagasNovaSolicitacao = 4
                 };
                 _context.CreditConfigs.Add(config);
                 await _context.SaveChangesAsync();
@@ -179,6 +181,8 @@ namespace backend.API.Controllers
                 config.DiasParaCobranca = dto.DiasParaCobranca;
                 config.DiasParaCobrancaIntensiva = dto.DiasParaCobrancaIntensiva;
                 config.DiasParaInadimplencia = dto.DiasParaInadimplencia;
+                config.ValorMinimoInvestimento = dto.ValorMinimoInvestimento;
+                config.MinimoParcelasPagasNovaSolicitacao = dto.MinimoParcelasPagasNovaSolicitacao;
 
                 await _context.SaveChangesAsync();
 

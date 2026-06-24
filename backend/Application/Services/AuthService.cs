@@ -30,13 +30,13 @@ namespace backend.Application.Services
             // Validar email único
             if (await _context.Users.AnyAsync(u => u.Email.ToLower() == dto.Email.ToLower()))
             {
-                throw new Exception("Email já está cadastrado.");
+                throw new Exception("E-mail já cadastrado.");
             }
 
             // Validar CPF único
             if (await _context.UserProfiles.AnyAsync(up => up.CPF == dto.CPF))
             {
-                throw new Exception("CPF já está cadastrado.");
+                throw new Exception("CPF já cadastrado.");
             }
 
             // Criar Usuário

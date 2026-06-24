@@ -13,8 +13,31 @@
     </div>
   </div>
 
+  <!-- Informações de Rentabilidade e Observação (Etapa 10) -->
+  <div *ngIf="wallet && (wallet.rentabilidade > 0 || wallet.observacaoAdministrativa)" class="admin-notice-card" style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 1rem; border-radius: 8px; margin-top: 1rem; margin-bottom: 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #166534;">
+      <mat-icon style="color: #16a34a;">percent</mat-icon>
+      <span>Rentabilidade Definida pela Administração: {{ wallet.rentabilidade }}%</span>
+    </div>
+    <p *ngIf="wallet.observacaoAdministrativa" style="margin: 0; font-size: 0.9rem; color: #1e293b;">
+      <strong>Observação administrativa:</strong> {{ wallet.observacaoAdministrativa }}
+    </p>
+  </div>
+
   <!-- Cards de Resumo de Saldos -->
   <div class="summary-cards" *ngIf="wallet">
+    <!-- 1. Saldo Total -->
+    <mat-card class="summary-card total-card" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+      <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+        <mat-icon style="color: white;">account_balance</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Saldo Total</span>
+        <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ saldoTotal | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <!-- 2. Saldo Disponível -->
     <mat-card class="summary-card balance-card">
       <div class="card-icon">
         <mat-icon>account_balance_wallet</mat-icon>
@@ -25,6 +48,18 @@
       </div>
     </mat-card>
 
+    <!-- 3. Saldo Comprometido -->
+    <mat-card class="summary-card status-card" style="background: linear-gradient(135deg, #64748b 0%, #475569 100%);">
+      <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+        <mat-icon style="color: white;">lock</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Saldo Comprometido</span>
+        <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ wallet.saldoComprometido | currency:'BRL' }}</h2>
+      </div>
+    </mat-card>
+
+    <!-- 4. Saldo Investido -->
     <mat-card class="summary-card invested-card">
       <div class="card-icon">
         <mat-icon>trending_up</mat-icon>
@@ -35,33 +70,25 @@
       </div>
     </mat-card>
 
+    <!-- 5. Rentabilidade Individual -->
+    <mat-card class="summary-card earnings-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+      <div class="card-icon" style="background: rgba(255,255,255,0.2); width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
+        <mat-icon style="color: white;">percent</mat-icon>
+      </div>
+      <div class="card-details">
+        <span class="card-label" style="color: rgba(255,255,255,0.8); font-size: 0.85rem; font-weight: 500;">Rentabilidade Individual</span>
+        <h2 class="card-value" style="color: white; margin: 4px 0 0 0; font-size: 1.5rem; font-weight: 700;">{{ wallet.rentabilidade | number:'1.2-2' }}%</h2>
+      </div>
+    </mat-card>
+
+    <!-- 6. Lucro Acumulado -->
     <mat-card class="summary-card earnings-card">
       <div class="card-icon">
         <mat-icon>monetization_on</mat-icon>
       </div>
       <div class="card-details">
-        <span class="card-label">Rendimentos Acumulados</span>
+        <span class="card-label">Lucro Acumulado</span>
         <h2 class="card-value">{{ wallet.rendimentos | currency:'BRL' }}</h2>
-      </div>
-    </mat-card>
-
-    <mat-card class="summary-card total-card">
-      <div class="card-icon">
-        <mat-icon>savings</mat-icon>
-      </div>
-      <div class="card-details">
-        <span class="card-label">Total Aportado</span>
-        <h2 class="card-value">{{ wallet.totalAportado | currency:'BRL' }}</h2>
-      </div>
-    </mat-card>
-
-    <mat-card class="summary-card total-card" style="background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);">
-      <div class="card-icon">
-        <mat-icon>outbox</mat-icon>
-      </div>
-      <div class="card-details">
-        <span class="card-label">Total Sacado</span>
-        <h2 class="card-value" style="color: white;">{{ wallet.totalSacado | currency:'BRL' }}</h2>
       </div>
     </mat-card>
   </div>

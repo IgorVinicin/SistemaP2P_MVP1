@@ -25,11 +25,33 @@ namespace backend.API.Controllers
 
         // GET /api/admin/wallets
         [HttpGet("wallets")]
-        public async Task<IActionResult> GetWallets()
+        public async Task<IActionResult> GetWallets(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            [FromQuery] string? search = null)
         {
-            var wallets = await _context.InvestorWallets
+            var query = _context.InvestorWallets
+                .AsNoTracking()
                 .Include(w => w.User)
-                .ThenInclude(u => u.Profile)
+                .ThenInclude(u => u!.Profile)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(w => (w.User != null && w.User.Email.ToLower().Contains(term)) ||
+                                         (w.User != null && w.User.Profile != null && w.User.Profile.Nome.ToLower().Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            var items = await query
+                .OrderBy(w => w.User != null && w.User.Profile != null ? w.User.Profile.Nome : string.Empty)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(w => new
                 {
                     InvestorId = w.Id,
@@ -46,7 +68,16 @@ namespace backend.API.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(wallets);
+            var result = new PagedResultDto<object>
+            {
+                Items = items.Cast<object>().ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+
+            return Ok(result);
         }
 
         // GET /api/admin/wallets/{investorId}/transactions

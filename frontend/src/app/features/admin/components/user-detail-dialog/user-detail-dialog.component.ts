@@ -12,6 +12,8 @@ import { MatInputModule } from '@angular/material/input';
 import { AdminService } from '../../../../core/services/admin.service';
 import { UserDetailDto } from '../../../../core/models/user.models';
 import { DocumentPreviewDialogComponent } from '../document-preview-dialog/document-preview-dialog.component';
+import { AdminReportService } from '../../../../core/services/admin-report.service';
+import { AdminReportPdfService } from '../../../../core/services/admin-report-pdf.service';
 
 export interface UserDetailDialogData {
   userId: string;
@@ -37,6 +39,8 @@ export interface UserDetailDialogData {
 })
 export class UserDetailDialogComponent implements OnInit {
   private adminService = inject(AdminService);
+  private reportService = inject(AdminReportService);
+  private reportPdfService = inject(AdminReportPdfService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
 
@@ -46,6 +50,9 @@ export class UserDetailDialogComponent implements OnInit {
 
   public novoScore: number = 0;
   public motivoAlteracao: string = '';
+
+  public rentabilidade: number = 3.0; // Rentabilidade padrão sugerida
+  public observacaoAdministrativa: string = '';
 
   constructor(
     public dialogRef: MatDialogRef<UserDetailDialogComponent>,
@@ -93,7 +100,10 @@ export class UserDetailDialogComponent implements OnInit {
 
   public approve(): void {
     this.isProcessing = true;
-    this.adminService.approveUser(this.data.userId).subscribe({
+    const rent = this.userDetail?.role === 'Investidor' ? this.rentabilidade : undefined;
+    const obs = this.userDetail?.role === 'Investidor' ? this.observacaoAdministrativa : undefined;
+
+    this.adminService.approveUser(this.data.userId, rent, obs).subscribe({
       next: () => {
         this.isProcessing = false;
         this.snackBar.open('Usuário aprovado com sucesso!', 'Fechar', { duration: 3000 });
@@ -143,5 +153,34 @@ export class UserDetailDialogComponent implements OnInit {
         this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });
+  }
+
+  public generateReport(): void {
+    if (!this.userDetail) return;
+    this.isProcessing = true;
+    
+    if (this.userDetail.role === 'Cliente') {
+      this.reportService.getBorrowerIndividual(this.userDetail.id).subscribe({
+        next: (res) => {
+          this.reportPdfService.generateBorrowerIndividual(res);
+          this.isProcessing = false;
+        },
+        error: () => {
+          this.isProcessing = false;
+          this.snackBar.open('Erro ao gerar relatório individual do tomador.', 'Fechar', { duration: 4000 });
+        }
+      });
+    } else if (this.userDetail.role === 'Investidor') {
+      this.reportService.getInvestorIndividual(this.userDetail.id).subscribe({
+        next: (res) => {
+          this.reportPdfService.generateInvestorIndividual(res);
+          this.isProcessing = false;
+        },
+        error: () => {
+          this.isProcessing = false;
+          this.snackBar.open('Erro ao gerar relatório individual do investidor.', 'Fechar', { duration: 4000 });
+        }
+      });
+    }
   }
 }

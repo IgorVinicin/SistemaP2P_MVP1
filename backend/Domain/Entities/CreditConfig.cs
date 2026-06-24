@@ -11,5 +11,7 @@ namespace backend.Domain.Entities
         public int DiasParaCobranca { get; set; } = 16;
         public int DiasParaCobrancaIntensiva { get; set; } = 31;
         public int DiasParaInadimplencia { get; set; } = 61;
+        public decimal ValorMinimoInvestimento { get; set; } = 5000.00m;
+        public int MinimoParcelasPagasNovaSolicitacao { get; set; } = 4;
     }
 }

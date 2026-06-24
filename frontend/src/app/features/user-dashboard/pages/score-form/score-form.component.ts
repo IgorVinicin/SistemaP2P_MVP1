@@ -101,7 +101,7 @@ export class ScoreFormComponent implements OnInit {
         this.isSubmitting = false;
         this.scoreResult = res.score;
         this.showResult = true;
-        this.snackBar.open('Score calculado com sucesso!', 'Fechar', { duration: 3000 });
+        this.snackBar.open('Respostas salvas com sucesso!', 'Fechar', { duration: 3000 });
       },
       error: (err) => {
         this.isSubmitting = false;
