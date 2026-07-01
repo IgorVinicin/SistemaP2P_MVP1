@@ -1,6 +1,6 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -29,12 +29,20 @@ export class DashboardHomeComponent implements OnInit {
   public authService = inject(AuthService);
   private documentService = inject(DocumentService);
   private loanService = inject(LoanService);
+  private router = inject(Router);
 
   public documents: DocumentStatusDto[] = [];
   public isLoading = false;
   public eligibility: LoanEligibility | null = null;
 
   public ngOnInit(): void {
+    if (this.authService.userRole() === 'Cliente') {
+      const status = this.authService.userStatus();
+      if (status === 'Aprovado' || status === 'EmAnalise') {
+        this.router.navigate(['/loans/my']);
+        return;
+      }
+    }
     this.loadDocumentsStatus();
     if (this.authService.userStatus() === 'Aprovado' && this.authService.userRole() === 'Cliente') {
       this.loadEligibility();
@@ -70,6 +78,10 @@ export class DashboardHomeComponent implements OnInit {
     this.authService.updateStatus(newStatus);
     // Recarrega lista de documentos
     this.loadDocumentsStatus();
+
+    if (this.authService.userRole() === 'Cliente' && (newStatus === 'Aprovado' || newStatus === 'EmAnalise')) {
+      this.router.navigate(['/loans/my']);
+    }
   }
 
   public loadEligibility(): void {

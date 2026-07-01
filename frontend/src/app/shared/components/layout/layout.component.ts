@@ -23,6 +23,11 @@ import { AuthService } from '../../../core/services/auth.service';
 export class LayoutComponent {
   public authService = inject(AuthService);
   private router = inject(Router);
+  public isMobileMenuOpen = false;
+
+  public toggleMobileMenu(): void {
+    this.isMobileMenuOpen = !this.isMobileMenuOpen;
+  }
 
   public logout(): void {
     this.authService.logout();

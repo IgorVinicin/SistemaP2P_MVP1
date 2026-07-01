@@ -325,17 +325,102 @@ namespace backend.API.Controllers
         {
             try
             {
-                var loan = await _context.LoanRequests.FindAsync(id);
+                var loan = await _context.LoanRequests
+                    .Include(l => l.User)
+                    .FirstOrDefaultAsync(l => l.Id == id);
+
                 if (loan == null)
                 {
                     return NotFound(new { message = "Solicitação de empréstimo não encontrada." });
                 }
 
-                loan.Status = "Quitado";
-                loan.DataEncerramento = DateTime.UtcNow;
+                if (loan.Status == "Quitado")
+                {
+                    return BadRequest(new { message = "Este empréstimo já está quitado." });
+                }
 
-                await _context.SaveChangesAsync();
-                return Ok(new { message = "Empréstimo finalizado com sucesso.", status = loan.Status });
+                var installments = await _context.LoanInstallments
+                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada")
+                    .ToListAsync();
+
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+                    decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
+                    decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+                    var today = DateTime.UtcNow.Date;
+                    var adminEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Administrador";
+
+                    var distService = new WalletDistributionService(_context);
+
+                    foreach (var installment in installments)
+                    {
+                        var vencimento = installment.DataVencimento.Date;
+                        if (vencimento < today)
+                        {
+                            int dias = (int)(today - vencimento).TotalDays;
+                            installment.DiasAtraso = dias;
+                            installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
+                            installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
+                            installment.ValorPago = installment.ValorParcela + installment.Multa + installment.JurosMora;
+                        }
+                        else
+                        {
+                            installment.ValorPago = installment.ValorParcela;
+                            installment.DiasAtraso = 0;
+                            installment.Multa = 0;
+                            installment.JurosMora = 0;
+                        }
+
+                        installment.DataPagamento = DateTime.UtcNow;
+                        installment.Status = "Paga";
+                        installment.UpdatedAt = DateTime.UtcNow;
+
+                        // Registrar evento de pagamento no histórico para cada parcela
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
+                        {
+                            Id = Guid.NewGuid(),
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "PAGAMENTO_PARCELA",
+                            Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga e quitada administrativamente. Valor Pago: {installment.ValorPago:C2}.",
+                            LoanRequestId = installment.LoanRequestId,
+                            Valor = installment.ValorPago
+                        });
+
+                        // Salvar as alterações da parcela antes de rodar a distribuição
+                        await _context.SaveChangesAsync();
+
+                        // Distribuir os rendimentos aos investidores para essa parcela
+                        await distService.DistributeInstallmentPaymentAsync(installment.Id, adminEmail);
+                    }
+
+                    // Por fim, atualizar o status do empréstimo para Quitado
+                    loan.Status = "Quitado";
+                    loan.DataEncerramento = DateTime.UtcNow;
+
+                    _context.FinancialEventHistories.Add(new FinancialEventHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        Data = DateTime.UtcNow,
+                        UsuarioResponsavel = adminEmail,
+                        EventoExecutado = "MUDANCA_STATUS",
+                        Observacao = $"Empréstimo {loan.Id} foi totalmente quitado administrativamente.",
+                        LoanRequestId = loan.Id,
+                        Valor = loan.ValorTotal
+                    });
+
+                    await _context.SaveChangesAsync();
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Empréstimo finalizado com sucesso.", status = loan.Status });
+                }
+                catch (Exception innerEx)
+                {
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
+                }
             }
             catch (Exception ex)
             {

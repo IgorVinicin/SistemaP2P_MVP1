@@ -17,6 +17,8 @@ namespace backend.Application.DTOs
         public List<UserAnswerDetailDto> Answers { get; set; } = new List<UserAnswerDetailDto>();
         public List<UserLoanDetailDto> Loans { get; set; } = new List<UserLoanDetailDto>();
         public List<UserScoreHistoryDto> ScoreHistory { get; set; } = new List<UserScoreHistoryDto>();
+        public decimal? Rentabilidade { get; set; }
+        public string? ObservacaoAdministrativa { get; set; }
     }
 
     public class UserScoreHistoryDto

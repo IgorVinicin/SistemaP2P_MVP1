@@ -403,17 +403,45 @@ namespace backend.API.Controllers
 
                 // Rendimentos pagos
                 var txQuery = _context.InvestorTransactions
-                    .Where(t => t.Tipo == "RENDIMENTO")
+                    .Where(t => t.Tipo == "RECEBIMENTO_PARCELA" || t.Tipo == "RENDIMENTO")
                     .AsQueryable();
 
                 if (periodoInicio.HasValue) txQuery = txQuery.Where(t => t.DataMovimentacao >= start);
                 if (periodoFim.HasValue) txQuery = txQuery.Where(t => t.DataMovimentacao <= end);
 
-                decimal rendimentosPagos = await txQuery.SumAsync(t => t.Valor);
+                var transactions = await txQuery.ToListAsync();
+                decimal rendimentosPagos = 0;
+                foreach (var tx in transactions)
+                {
+                    if (tx.Tipo == "RENDIMENTO")
+                    {
+                        rendimentosPagos += tx.Valor;
+                    }
+                    else if (tx.Tipo == "RECEBIMENTO_PARCELA" && !string.IsNullOrEmpty(tx.Descricao))
+                    {
+                        var match = System.Text.RegularExpressions.Regex.Match(tx.Descricao, @"Rendimento:\s*(?:R\$\s*)?([\d.,]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        if (match.Success)
+                        {
+                            var valStr = match.Groups[1].Value.Replace(" ", "");
+                            if (valStr.Contains(",") && valStr.Contains("."))
+                            {
+                                valStr = valStr.Replace(".", "").Replace(",", ".");
+                            }
+                            else if (valStr.Contains(","))
+                            {
+                                valStr = valStr.Replace(",", ".");
+                            }
+                            if (decimal.TryParse(valStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out decimal rendVal))
+                            {
+                                rendimentosPagos += rendVal;
+                            }
+                        }
+                    }
+                }
 
                 // Coberturas administrativas (payouts do fundo de proteção)
                 var coverQuery = _context.FinancialEventHistories
-                    .Where(e => e.EventoExecutado == "UTILIZACAO_FUNDO")
+                    .Where(e => e.EventoExecutado == "UTILIZACAO_FUNDO" || e.EventoExecutado == "COBERTURA_PREJUIZO_FUNDO")
                     .AsQueryable();
 
                 if (periodoInicio.HasValue) coverQuery = coverQuery.Where(e => e.Data >= start);

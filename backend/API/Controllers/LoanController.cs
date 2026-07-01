@@ -256,8 +256,10 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "Quantidade de parcelas deve ser maior que zero." });
                 }
 
-                // Calcular ValorTotal automaticamente utilizando a taxa de juros e parcelas
-                decimal valorTotalCalculado = dto.ValorSolicitado + (dto.ValorSolicitado * (validation.TaxaJuros / 100) * dto.QuantidadeParcelas);
+                // Calcular ValorTotal automaticamente utilizando a taxa de juros e parcelas (Tabela Price)
+                var priceCalc = new PriceCalculationService();
+                var simulatedInstallments = priceCalc.CalculateInstallments(Guid.Empty, dto.ValorSolicitado, dto.QuantidadeParcelas, validation.TaxaJuros, "Mensal");
+                decimal valorTotalCalculado = simulatedInstallments.Sum(inst => inst.ValorParcela);
 
                 // Criar a solicitação
                 var loan = new LoanRequest

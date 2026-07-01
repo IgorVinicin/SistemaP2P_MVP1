@@ -145,9 +145,24 @@ namespace backend.API.Controllers
                 if (scoreTotal > 1000) scoreTotal = 1000;
                 if (scoreTotal < 0) scoreTotal = 0;
 
+                var scoreAnterior = user.Profile.ScoreAtual;
+
                 // Salvar o score calculado no perfil do usuário
                 user.Profile.ScoreAtual = scoreTotal;
                 user.Profile.QuestionnaireCompleted = true;
+
+                // Registrar histórico de score
+                _context.ScoreHistories.Add(new ScoreHistory
+                {
+                    Id = Guid.NewGuid(),
+                    UserId = userId,
+                    ScoreAnterior = scoreAnterior,
+                    ScoreNovo = scoreTotal,
+                    Motivo = "Questionário Inicial",
+                    DataAlteracao = DateTime.UtcNow,
+                    AdminId = Guid.Empty
+                });
+
                 await _context.SaveChangesAsync();
 
                 // Obter classificação de risco

@@ -138,7 +138,7 @@ namespace backend.API.Controllers
                     requisitosPreenchidos = temFrente && temVerso && temSelfie;
                 }
 
-                if (requisitosPreenchidos && user.Status == "Pendente")
+                if (requisitosPreenchidos && (user.Status == "Pendente" || user.Status == "Reprovado"))
                 {
                     user.Status = "EmAnalise";
                     await _context.SaveChangesAsync();

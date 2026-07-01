@@ -72,6 +72,12 @@ export class UserDetailDialogComponent implements OnInit {
         if (detail.profile) {
           this.novoScore = detail.profile.scoreAtual;
         }
+        if (detail.rentabilidade !== undefined && detail.rentabilidade !== null) {
+          this.rentabilidade = detail.rentabilidade;
+        }
+        if (detail.observacaoAdministrativa) {
+          this.observacaoAdministrativa = detail.observacaoAdministrativa;
+        }
       },
       error: (err) => {
         this.isLoading = false;
@@ -106,12 +112,15 @@ export class UserDetailDialogComponent implements OnInit {
     this.adminService.approveUser(this.data.userId, rent, obs).subscribe({
       next: () => {
         this.isProcessing = false;
-        this.snackBar.open('Usuário aprovado com sucesso!', 'Fechar', { duration: 3000 });
+        const msg = this.userDetail?.status === 'Aprovado'
+          ? 'Parâmetros do investidor atualizados com sucesso!'
+          : 'Usuário aprovado com sucesso!';
+        this.snackBar.open(msg, 'Fechar', { duration: 3000 });
         this.dialogRef.close(true); // retorna true para indicar que houve alteração
       },
       error: (err) => {
         this.isProcessing = false;
-        const msg = err.error?.message || 'Erro ao aprovar usuário.';
+        const msg = err.error?.message || (this.userDetail?.status === 'Aprovado' ? 'Erro ao atualizar parâmetros.' : 'Erro ao aprovar usuário.');
         this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });

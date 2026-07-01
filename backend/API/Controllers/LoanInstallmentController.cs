@@ -31,13 +31,30 @@ namespace backend.API.Controllers
         {
             try
             {
+                var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+                {
+                    return Unauthorized(new { message = "Usuário não autenticado." });
+                }
+
                 var installment = await _context.LoanInstallments
                     .Include(i => i.LoanRequest)
                     .FirstOrDefaultAsync(i => i.Id == id);
 
-                if (installment == null)
+                bool isAdmin = User.IsInRole("Administrador") || User.FindFirst(ClaimTypes.Role)?.Value == "Administrador";
+
+                if (installment == null || installment.LoanRequest == null)
                 {
-                    return NotFound(new { message = "Parcela não encontrada." });
+                    if (isAdmin)
+                    {
+                        return NotFound(new { message = "Parcela não encontrada." });
+                    }
+                    return StatusCode(403, new { message = "Acesso negado." });
+                }
+
+                if (!isAdmin && installment.LoanRequest.UserId != userId)
+                {
+                    return StatusCode(403, new { message = "Acesso negado." });
                 }
 
                 if (installment.Status == "Paga")
@@ -45,57 +62,68 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "Esta parcela já está paga." });
                 }
 
-                var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-                decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
-                decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
-
-                var today = DateTime.UtcNow.Date;
-                var vencimento = installment.DataVencimento.Date;
-
-                if (vencimento < today)
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    int dias = (int)(today - vencimento).TotalDays;
-                    installment.DiasAtraso = dias;
-                    installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
-                    installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
-                    installment.ValorPago = installment.ValorParcela + installment.Multa + installment.JurosMora;
+                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+                    decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
+                    decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+
+                    var today = DateTime.UtcNow.Date;
+                    var vencimento = installment.DataVencimento.Date;
+
+                    if (vencimento < today)
+                    {
+                        int dias = (int)(today - vencimento).TotalDays;
+                        installment.DiasAtraso = dias;
+                        installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
+                        installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
+                        installment.ValorPago = installment.ValorParcela + installment.Multa + installment.JurosMora;
+                    }
+                    else
+                    {
+                        installment.ValorPago = installment.ValorParcela;
+                        installment.DiasAtraso = 0;
+                        installment.Multa = 0;
+                        installment.JurosMora = 0;
+                    }
+
+                    installment.DataPagamento = DateTime.UtcNow;
+                    installment.Status = "Paga";
+                    installment.UpdatedAt = DateTime.UtcNow;
+
+                    // Registrar evento de pagamento no histórico
+                    _context.FinancialEventHistories.Add(new FinancialEventHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        Data = DateTime.UtcNow,
+                        UsuarioResponsavel = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente",
+                        EventoExecutado = "PAGAMENTO_PARCELA",
+                        Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga com sucesso. Valor Pago: {installment.ValorPago:C2}.",
+                        LoanRequestId = installment.LoanRequestId,
+                        Valor = installment.ValorPago
+                    });
+
+                    // Salvar as alterações da parcela
+                    await _context.SaveChangesAsync();
+
+                    // Recalcular status do empréstimo de forma centralizada
+                    var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
+                    await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(installment.LoanRequestId, userEmail);
+
+                    // Integrar preparação de carteira de investidores
+                    var distService = new WalletDistributionService(_context);
+                    await distService.DistributeInstallmentPaymentAsync(installment.Id, userEmail);
+
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Pagamento da parcela simulado com sucesso.", installment });
                 }
-                else
+                catch (Exception innerEx)
                 {
-                    installment.ValorPago = installment.ValorParcela;
-                    installment.DiasAtraso = 0;
-                    installment.Multa = 0;
-                    installment.JurosMora = 0;
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
                 }
-
-                installment.DataPagamento = DateTime.UtcNow;
-                installment.Status = "Paga";
-                installment.UpdatedAt = DateTime.UtcNow;
-
-                // Registrar evento de pagamento no histórico
-                _context.FinancialEventHistories.Add(new FinancialEventHistory
-                {
-                    Id = Guid.NewGuid(),
-                    Data = DateTime.UtcNow,
-                    UsuarioResponsavel = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente",
-                    EventoExecutado = "PAGAMENTO_PARCELA",
-                    Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga com sucesso. Valor Pago: {installment.ValorPago:C2}.",
-                    LoanRequestId = installment.LoanRequestId,
-                    Valor = installment.ValorPago
-                });
-
-                // Salvar as alterações
-                await _context.SaveChangesAsync();
-
-                // Recalcular status do empréstimo de forma centralizada
-                var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
-                await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(installment.LoanRequestId, userEmail);
-
-                // Integrar preparação de carteira de investidores
-                var distService = new WalletDistributionService(_context);
-                await distService.DistributeInstallmentPaymentAsync(installment.Id, userEmail);
-
-                return Ok(new { message = "Pagamento da parcela simulado com sucesso.", installment });
             }
             catch (Exception ex)
             {
@@ -109,6 +137,29 @@ namespace backend.API.Controllers
         {
             try
             {
+                var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+                {
+                    return Unauthorized(new { message = "Usuário não autenticado." });
+                }
+
+                bool isAdmin = User.IsInRole("Administrador") || User.FindFirst(ClaimTypes.Role)?.Value == "Administrador";
+
+                var loan = await _context.LoanRequests.AsNoTracking().FirstOrDefaultAsync(l => l.Id == loanRequestId);
+                if (loan == null)
+                {
+                    if (isAdmin)
+                    {
+                        return NotFound(new { message = "Empréstimo não encontrado." });
+                    }
+                    return StatusCode(403, new { message = "Acesso negado." });
+                }
+
+                if (!isAdmin && loan.UserId != userId)
+                {
+                    return StatusCode(403, new { message = "Acesso negado." });
+                }
+
                 // Atualizar parcelas atrasadas antes de retornar
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 

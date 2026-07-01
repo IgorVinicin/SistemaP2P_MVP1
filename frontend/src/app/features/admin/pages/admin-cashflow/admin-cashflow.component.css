@@ -1,0 +1,123 @@
+.cashflow-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.header-section h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.header-section p {
+  color: #666;
+  margin: 0;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+}
+
+.period-select {
+  width: 100%;
+  max-width: 300px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.summary-card {
+  border-left: 4px solid #999;
+}
+
+.summary-card mat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+}
+
+.stat-icon {
+  background: #f0f0f0;
+  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-icon mat-icon {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+  color: #666;
+}
+
+.stat-info h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+  text-transform: uppercase;
+}
+
+.stat-info h2 {
+  margin: 4px 0;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.stat-info small {
+  color: #999;
+}
+
+/* Cores dos Cards */
+.stat-entradas { border-left-color: #2e7d32; }
+.stat-entradas .stat-icon { background: #e8f5e9; }
+.stat-entradas .stat-icon mat-icon { color: #2e7d32; }
+
+.stat-saidas { border-left-color: #c62828; }
+.stat-saidas .stat-icon { background: #ffebee; }
+.stat-saidas .stat-icon mat-icon { color: #c62828; }
+
+.stat-saldo { border-left-color: #1565c0; }
+.stat-saldo .stat-icon { background: #e3f2fd; }
+.stat-saldo .stat-icon mat-icon { color: #1565c0; }
+
+.stat-receita { border-left-color: #f57f17; }
+.stat-receita .stat-icon { background: #fffde7; }
+.stat-receita .stat-icon mat-icon { color: #f57f17; }
+
+.stat-warning { border-left-color: #fbc02d; }
+.stat-warning .stat-icon { background: #fff9c4; }
+.stat-warning .stat-icon mat-icon { color: #fbc02d; }
+
+.stat-saldo.negative { border-left-color: #c62828; }
+.stat-saldo.negative .stat-icon { background: #ffebee; }
+.stat-saldo.negative .stat-icon mat-icon { color: #c62828; }
+.stat-saldo.negative h2 { color: #c62828; }
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.text-success { color: #2e7d32; font-weight: 500; }
+.text-danger { color: #c62828; font-weight: 500; }
+.text-primary { color: #1565c0; }

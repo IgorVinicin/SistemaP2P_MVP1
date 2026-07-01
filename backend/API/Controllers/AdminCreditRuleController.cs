@@ -145,7 +145,9 @@ namespace backend.API.Controllers
                     Id = Guid.NewGuid(),
                     ScoreMinimoParaSolicitacao = 150,
                     ValorMinimoInvestimento = 5000.00m,
-                    MinimoParcelasPagasNovaSolicitacao = 4
+                    MinimoParcelasPagasNovaSolicitacao = 4,
+                    MaxInvestidoresPorEmprestimo = 10,
+                    SpreadMinimoPlataforma = 1.00m
                 };
                 _context.CreditConfigs.Add(config);
                 await _context.SaveChangesAsync();
@@ -163,6 +165,16 @@ namespace backend.API.Controllers
                 if (dto.ScoreMinimoParaSolicitacao < 0 || dto.ScoreMinimoParaSolicitacao > 1000)
                 {
                     return BadRequest(new { message = "O score mínimo deve estar entre 0 e 1000." });
+                }
+
+                if (dto.MaxInvestidoresPorEmprestimo < 1)
+                {
+                    return BadRequest(new { message = "O limite máximo de investidores deve ser pelo menos 1." });
+                }
+
+                if (dto.SpreadMinimoPlataforma < 0 || dto.SpreadMinimoPlataforma > 100)
+                {
+                    return BadRequest(new { message = "O spread mínimo da plataforma deve estar entre 0% e 100%." });
                 }
 
                 var config = await _context.CreditConfigs.FirstOrDefaultAsync();
@@ -183,6 +195,8 @@ namespace backend.API.Controllers
                 config.DiasParaInadimplencia = dto.DiasParaInadimplencia;
                 config.ValorMinimoInvestimento = dto.ValorMinimoInvestimento;
                 config.MinimoParcelasPagasNovaSolicitacao = dto.MinimoParcelasPagasNovaSolicitacao;
+                config.MaxInvestidoresPorEmprestimo = dto.MaxInvestidoresPorEmprestimo;
+                config.SpreadMinimoPlataforma = dto.SpreadMinimoPlataforma;
 
                 await _context.SaveChangesAsync();
 

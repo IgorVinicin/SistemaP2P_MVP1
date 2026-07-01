@@ -7,7 +7,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTableModule } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { InvestorService } from '../../../../core/services/investor.service';
 import { AuthService } from '../../../../core/services/auth.service';
@@ -25,7 +24,6 @@ import { InvestorWalletDto, InvestorTransactionDto } from '../../../../core/mode
     MatTableModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatSnackBarModule
   ],
   templateUrl: './investor-dashboard.component.html',
@@ -44,12 +42,6 @@ export class InvestorDashboardComponent implements OnInit {
 
   public aporteValor: number | null = null;
   public saqueValor: number | null = null;
-  public selectedPerfil: string = 'Conservador';
-
-  public get rendimentosNormais(): number {
-    if (!this.wallet) return 0;
-    return Math.max(0, this.wallet.rendimentos - this.wallet.coberturasFundo);
-  }
 
   public get saldoTotal(): number {
     if (!this.wallet) return 0;
@@ -66,7 +58,6 @@ export class InvestorDashboardComponent implements OnInit {
     this.investorService.getWallet().subscribe({
       next: (data) => {
         this.wallet = data;
-        this.selectedPerfil = data.perfilInvestimento;
         this.isLoadingWallet = false;
       },
       error: () => {
@@ -132,35 +123,5 @@ export class InvestorDashboardComponent implements OnInit {
         this.snackBar.open(err.error?.message || 'Erro ao realizar saque.', 'Fechar', { duration: 4500 });
       }
     });
-  }
-  public updateProfile(): void {
-    this.isProcessing = true;
-    this.investorService.updateProfile(this.selectedPerfil).subscribe({
-      next: () => {
-        this.isProcessing = false;
-        this.snackBar.open('Perfil de investimento atualizado com sucesso!', 'Fechar', { duration: 3000 });
-        this.loadWallet();
-      },
-      error: (err) => {
-        this.isProcessing = false;
-        this.snackBar.open(err.error?.message || 'Erro ao atualizar perfil.', 'Fechar', { duration: 4500 });
-      }
-    });
-  }
-
-  public getLossCount(): number {
-    return this.transactions.filter(t => 
-      t.tipo.toUpperCase() === 'PERDA' || 
-      t.tipo.toUpperCase() === 'PREJUIZO' || 
-      t.tipo.toUpperCase() === 'PERDA_DEFINITIVA'
-    ).length;
-  }
-
-  public getLossTransactions(): InvestorTransactionDto[] {
-    return this.transactions.filter(t => 
-      t.tipo.toUpperCase() === 'PERDA' || 
-      t.tipo.toUpperCase() === 'PREJUIZO' || 
-      t.tipo.toUpperCase() === 'PERDA_DEFINITIVA'
-    );
   }
 }

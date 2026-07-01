@@ -49,9 +49,84 @@
           <mat-label>Parcelas Pagas Mínimas para Renovação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.minimoParcelasPagasNovaSolicitacao" placeholder="Ex: 4">
         </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Limite Máx. de Investidores</mat-label>
+          <input matInput type="number" [(ngModel)]="globalConfig.maxInvestidoresPorEmprestimo" placeholder="Ex: 10">
+        </mat-form-field>
+        <mat-form-field class="config-input" appearance="outline">
+          <mat-label>Spread Mínimo da Plataforma (%)</mat-label>
+          <input matInput type="number" step="0.01" [(ngModel)]="globalConfig.spreadMinimoPlataforma" placeholder="Ex: 1.00">
+        </mat-form-field>
         <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
           Salvar Configuração Geral
         </button>
+      </div>
+    </div>
+  </mat-card>
+
+  <!-- Dicionário Explicativo das Regras de Negócio -->
+  <mat-card class="config-section-card explanation-card" style="margin-bottom: 2rem;">
+    <div class="card-header explanation-header">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <mat-icon style="color: #3b82f6; font-size: 28px; width: 28px; height: 28px;">info</mat-icon>
+        <div>
+          <h3 class="card-title">Dicionário de Regras de Negócio</h3>
+          <p class="card-subtitle">Entenda o funcionamento dos parâmetros financeiros e de crédito do sistema.</p>
+        </div>
+      </div>
+    </div>
+    <div class="config-body">
+      <div class="rules-grid">
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Spread Mínimo da Plataforma</h4>
+          <p class="rule-description">
+            Taxa percentual mínima de margem reservada para a plataforma. Ao aprovar ou atualizar investidores, a rentabilidade deles é limitada de forma que o spread mínimo seja preservado em relação à menor taxa de juros ativa dos empréstimos.
+          </p>
+        </div>
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Limite de Investidores</h4>
+          <p class="rule-description">
+            Define o número máximo de investidores associados a um único empréstimo. O motor seleciona automaticamente os investidores elegíveis com maior saldo disponível primeiro.
+          </p>
+        </div>
+
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Multa por Atraso</h4>
+          <p class="rule-description">
+            Taxa percentual fixa cobrada sobre o valor original da parcela assim que ela entra em atraso (logo no 1º dia útil após o vencimento).
+          </p>
+        </div>
+
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Juros Diários de Mora</h4>
+          <p class="rule-description">
+            Taxa diária de juros acumulativa cobrada sobre o valor da parcela por cada dia de atraso, calculada proporcionalmente ao tempo de inadimplemento.
+          </p>
+        </div>
+
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Fases da Régua de Cobrança</h4>
+          <p class="rule-description">
+            Determina os prazos para ações de cobrança e classificação:
+            <br>• <strong>Dias para Cobrança:</strong> Início das notificações normais.
+            <br>• <strong>Cobrança Intensiva:</strong> Alerta administrativo para tentativas diretas.
+            <br>• <strong>Inadimplência:</strong> Registro de inadimplência e suspensão de novas ações.
+          </p>
+        </div>
+
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Investimento Mínimo</h4>
+          <p class="rule-description">
+            Valor mínimo em reais (R$) exigido para que um investidor consiga efetuar um novo aporte de saldo na plataforma.
+          </p>
+        </div>
+
+        <div class="rule-explain-item">
+          <h4 class="rule-title">Mínimo para Renovação</h4>
+          <p class="rule-description">
+            Quantidade mínima de parcelas que o tomador precisa pagar de forma pontual no empréstimo ativo antes de poder solicitar um novo crédito.
+          </p>
+        </div>
       </div>
     </div>
   </mat-card>

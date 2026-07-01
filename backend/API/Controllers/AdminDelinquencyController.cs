@@ -247,6 +247,7 @@ namespace backend.API.Controllers
         {
             try
             {
+                // @antigravity-edit: Wrap in db transaction and validate real investments
                 // Atualizar parcelas em atraso primeiro
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
@@ -261,139 +262,150 @@ namespace backend.API.Controllers
                     return NotFound(new { message = "Empréstimo não encontrado." });
                 }
 
-                await EnsureInvestmentsExistAsync(loan);
-
-                var today = DateTime.UtcNow.Date;
-                var overdueInstallments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null && i.DataVencimento < today)
-                    .ToListAsync();
-
-                if (!overdueInstallments.Any())
-                {
-                    return BadRequest(new { message = "Este empréstimo não possui parcelas vencidas para cobertura." });
-                }
-
-                decimal saldoDevedor = overdueInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
-
-                var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
-                if (fund == null)
-                {
-                    return BadRequest(new { message = "Fundo de Proteção não encontrado." });
-                }
-
                 // Buscar investimentos associados ao Loan
                 var investments = await _context.Investments
                     .Where(i => i.LoanId == id)
                     .ToListAsync();
 
-                decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
-
-                // Calcular principal vencido e juros vencidos a serem cobertos
-                decimal totalPrincipalUnpaid = overdueInstallments.Sum(i => i.ValorPrincipal);
-                decimal totalJurosUnpaid = overdueInstallments.Sum(i => i.ValorJuros);
-
-                decimal totalInvestorPayout = 0;
-                var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
-
-                foreach (var inv in investments)
+                if (!investments.Any())
                 {
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet == null) continue;
-
-                    // Se o investimento ainda estiver comprometido, transita para saldo investido
-                    if (inv.Status == "Comprometido")
-                    {
-                        wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
-                        wallet.SaldoInvestido += inv.ValorInvestido;
-                        inv.Status = "Ativo";
-                    }
-
-                    decimal percentual = inv.ValorInvestido / totalInvestido;
-                    decimal valorPrincipalRecebido = Math.Round(totalPrincipalUnpaid * percentual, 2);
-
-                    decimal valorRendimentoRecebido = 0;
-                    if (loan.TaxaJuros > 0)
-                    {
-                        valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * (wallet.Rentabilidade / loan.TaxaJuros), 2);
-                    }
-                    else
-                    {
-                        valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual, 2);
-                    }
-
-                    decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
-                    investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
-                    totalInvestorPayout += valorRecebido;
+                    return BadRequest(new { message = "Este empréstimo não possui investimentos reais cadastrados para processar a operação." });
                 }
 
-                if (fund.SaldoAtual < totalInvestorPayout)
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    return BadRequest(new { message = $"Saldo do Fundo de Proteção insuficiente ({fund.SaldoAtual:C2}) para cobrir o valor devido aos investidores ({totalInvestorPayout:C2})." });
-                }
+                    var today = DateTime.UtcNow.Date;
+                    var overdueInstallments = await _context.LoanInstallments
+                        .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null && i.DataVencimento < today)
+                        .ToListAsync();
 
-                // Deduzir do fundo
-                fund.SaldoAtual -= totalInvestorPayout;
-                fund.TotalUtilizado += totalInvestorPayout;
-                fund.UltimaAtualizacao = DateTime.UtcNow;
-
-                // Distribuir para os investidores
-                foreach (var inv in investments)
-                {
-                    if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
-                    var payout = investorPayouts[inv.InvestorId];
-
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet != null)
+                    if (!overdueInstallments.Any())
                     {
-                        decimal saldoAnterior = wallet.SaldoDisponivel;
-                        wallet.SaldoDisponivel += payout.Total;
-                        wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
-                        wallet.Rendimentos += payout.Rendimento;
-                        wallet.DataAtualizacao = DateTime.UtcNow;
+                        return BadRequest(new { message = "Este empréstimo não possui parcelas vencidas para cobertura." });
+                    }
 
-                        // Registrar Transação do investidor
-                        _context.InvestorTransactions.Add(new InvestorTransaction
+                    decimal saldoDevedor = overdueInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
+
+                    var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
+                    if (fund == null)
+                    {
+                        return BadRequest(new { message = "Fundo de Proteção não encontrado." });
+                    }
+
+                    decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
+
+                    // Calcular principal vencido e juros vencidos a serem cobertos
+                    decimal totalPrincipalUnpaid = overdueInstallments.Sum(i => i.ValorPrincipal);
+                    decimal totalJurosUnpaid = overdueInstallments.Sum(i => i.ValorJuros);
+
+                    decimal totalInvestorPayout = 0;
+                    var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
+
+                    foreach (var inv in investments)
+                    {
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet == null) continue;
+
+                        // Se o investimento ainda estiver comprometido, transita para saldo investido
+                        if (inv.Status == "Comprometido")
+                        {
+                            wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
+                            wallet.SaldoInvestido += inv.ValorInvestido;
+                            inv.Status = "Ativo";
+                        }
+
+                        decimal percentual = inv.ValorInvestido / totalInvestido;
+                        decimal valorPrincipalRecebido = Math.Round(totalPrincipalUnpaid * percentual, 2);
+
+                        decimal valorRendimentoRecebido = 0;
+                        if (loan.TaxaJuros > 0)
+                        {
+                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * rentabilidadeFator, 2);
+                        }
+                        else
+                        {
+                            valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual, 2);
+                        }
+
+                        decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
+                        investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
+                        totalInvestorPayout += valorRecebido;
+                    }
+
+                    // Deduzir do fundo (permitindo saldo negativo)
+                    fund.SaldoAtual -= totalInvestorPayout;
+                    fund.TotalUtilizado += totalInvestorPayout;
+                    fund.UltimaAtualizacao = DateTime.UtcNow;
+
+                    // Distribuir para os investidores
+                    foreach (var inv in investments)
+                    {
+                        if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
+                        var payout = investorPayouts[inv.InvestorId];
+
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet != null)
+                        {
+                            decimal saldoAnterior = wallet.SaldoDisponivel;
+                            wallet.SaldoDisponivel += payout.Total;
+                            wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
+                            inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - payout.Principal);
+                            wallet.Rendimentos += payout.Rendimento;
+                            wallet.DataAtualizacao = DateTime.UtcNow;
+
+                            // Registrar Transação do investidor
+                            _context.InvestorTransactions.Add(new InvestorTransaction
+                            {
+                                Id = Guid.NewGuid(),
+                                InvestorId = inv.InvestorId,
+                                Tipo = "COBERTURA_PARCELA_FUNDO",
+                                Valor = payout.Total,
+                                SaldoAnterior = saldoAnterior,
+                                SaldoPosterior = wallet.SaldoDisponivel,
+                                DataMovimentacao = DateTime.UtcNow,
+                                Descricao = $"Cobertura de parcela em atraso pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                                UsuarioResponsavel = adminEmail
+                            });
+                        }
+
+                        // Registrar no histórico de eventos
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
                         {
                             Id = Guid.NewGuid(),
-                            InvestorId = inv.InvestorId,
-                            Tipo = "COBERTURA_PARCELA_FUNDO",
-                            Valor = payout.Total,
-                            SaldoAnterior = saldoAnterior,
-                            SaldoPosterior = wallet.SaldoDisponivel,
-                            DataMovimentacao = DateTime.UtcNow,
-                            Descricao = $"Cobertura de parcela em atraso pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
-                            UsuarioResponsavel = adminEmail
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "UTILIZACAO_FUNDO",
+                            Observacao = $"Investidor {inv.InvestorId} recebeu cobertura de parcela vencida de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                            LoanRequestId = loan.Id,
+                            Valor = payout.Total
                         });
                     }
 
-                    // Registrar no histórico de eventos
-                    _context.FinancialEventHistories.Add(new FinancialEventHistory
+                    // Marcar parcelas vencidas como pagas
+                    foreach (var inst in overdueInstallments)
                     {
-                        Id = Guid.NewGuid(),
-                        Data = DateTime.UtcNow,
-                        UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "UTILIZACAO_FUNDO",
-                        Observacao = $"Investidor {inv.InvestorId} recebeu cobertura de parcela vencida de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
-                        LoanRequestId = loan.Id,
-                        Valor = payout.Total
-                    });
-                }
+                        inst.Status = "Paga";
+                        inst.DataPagamento = DateTime.UtcNow;
+                        inst.ValorPago = inst.ValorParcela + inst.Multa + inst.JurosMora;
+                        inst.UpdatedAt = DateTime.UtcNow;
+                    }
 
-                // Marcar parcelas vencidas como pagas
-                foreach (var inst in overdueInstallments)
+                    await _context.SaveChangesAsync();
+
+                    // Recalcular status do empréstimo de forma centralizada
+                    await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(loan.Id, adminEmail);
+
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Cobertura de parcelas vencidas realizada com sucesso.", saldoDevedor, saldoRestanteFundo = fund.SaldoAtual });
+                }
+                catch (Exception innerEx)
                 {
-                    inst.Status = "Paga";
-                    inst.DataPagamento = DateTime.UtcNow;
-                    inst.ValorPago = inst.ValorParcela + inst.Multa + inst.JurosMora;
-                    inst.UpdatedAt = DateTime.UtcNow;
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
                 }
-
-                await _context.SaveChangesAsync();
-
-                // Recalcular status do empréstimo de forma centralizada
-                await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(loan.Id, adminEmail);
-
-                return Ok(new { message = "Cobertura de parcelas vencidas realizada com sucesso.", saldoDevedor, saldoRestanteFundo = fund.SaldoAtual });
             }
             catch (Exception ex)
             {
@@ -407,6 +419,7 @@ namespace backend.API.Controllers
         {
             try
             {
+                // @antigravity-edit: Wrap in db transaction and validate real investments
                 // Atualizar parcelas em atraso primeiro
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
@@ -426,173 +439,184 @@ namespace backend.API.Controllers
                     return NotFound(new { message = "Empréstimo não encontrado." });
                 }
 
-                await EnsureInvestmentsExistAsync(loan);
-
-                var today = DateTime.UtcNow.Date;
-                var overdueInstallments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null && i.DataVencimento < today)
-                    .OrderBy(i => i.NumeroParcela)
-                    .ToListAsync();
-
-                if (!overdueInstallments.Any())
-                {
-                    return BadRequest(new { message = "Este empréstimo não possui parcelas vencidas para cobertura." });
-                }
-
-                decimal saldoVencido = overdueInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
-
-                if (dto.ValorCobertura > saldoVencido)
-                {
-                    return BadRequest(new { message = $"O valor informado ({dto.ValorCobertura:C2}) excede o saldo vencido em aberto ({saldoVencido:C2})." });
-                }
-
-                var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
-                if (fund == null)
-                {
-                    return BadRequest(new { message = "Fundo de Proteção não encontrado." });
-                }
-
                 // Buscar investimentos associados ao Loan
                 var investments = await _context.Investments
                     .Where(i => i.LoanId == id)
                     .ToListAsync();
 
-                decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
-
-                // Distribuir o pagamento nas parcelas sequencialmente e calcular os totais de principal e juros
-                decimal remainingCoverage = dto.ValorCobertura;
-                decimal totalPrincipalPaid = 0;
-                decimal totalJurosPaid = 0;
-
-                foreach (var inst in overdueInstallments)
+                if (!investments.Any())
                 {
-                    if (remainingCoverage <= 0) break;
-
-                    decimal valorTotalParcela = inst.ValorParcela + inst.Multa + inst.JurosMora - inst.ValorPago;
-                    decimal totalDue = inst.ValorParcela + inst.Multa + inst.JurosMora;
-                    decimal principalRatio = totalDue > 0 ? (inst.ValorPrincipal / totalDue) : 1;
-                    decimal jurosRatio = totalDue > 0 ? (inst.ValorJuros / totalDue) : 0;
-
-                    decimal paymentApplied = 0;
-
-                    if (remainingCoverage >= valorTotalParcela)
-                    {
-                        paymentApplied = valorTotalParcela;
-                        inst.Status = "Paga";
-                        inst.DataPagamento = DateTime.UtcNow;
-                        inst.ValorPago += valorTotalParcela;
-                        inst.UpdatedAt = DateTime.UtcNow;
-                        remainingCoverage -= valorTotalParcela;
-                    }
-                    else
-                    {
-                        paymentApplied = remainingCoverage;
-                        inst.ValorPago += remainingCoverage;
-                        inst.Status = "Parcial";
-                        inst.UpdatedAt = DateTime.UtcNow;
-                        remainingCoverage = 0;
-                    }
-
-                    decimal principalPaid = Math.Min(paymentApplied, paymentApplied * principalRatio);
-                    decimal jurosPaid = Math.Min(paymentApplied - principalPaid, paymentApplied * jurosRatio);
-                    totalPrincipalPaid += principalPaid;
-                    totalJurosPaid += jurosPaid;
+                    return BadRequest(new { message = "Este empréstimo não possui investimentos reais cadastrados para processar a operação." });
                 }
 
-                // Calcular o valor real devido aos investidores com base no juros escalado pela rentabilidade
-                decimal totalInvestorPayout = 0;
-                var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
-
-                foreach (var inv in investments)
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet == null) continue;
+                    var today = DateTime.UtcNow.Date;
+                    var overdueInstallments = await _context.LoanInstallments
+                        .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null && i.DataVencimento < today)
+                        .OrderBy(i => i.NumeroParcela)
+                        .ToListAsync();
 
-                    // Se o investimento ainda estiver comprometido, transita para saldo investido
-                    if (inv.Status == "Comprometido")
+                    if (!overdueInstallments.Any())
                     {
-                        wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
-                        wallet.SaldoInvestido += inv.ValorInvestido;
-                        inv.Status = "Ativo";
+                        return BadRequest(new { message = "Este empréstimo não possui parcelas vencidas para cobertura." });
                     }
 
-                    decimal percentual = inv.ValorInvestido / totalInvestido;
-                    decimal valorPrincipalRecebido = Math.Round(totalPrincipalPaid * percentual, 2);
+                    decimal saldoVencido = overdueInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
 
-                    decimal valorRendimentoRecebido = 0;
-                    if (loan.TaxaJuros > 0)
+                    if (dto.ValorCobertura > saldoVencido)
                     {
-                        valorRendimentoRecebido = Math.Round(totalJurosPaid * percentual * (wallet.Rentabilidade / loan.TaxaJuros), 2);
-                    }
-                    else
-                    {
-                        valorRendimentoRecebido = Math.Round(totalJurosPaid * percentual, 2);
+                        return BadRequest(new { message = $"O valor informado ({dto.ValorCobertura:C2}) excede o saldo vencido em aberto ({saldoVencido:C2})." });
                     }
 
-                    decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
-                    investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
-                    totalInvestorPayout += valorRecebido;
-                }
-
-                if (fund.SaldoAtual < totalInvestorPayout)
-                {
-                    return BadRequest(new { message = $"Saldo do Fundo de Proteção insuficiente ({fund.SaldoAtual:C2}) para cobrir o valor devido aos investidores ({totalInvestorPayout:C2})." });
-                }
-
-                // Deduzir do fundo apenas o valor distribuído aos investidores
-                fund.SaldoAtual -= totalInvestorPayout;
-                fund.TotalUtilizado += totalInvestorPayout;
-                fund.UltimaAtualizacao = DateTime.UtcNow;
-
-                // Distribuir para os investidores
-                foreach (var inv in investments)
-                {
-                    if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
-                    var payout = investorPayouts[inv.InvestorId];
-
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet != null)
+                    var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
+                    if (fund == null)
                     {
-                        decimal saldoAnterior = wallet.SaldoDisponivel;
-                        wallet.SaldoDisponivel += payout.Total;
-                        wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
-                        wallet.Rendimentos += payout.Rendimento;
-                        wallet.DataAtualizacao = DateTime.UtcNow;
+                        return BadRequest(new { message = "Fundo de Proteção não encontrado." });
+                    }
 
-                        // Registrar Transação do investidor
-                        _context.InvestorTransactions.Add(new InvestorTransaction
+                    decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
+
+                    // Distribuir o pagamento nas parcelas sequencialmente e calcular os totais de principal e juros
+                    decimal remainingCoverage = dto.ValorCobertura;
+                    decimal totalPrincipalPaid = 0;
+                    decimal totalJurosPaid = 0;
+
+                    foreach (var inst in overdueInstallments)
+                    {
+                        if (remainingCoverage <= 0) break;
+
+                        decimal valorTotalParcela = inst.ValorParcela + inst.Multa + inst.JurosMora - inst.ValorPago;
+                        decimal totalDue = inst.ValorParcela + inst.Multa + inst.JurosMora;
+                        decimal principalRatio = totalDue > 0 ? (inst.ValorPrincipal / totalDue) : 1;
+                        decimal jurosRatio = totalDue > 0 ? (inst.ValorJuros / totalDue) : 0;
+
+                        decimal paymentApplied = 0;
+
+                        if (remainingCoverage >= valorTotalParcela)
+                        {
+                            paymentApplied = valorTotalParcela;
+                            inst.Status = "Paga";
+                            inst.DataPagamento = DateTime.UtcNow;
+                            inst.ValorPago += valorTotalParcela;
+                            inst.UpdatedAt = DateTime.UtcNow;
+                            remainingCoverage -= valorTotalParcela;
+                        }
+                        else
+                        {
+                            paymentApplied = remainingCoverage;
+                            inst.ValorPago += remainingCoverage;
+                            inst.Status = "Parcial";
+                            inst.UpdatedAt = DateTime.UtcNow;
+                            remainingCoverage = 0;
+                        }
+
+                        decimal principalPaid = Math.Min(paymentApplied, paymentApplied * principalRatio);
+                        decimal jurosPaid = Math.Min(paymentApplied - principalPaid, paymentApplied * jurosRatio);
+                        totalPrincipalPaid += principalPaid;
+                        totalJurosPaid += jurosPaid;
+                    }
+
+                    // Calcular o valor real devido aos investidores com base no juros escalado pela rentabilidade
+                    decimal totalInvestorPayout = 0;
+                    var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
+
+                    foreach (var inv in investments)
+                    {
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet == null) continue;
+
+                        // Se o investimento ainda estiver comprometido, transita para saldo investido
+                        if (inv.Status == "Comprometido")
+                        {
+                            wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
+                            wallet.SaldoInvestido += inv.ValorInvestido;
+                            inv.Status = "Ativo";
+                        }
+
+                        decimal percentual = inv.ValorInvestido / totalInvestido;
+                        decimal valorPrincipalRecebido = Math.Round(totalPrincipalPaid * percentual, 2);
+
+                        decimal valorRendimentoRecebido = 0;
+                        if (loan.TaxaJuros > 0)
+                        {
+                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            valorRendimentoRecebido = Math.Round(totalJurosPaid * percentual * rentabilidadeFator, 2);
+                        }
+                        else
+                        {
+                            valorRendimentoRecebido = Math.Round(totalJurosPaid * percentual, 2);
+                        }
+
+                        decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
+                        investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
+                        totalInvestorPayout += valorRecebido;
+                    }
+
+                    // Deduzir do fundo apenas o valor distribuído aos investidores
+                    fund.SaldoAtual -= totalInvestorPayout;
+                    fund.TotalUtilizado += totalInvestorPayout;
+                    fund.UltimaAtualizacao = DateTime.UtcNow;
+
+                    // Distribuir para os investidores
+                    foreach (var inv in investments)
+                    {
+                        if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
+                        var payout = investorPayouts[inv.InvestorId];
+
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet != null)
+                        {
+                            decimal saldoAnterior = wallet.SaldoDisponivel;
+                            wallet.SaldoDisponivel += payout.Total;
+                            wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
+                            inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - payout.Principal);
+                            wallet.Rendimentos += payout.Rendimento;
+                            wallet.DataAtualizacao = DateTime.UtcNow;
+
+                            // Registrar Transação do investidor
+                            _context.InvestorTransactions.Add(new InvestorTransaction
+                            {
+                                Id = Guid.NewGuid(),
+                                InvestorId = inv.InvestorId,
+                                Tipo = "COBERTURA_PARCELA_FUNDO",
+                                Valor = payout.Total,
+                                SaldoAnterior = saldoAnterior,
+                                SaldoPosterior = wallet.SaldoDisponivel,
+                                DataMovimentacao = DateTime.UtcNow,
+                                Descricao = $"Cobertura parcial de parcela em atraso pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                                UsuarioResponsavel = adminEmail
+                            });
+                        }
+
+                        // Registrar no histórico de eventos
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
                         {
                             Id = Guid.NewGuid(),
-                            InvestorId = inv.InvestorId,
-                            Tipo = "COBERTURA_PARCELA_FUNDO",
-                            Valor = payout.Total,
-                            SaldoAnterior = saldoAnterior,
-                            SaldoPosterior = wallet.SaldoDisponivel,
-                            DataMovimentacao = DateTime.UtcNow,
-                            Descricao = $"Cobertura parcial de parcela em atraso pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
-                            UsuarioResponsavel = adminEmail
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "UTILIZACAO_FUNDO",
+                            Observacao = $"Investidor {inv.InvestorId} recebeu cobertura parcial de parcela vencida de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                            LoanRequestId = loan.Id,
+                            Valor = payout.Total
                         });
                     }
 
-                    // Registrar no histórico de eventos
-                    _context.FinancialEventHistories.Add(new FinancialEventHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        Data = DateTime.UtcNow,
-                        UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "UTILIZACAO_FUNDO",
-                        Observacao = $"Investidor {inv.InvestorId} recebeu cobertura parcial de parcela vencida de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
-                        LoanRequestId = loan.Id,
-                        Valor = payout.Total
-                    });
+                    await _context.SaveChangesAsync();
+
+                    // Recalcular status do empréstimo de forma centralizada
+                    await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(loan.Id, adminEmail);
+
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Cobertura parcial realizada com sucesso.", valorCoberto = dto.ValorCobertura, saldoRestanteFundo = fund.SaldoAtual });
                 }
-
-                await _context.SaveChangesAsync();
-
-                // Recalcular status do empréstimo de forma centralizada
-                await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(loan.Id, adminEmail);
-
-                return Ok(new { message = "Cobertura parcial realizada com sucesso.", valorCoberto = dto.ValorCobertura, saldoRestanteFundo = fund.SaldoAtual });
+                catch (Exception innerEx)
+                {
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
+                }
             }
             catch (Exception ex)
             {
@@ -605,7 +629,6 @@ namespace backend.API.Controllers
         {
             try
             {
-                // Atualizar parcelas em atraso primeiro
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
                 var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrador";
@@ -624,145 +647,150 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "O contrato só pode ser encerrado definitivamente se o status for Inadimplente." });
                 }
 
-                await EnsureInvestmentsExistAsync(loan);
-
-                var unpaidInstallments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
-                    .ToListAsync();
-
-                if (!unpaidInstallments.Any())
-                {
-                    return BadRequest(new { message = "Este empréstimo não possui parcelas pendentes para encerramento." });
-                }
-
-                decimal saldoDevedor = unpaidInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
-
-                // Buscar investimentos associados ao Loan
                 var investments = await _context.Investments
                     .Where(i => i.LoanId == id)
                     .ToListAsync();
 
-                decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
-
-                // Calcular principal pendente e juros pendentes
-                decimal totalPrincipalUnpaid = unpaidInstallments.Sum(i => i.ValorPrincipal);
-                decimal totalJurosUnpaid = unpaidInstallments.Sum(i => i.ValorJuros);
-
-                decimal totalInvestorPayout = 0;
-                var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
-
-                foreach (var inv in investments)
+                if (!investments.Any())
                 {
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet == null) continue;
-
-                    // Se o investimento ainda estiver comprometido, transita para saldo investido
-                    if (inv.Status == "Comprometido")
-                    {
-                        wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
-                        wallet.SaldoInvestido += inv.ValorInvestido;
-                        inv.Status = "Ativo";
-                    }
-
-                    decimal percentual = inv.ValorInvestido / totalInvestido;
-                    decimal valorPrincipalRecebido = Math.Round(totalPrincipalUnpaid * percentual, 2);
-
-                    decimal valorRendimentoRecebido = 0;
-                    if (loan.TaxaJuros > 0)
-                    {
-                        valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * (wallet.Rentabilidade / loan.TaxaJuros), 2);
-                    }
-                    else
-                    {
-                        valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual, 2);
-                    }
-
-                    decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
-                    investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
-                    totalInvestorPayout += valorRecebido;
+                    return BadRequest(new { message = "Este empréstimo não possui investimentos reais cadastrados para processar a operação." });
                 }
 
-                var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
-                if (fund == null || fund.SaldoAtual < totalInvestorPayout)
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
                 {
-                    return BadRequest(new { message = $"Saldo do Fundo de Proteção insuficiente ({fund?.SaldoAtual:C2}) para cobrir o valor devido aos investidores ({totalInvestorPayout:C2})." });
-                }
+                    var unpaidInstallments = await _context.LoanInstallments
+                        .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
+                        .ToListAsync();
 
-                // Deduzir do fundo
-                fund.SaldoAtual -= totalInvestorPayout;
-                fund.TotalUtilizado += totalInvestorPayout;
-                fund.UltimaAtualizacao = DateTime.UtcNow;
-
-                // Distribuir para os investidores
-                foreach (var inv in investments)
-                {
-                    if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
-                    var payout = investorPayouts[inv.InvestorId];
-
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet != null)
+                    if (!unpaidInstallments.Any())
                     {
-                        decimal saldoAnterior = wallet.SaldoDisponivel;
-                        wallet.SaldoDisponivel += payout.Total;
-                        wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
-                        wallet.Rendimentos += payout.Rendimento;
-                        wallet.DataAtualizacao = DateTime.UtcNow;
+                        return BadRequest(new { message = "Este empréstimo não possui parcelas pendentes para encerramento." });
+                    }
 
-                        // Registrar Transação do investidor
-                        _context.InvestorTransactions.Add(new InvestorTransaction
+                    decimal saldoDevedor = unpaidInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
+                    decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
+
+                    decimal totalPrincipalUnpaid = unpaidInstallments.Sum(i => i.ValorPrincipal);
+                    decimal totalJurosUnpaid = unpaidInstallments.Sum(i => i.ValorJuros);
+
+                    decimal totalInvestorPayout = 0;
+                    var investorPayouts = new Dictionary<Guid, (decimal Principal, decimal Rendimento, decimal Total)>();
+
+                    foreach (var inv in investments)
+                    {
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet == null) continue;
+
+                        if (inv.Status == "Comprometido")
+                        {
+                            wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
+                            wallet.SaldoInvestido += inv.ValorInvestido;
+                            inv.Status = "Ativo";
+                        }
+
+                        decimal percentual = inv.ValorInvestido / totalInvestido;
+                        decimal valorPrincipalRecebido = Math.Round(totalPrincipalUnpaid * percentual, 2);
+
+                        decimal valorRendimentoRecebido = 0;
+                        if (loan.TaxaJuros > 0)
+                        {
+                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * rentabilidadeFator, 2);
+                        }
+                        else
+                        {
+                            valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual, 2);
+                        }
+
+                        decimal valorRecebido = valorPrincipalRecebido + valorRendimentoRecebido;
+                        investorPayouts[inv.InvestorId] = (valorPrincipalRecebido, valorRendimentoRecebido, valorRecebido);
+                        totalInvestorPayout += valorRecebido;
+                    }
+
+                    var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
+                    if (fund == null)
+                    {
+                        return BadRequest(new { message = "Fundo de Proteção não encontrado." });
+                    }
+
+                    fund.SaldoAtual -= totalInvestorPayout;
+                    fund.TotalUtilizado += totalInvestorPayout;
+                    fund.UltimaAtualizacao = DateTime.UtcNow;
+
+                    foreach (var inv in investments)
+                    {
+                        if (!investorPayouts.ContainsKey(inv.InvestorId)) continue;
+                        var payout = investorPayouts[inv.InvestorId];
+
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet != null)
+                        {
+                            decimal saldoAnterior = wallet.SaldoDisponivel;
+                            wallet.SaldoDisponivel += payout.Total;
+                            wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - payout.Principal);
+                            inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - payout.Principal);
+                            wallet.Rendimentos += payout.Rendimento;
+                            wallet.DataAtualizacao = DateTime.UtcNow;
+
+                            _context.InvestorTransactions.Add(new InvestorTransaction
+                            {
+                                Id = Guid.NewGuid(),
+                                InvestorId = inv.InvestorId,
+                                Tipo = "COBERTURA_CONTRATO_FUNDO",
+                                Valor = payout.Total,
+                                SaldoAnterior = saldoAnterior,
+                                SaldoPosterior = wallet.SaldoDisponivel,
+                                DataMovimentacao = DateTime.UtcNow,
+                                Descricao = $"Cobertura total de encerramento de contrato pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                                UsuarioResponsavel = adminEmail
+                            });
+                        }
+
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
                         {
                             Id = Guid.NewGuid(),
-                            InvestorId = inv.InvestorId,
-                            Tipo = "COBERTURA_CONTRATO_FUNDO",
-                            Valor = payout.Total,
-                            SaldoAnterior = saldoAnterior,
-                            SaldoPosterior = wallet.SaldoDisponivel,
-                            DataMovimentacao = DateTime.UtcNow,
-                            Descricao = $"Cobertura total de encerramento de contrato pelo Fundo de Proteção para o empréstimo {loan.Id} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
-                            UsuarioResponsavel = adminEmail
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "UTILIZACAO_FUNDO",
+                            Observacao = $"Investidor {inv.InvestorId} recebeu cobertura final de encerramento de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                            LoanRequestId = loan.Id,
+                            Valor = payout.Total
                         });
                     }
 
-                    // Registrar no histórico de eventos
+                    foreach (var inst in unpaidInstallments)
+                    {
+                        inst.Status = "Paga";
+                        inst.DataPagamento = DateTime.UtcNow;
+                        inst.ValorPago = inst.ValorParcela + inst.Multa + inst.JurosMora;
+                        inst.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    loan.Status = "FinalizadoPorInadimplencia";
+                    loan.DataEncerramento = DateTime.UtcNow;
+
                     _context.FinancialEventHistories.Add(new FinancialEventHistory
                     {
                         Id = Guid.NewGuid(),
                         Data = DateTime.UtcNow,
                         UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "UTILIZACAO_FUNDO",
-                        Observacao = $"Investidor {inv.InvestorId} recebeu cobertura final de encerramento de {payout.Total:C2} (Principal: {payout.Principal:C2}, Rendimento: {payout.Rendimento:C2}).",
+                        EventoExecutado = "INTERVENCAO_ADMIN",
+                        Observacao = $"Contrato encerrado por inadimplência. Saldo devedor total de {saldoDevedor:C2} coberto pelo Fundo de Proteção. Observação: {dto.Observacao}",
                         LoanRequestId = loan.Id,
-                        Valor = payout.Total
+                        Valor = saldoDevedor
                     });
+
+                    await _context.SaveChangesAsync();
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Contrato encerrado e saldo devedor coberto com sucesso.", saldoDevedor, saldoRestanteFundo = fund.SaldoAtual });
                 }
-
-                // Marcar todas as parcelas como pagas
-                foreach (var inst in unpaidInstallments)
+                catch (Exception innerEx)
                 {
-                    inst.Status = "Paga";
-                    inst.DataPagamento = DateTime.UtcNow;
-                    inst.ValorPago = inst.ValorParcela + inst.Multa + inst.JurosMora;
-                    inst.UpdatedAt = DateTime.UtcNow;
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
                 }
-
-                // Encerrar o empréstimo por inadimplência com cobertura
-                loan.Status = "FinalizadoPorInadimplencia";
-                loan.DataEncerramento = DateTime.UtcNow;
-
-                _context.FinancialEventHistories.Add(new FinancialEventHistory
-                {
-                    Id = Guid.NewGuid(),
-                    Data = DateTime.UtcNow,
-                    UsuarioResponsavel = adminEmail,
-                    EventoExecutado = "INTERVENCAO_ADMIN",
-                    Observacao = $"Contrato encerrado por inadimplência. Saldo devedor total de {saldoDevedor:C2} coberto pelo Fundo de Proteção. Observação: {dto.Observacao}",
-                    LoanRequestId = loan.Id,
-                    Valor = saldoDevedor
-                });
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "Contrato encerrado e saldo devedor coberto com sucesso.", saldoDevedor, saldoRestanteFundo = fund.SaldoAtual });
             }
             catch (Exception ex)
             {
@@ -776,7 +804,6 @@ namespace backend.API.Controllers
         {
             try
             {
-                // Atualizar parcelas em atraso primeiro
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
                 var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrador";
@@ -795,121 +822,125 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "O contrato só pode ser encerrado definitivamente se o status for Inadimplente." });
                 }
 
-                await EnsureInvestmentsExistAsync(loan);
-
-                var unpaidInstallments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
-                    .ToListAsync();
-
-                if (!unpaidInstallments.Any())
-                {
-                    return BadRequest(new { message = "Este empréstimo não possui parcelas pendentes para encerramento." });
-                }
-
-                decimal saldoDevedor = unpaidInstallments.Sum(i => i.ValorParcela + i.Multa + i.JurosMora - i.ValorPago);
-                decimal totalPrincipalUnpaid = unpaidInstallments.Sum(i => i.ValorPrincipal);
-
-                // Buscar investimentos associados ao Loan
                 var investments = await _context.Investments
                     .Where(i => i.LoanId == id)
                     .ToListAsync();
 
-                decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
-
-                var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
-
-                // Distribuir a perda (que será reembolsada ao investidor e absorvida pelo fundo) proporcionalmente entre os investidores
-                decimal totalRefunded = 0;
-                foreach (var inv in investments)
+                if (!investments.Any())
                 {
-                    var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                    if (wallet == null) continue;
+                    return BadRequest(new { message = "Este empréstimo não possui investimentos reais cadastrados para processar a operação." });
+                }
 
-                    // Se o investimento ainda estiver comprometido, transita para saldo investido
-                    if (inv.Status == "Comprometido")
+                using var dbTransaction = await _context.Database.BeginTransactionAsync();
+                try
+                {
+                    var unpaidInstallments = await _context.LoanInstallments
+                        .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
+                        .ToListAsync();
+
+                    if (!unpaidInstallments.Any())
                     {
-                        wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
-                        wallet.SaldoInvestido += inv.ValorInvestido;
-                        inv.Status = "Ativo";
+                        return BadRequest(new { message = "Este empréstimo não possui parcelas pendentes para encerramento." });
                     }
 
-                    decimal percentual = inv.ValorInvestido / totalInvestido;
-                    decimal perdaPrincipal = Math.Round(totalPrincipalUnpaid * percentual, 2);
-
-                    decimal saldoAnterior = wallet.SaldoDisponivel;
-                    // Risco zero: devolve o principal pendente para o saldo disponível do investidor
-                    wallet.SaldoDisponivel += perdaPrincipal;
-                    wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - perdaPrincipal);
-                    wallet.DataAtualizacao = DateTime.UtcNow;
-
-                    totalRefunded += perdaPrincipal;
-
-                    // Registrar a Transação como Cobertura de Prejuízo (absorvido pelo administrador)
-                    _context.InvestorTransactions.Add(new InvestorTransaction
+                    decimal totalPrincipalUnpaid = unpaidInstallments.Sum(i => i.ValorPrincipal);
+                    decimal totalInvestido = investments.Sum(i => i.ValorInvestido);
+                    var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
+                    if (fund == null)
                     {
-                        Id = Guid.NewGuid(),
-                        InvestorId = inv.InvestorId,
-                        Tipo = "COBERTURA_PREJUIZO_ADMIN",
-                        Valor = perdaPrincipal,
-                        SaldoAnterior = saldoAnterior,
-                        SaldoPosterior = wallet.SaldoDisponivel,
-                        DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Devolução de principal para o empréstimo {loan.Id} devido a encerramento com perda (absorvida pelo administrador).",
-                        UsuarioResponsavel = adminEmail
-                    });
+                        return BadRequest(new { message = "Fundo de Proteção não encontrado." });
+                    }
 
-                    // Registrar no histórico de eventos
+                    decimal totalRefunded = 0;
+                    foreach (var inv in investments)
+                    {
+                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
+                        if (wallet == null) continue;
+
+                        if (inv.Status == "Comprometido")
+                        {
+                            wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
+                            wallet.SaldoInvestido += inv.ValorInvestido;
+                            inv.Status = "Ativo";
+                        }
+
+                        decimal percentual = inv.ValorInvestido / totalInvestido;
+                        decimal perdaPrincipal = Math.Round(totalPrincipalUnpaid * percentual, 2);
+
+                        decimal saldoAnterior = wallet.SaldoDisponivel;
+                        wallet.SaldoDisponivel += perdaPrincipal;
+                        wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - perdaPrincipal);
+                        inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - perdaPrincipal);
+                        wallet.DataAtualizacao = DateTime.UtcNow;
+
+                        totalRefunded += perdaPrincipal;
+
+                        _context.InvestorTransactions.Add(new InvestorTransaction
+                        {
+                            Id = Guid.NewGuid(),
+                            InvestorId = inv.InvestorId,
+                            Tipo = "COBERTURA_PREJUIZO_FUNDO",
+                            Valor = perdaPrincipal,
+                            SaldoAnterior = saldoAnterior,
+                            SaldoPosterior = wallet.SaldoDisponivel,
+                            DataMovimentacao = DateTime.UtcNow,
+                            Descricao = $"Devolução de principal para o empréstimo {loan.Id} devido a encerramento com perda coberta pelo Fundo de Proteção.",
+                            UsuarioResponsavel = adminEmail
+                        });
+
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
+                        {
+                            Id = Guid.NewGuid(),
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "COBERTURA_PREJUIZO_FUNDO",
+                            Observacao = $"Investidor {inv.InvestorId} recebeu devolução de principal de {perdaPrincipal:C2} (encerramento de contrato). Prejuízo coberto pelo Fundo de Proteção.",
+                            LoanRequestId = loan.Id,
+                            Valor = perdaPrincipal
+                        });
+                    }
+
+                    fund.SaldoAtual -= totalRefunded;
+                    fund.TotalUtilizado += totalRefunded;
+                    fund.UltimaAtualizacao = DateTime.UtcNow;
+
+                    foreach (var inst in unpaidInstallments)
+                    {
+                        inst.Status = "Cancelada";
+                        inst.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    loan.Status = "FinalizadoPorInadimplencia";
+                    loan.DataEncerramento = DateTime.UtcNow;
+
                     _context.FinancialEventHistories.Add(new FinancialEventHistory
                     {
                         Id = Guid.NewGuid(),
                         Data = DateTime.UtcNow,
                         UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "COBERTURA_PREJUIZO_ADMIN",
-                        Observacao = $"Investidor {inv.InvestorId} recebeu devolução de principal de {perdaPrincipal:C2} (encerramento de contrato). Prejuízo absorvido pelo Administrador.",
+                        EventoExecutado = "INTERVENCAO_ADMIN",
+                        Observacao = $"Contrato encerrado por inadimplência. Prejuízo de principal de {totalRefunded:C2} integralmente coberto e devolvido aos investidores pelo Fundo de Proteção. Observação: {dto.Observacao}",
                         LoanRequestId = loan.Id,
-                        Valor = perdaPrincipal
+                        Valor = totalRefunded
                     });
+
+                    await _context.SaveChangesAsync();
+                    await dbTransaction.CommitAsync();
+
+                    return Ok(new { message = "Contrato encerrado por perda. Prejuízo coberto pelo Fundo de Proteção e principal devolvido aos investidores com sucesso.", totalPrincipalReembolsado = totalRefunded, saldoRestanteFundo = fund.SaldoAtual });
                 }
-
-                // Debitar do fundo de proteção o valor reembolsado aos investidores
-                if (fund != null)
+                catch (Exception innerEx)
                 {
-                    fund.SaldoAtual -= totalRefunded;
-                    fund.TotalUtilizado += totalRefunded;
-                    fund.UltimaAtualizacao = DateTime.UtcNow;
+                    await dbTransaction.RollbackAsync();
+                    return BadRequest(new { message = innerEx.Message });
                 }
-
-                // Marcar parcelas pendentes como Canceladas
-                foreach (var inst in unpaidInstallments)
-                {
-                    inst.Status = "Cancelada";
-                    inst.UpdatedAt = DateTime.UtcNow;
-                }
-
-                // Encerrar o empréstimo por inadimplência sem cobertura (perda total absorbida pelo administrador)
-                loan.Status = "FinalizadoPorInadimplencia";
-                loan.DataEncerramento = DateTime.UtcNow;
-
-                _context.FinancialEventHistories.Add(new FinancialEventHistory
-                {
-                    Id = Guid.NewGuid(),
-                    Data = DateTime.UtcNow,
-                    UsuarioResponsavel = adminEmail,
-                    EventoExecutado = "INTERVENCAO_ADMIN",
-                    Observacao = $"Contrato encerrado por inadimplência. Prejuízo de principal de {totalRefunded:C2} integralmente coberto e devolvido aos investidores pelo Administrador. Observação: {dto.Observacao}",
-                    LoanRequestId = loan.Id,
-                    Valor = totalRefunded
-                });
-
-                await _context.SaveChangesAsync();
-
-                return Ok(new { message = "Contrato encerrado por perda. Prejuízo coberto pelo administrador e principal devolvido aos investidores com sucesso.", totalPrincipalReembolsado = totalRefunded, saldoRestanteFundo = fund?.SaldoAtual });
             }
             catch (Exception ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
         }
+
         // GET /api/admin/delinquency/history
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory(
@@ -958,143 +989,6 @@ namespace backend.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
-        private async Task EnsureInvestmentsExistAsync(LoanRequest loan)
-        {
-            var investments = await _context.Investments
-                .Where(i => i.LoanId == loan.Id)
-                .ToListAsync();
-
-            if (!investments.Any())
-            {
-                var investors = await _context.Users
-                    .Include(u => u.Wallet)
-                    .Where(u => u.Role == "Investidor" && u.Status == "Aprovado")
-                    .ToListAsync();
-
-                if (!investors.Any())
-                {
-                    var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
-                    var mockInvestor = new User
-                    {
-                        Id = Guid.NewGuid(),
-                        Email = "investidor@p2p.com",
-                        Role = "Investidor",
-                        Status = "Aprovado",
-                        CreatedAt = DateTime.UtcNow
-                    };
-                    mockInvestor.PasswordHash = hasher.HashPassword(mockInvestor, "Investidor123!");
-
-                    var profile = new UserProfile
-                    {
-                        Id = mockInvestor.Id,
-                        Nome = "Investidor Teste P2P",
-                        CPF = "11122233344",
-                        Telefone = "11999999999",
-                        DataNascimento = DateTime.UtcNow.AddYears(-25),
-                        ScoreAtual = 800,
-                        QuestionnaireCompleted = true
-                    };
-                    mockInvestor.Profile = profile;
-
-                    var wallet = new InvestorWallet
-                    {
-                        Id = mockInvestor.Id,
-                        SaldoDisponivel = 50000.00m,
-                        SaldoInvestido = 0,
-                        Rendimentos = 0,
-                        TotalAportado = 50000.00m,
-                        TotalSacado = 0,
-                        PerfilInvestimento = "Moderado",
-                        DataCriacao = DateTime.UtcNow,
-                        DataAtualizacao = DateTime.UtcNow
-                    };
-                    mockInvestor.Wallet = wallet;
-
-                    _context.Users.Add(mockInvestor);
-                    await _context.SaveChangesAsync();
-
-                    investors.Add(mockInvestor);
-                }
-
-                decimal valorLoan = loan.ValorSolicitado;
-                if (investors.Count >= 2)
-                {
-                    var inv1 = investors[0];
-                    var inv2 = investors[1];
-
-                    if (inv1.Wallet == null) inv1.Wallet = CreateDefaultWallet(inv1.Id);
-                    if (inv2.Wallet == null) inv2.Wallet = CreateDefaultWallet(inv2.Id);
-
-                    var investment1 = new Investment
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = inv1.Id,
-                        LoanId = loan.Id,
-                        ValorInvestido = Math.Round(valorLoan * 0.60m, 2),
-                        CreatedAt = DateTime.UtcNow.AddDays(-10)
-                    };
-
-                    var investment2 = new Investment
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = inv2.Id,
-                        LoanId = loan.Id,
-                        ValorInvestido = Math.Round(valorLoan * 0.40m, 2),
-                        CreatedAt = DateTime.UtcNow.AddDays(-10)
-                    };
-
-                    inv1.Wallet.SaldoInvestido += investment1.ValorInvestido;
-                    inv1.Wallet.SaldoDisponivel = Math.Max(0, inv1.Wallet.SaldoDisponivel - investment1.ValorInvestido);
-
-                    inv2.Wallet.SaldoInvestido += investment2.ValorInvestido;
-                    inv2.Wallet.SaldoDisponivel = Math.Max(0, inv2.Wallet.SaldoDisponivel - investment2.ValorInvestido);
-
-                    _context.Investments.Add(investment1);
-                    _context.Investments.Add(investment2);
-                }
-                else
-                {
-                    var inv = investors[0];
-                    if (inv.Wallet == null) inv.Wallet = CreateDefaultWallet(inv.Id);
-
-                    var investment = new Investment
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = inv.Id,
-                        LoanId = loan.Id,
-                        ValorInvestido = valorLoan,
-                        CreatedAt = DateTime.UtcNow.AddDays(-10)
-                    };
-
-                    inv.Wallet.SaldoInvestido += investment.ValorInvestido;
-                    inv.Wallet.SaldoDisponivel = Math.Max(0, inv.Wallet.SaldoDisponivel - investment.ValorInvestido);
-
-                    _context.Investments.Add(investment);
-                }
-
-                await _context.SaveChangesAsync();
-            }
-        }
-
-        private InvestorWallet CreateDefaultWallet(Guid investorId)
-        {
-            var wallet = new InvestorWallet
-            {
-                Id = investorId,
-                SaldoDisponivel = 50000.00m,
-                SaldoInvestido = 0,
-                Rendimentos = 0,
-                TotalAportado = 50000.00m,
-                TotalSacado = 0,
-                PerfilInvestimento = "Moderado",
-                DataCriacao = DateTime.UtcNow,
-                DataAtualizacao = DateTime.UtcNow
-            };
-            _context.InvestorWallets.Add(wallet);
-            return wallet;
-        }
-
-
     }
 
     public class CoverRequestDto

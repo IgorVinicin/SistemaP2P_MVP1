@@ -43,7 +43,7 @@ export class MyLoansComponent implements OnInit {
   public displayedInstallmentColumns: string[] = ['numero', 'vencimento', 'valor', 'multa', 'jurosMora', 'valorPago', 'status', 'acoes'];
 
   public get hasActiveLoan(): boolean {
-    const statusAtivos = ['pendente', 'emanalise', 'aprovado', 'ativo'];
+    const statusAtivos = ['pendente', 'emanalise', 'aprovado', 'ativo', 'empagamento', 'inadimplente'];
     return this.loans.some(l => l.status && statusAtivos.includes(l.status.toLowerCase()));
   }
 
@@ -57,6 +57,12 @@ export class MyLoansComponent implements OnInit {
       next: (data) => {
         this.loans = data;
         this.isLoading = false;
+        if (this.selectedLoan) {
+          const updated = this.loans.find(l => l.id === this.selectedLoan?.id);
+          if (updated) {
+            this.selectedLoan = updated;
+          }
+        }
         this.cdr.detectChanges();
       },
       error: () => {

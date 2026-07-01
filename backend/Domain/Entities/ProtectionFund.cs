@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.Domain.Entities
 {
@@ -9,5 +10,8 @@ namespace backend.Domain.Entities
         public decimal TotalRecebido { get; set; } = 0;
         public decimal TotalUtilizado { get; set; } = 0;
         public DateTime UltimaAtualizacao { get; set; } = DateTime.UtcNow;
+        
+        [ConcurrencyCheck]
+        public uint Version { get; set; } // Otimistic Concurrency Token
     }
 }

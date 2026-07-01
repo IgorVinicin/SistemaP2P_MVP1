@@ -17,6 +17,9 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CreditValidationService>();
 builder.Services.AddScoped<DelinquencyService>();
 builder.Services.AddScoped<AllocationEngineService>();
+builder.Services.AddScoped<PlatformRevenueService>();
+builder.Services.AddScoped<LedgerService>();
+builder.Services.AddScoped<CashFlowService>();
 
 // Configuração JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
@@ -93,6 +96,60 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
+
+        // Correção de dados legados (Investidores sem carteira ou com rentabilidade zerada, e investimentos com status nulo/vazio)
+        try
+        {
+            var investidores = context.Users.Where(u => u.Role == "Investidor").ToList();
+            foreach (var inv in investidores)
+            {
+                var wallet = context.InvestorWallets.FirstOrDefault(w => w.Id == inv.Id);
+                if (wallet == null)
+                {
+                    Console.WriteLine($"[MIGRACAO] Criando InvestorWallet para investidor legado: {inv.Email}");
+                    context.InvestorWallets.Add(new InvestorWallet
+                    {
+                        Id = inv.Id,
+                        SaldoDisponivel = 0,
+                        SaldoComprometido = 0,
+                        SaldoInvestido = 0,
+                        Rendimentos = 0,
+                        TotalAportado = 0,
+                        TotalSacado = 0,
+                        PerfilInvestimento = "Conservador",
+                        Rentabilidade = 5.00m,
+                        DataCriacao = DateTime.UtcNow,
+                        DataAtualizacao = DateTime.UtcNow,
+                        ObservacaoAdministrativa = "Criado automaticamente pela rotina de migração."
+                    });
+                }
+                else if (wallet.Rentabilidade == 0.00m)
+                {
+                    Console.WriteLine($"[MIGRACAO] Corrigindo rentabilidade de 0.00% para 5.00% do investidor: {inv.Email}");
+                    wallet.Rentabilidade = 5.00m;
+                    context.InvestorWallets.Update(wallet);
+                }
+            }
+
+            var investmentsSemStatus = context.Investments.Where(i => string.IsNullOrEmpty(i.Status)).ToList();
+            foreach (var investment in investmentsSemStatus)
+            {
+                var loan = context.LoanRequests.FirstOrDefault(l => l.Id == investment.LoanId);
+                string novoStatus = "Ativo";
+                if (loan != null && (loan.Status == "Pendente" || loan.Status == "Aprovado"))
+                {
+                    novoStatus = "Comprometido";
+                }
+                Console.WriteLine($"[MIGRACAO] Corrigindo status do Investment {investment.Id} para '{novoStatus}' (LoanStatus: {loan?.Status})");
+                investment.Status = novoStatus;
+                context.Investments.Update(investment);
+            }
+            context.SaveChanges();
+        }
+        catch (Exception migEx)
+        {
+            Console.WriteLine($"[MIGRACAO-ERRO] Erro ao executar migração de dados legados: {migEx.Message}");
+        }
 
         // Seed das Regras de Score
         if (!context.ScoreCreditRules.Any())

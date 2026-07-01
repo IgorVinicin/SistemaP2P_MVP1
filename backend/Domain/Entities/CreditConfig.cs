@@ -13,5 +13,7 @@ namespace backend.Domain.Entities
         public int DiasParaInadimplencia { get; set; } = 61;
         public decimal ValorMinimoInvestimento { get; set; } = 5000.00m;
         public int MinimoParcelasPagasNovaSolicitacao { get; set; } = 4;
+        public int MaxInvestidoresPorEmprestimo { get; set; } = 10;
+        public decimal SpreadMinimoPlataforma { get; set; } = 1.00m; // 1%
     }
 }

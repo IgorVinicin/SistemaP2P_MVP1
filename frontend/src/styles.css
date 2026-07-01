@@ -1,18 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import "@angular/material/prebuilt-themes/indigo-pink.css";
 
+/* Design Tokens & Theme Variables */
+:root {
+  --primary-color: #0f172a;       /* Slate 900 */
+  --primary-hover: #1e293b;       /* Slate 800 */
+  --primary-light: #f8fafc;       /* Slate 50 */
+  --accent-color: #2563eb;        /* Blue 600 */
+  --accent-hover: #1d4ed8;        /* Blue 700 */
+  --success-color: #10b981;       /* Emerald 500 */
+  --warning-color: #f59e0b;       /* Amber 500 */
+  --danger-color: #ef4444;        /* Red 500 */
+  --text-main: #0f172a;           /* Dark Slate */
+  --text-secondary: #475569;      /* Cool Gray */
+  --text-muted: #94a3b8;          /* Light Slate Gray */
+  --border-color: #e2e8f0;        /* Card/Grid Borders */
+  --bg-main: #f8fafc;             /* Screen Background */
+  --bg-card: #ffffff;             /* Card Background */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* Global Reset & Base */
 html, body {
   height: 100%;
   margin: 0;
-  font-family: Roboto, "Helvetica Neue", sans-serif;
-  background-color: #f5f7fa;
-  color: #333;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
+/* Typography Standards */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.025em;
+}
+
+p {
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+/* Angular Material Card Override */
+.mat-mdc-card {
+  background-color: var(--bg-card) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mat-mdc-card-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: var(--text-main) !important;
+  letter-spacing: -0.02em !important;
+}
+
+.mat-mdc-card-subtitle {
+  font-size: 0.85rem !important;
+  color: var(--text-secondary) !important;
+  margin-top: 0.25rem !important;
+}
+
+/* Angular Material Form Fields */
 mat-form-field {
   width: 100%;
 }
 
-.mat-mdc-card {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-  border-radius: 8px !important;
+.mat-mdc-text-field-wrapper {
+  background-color: #ffffff !important;
+  border-radius: 6px !important;
+}
+
+.mat-mdc-form-field-focus-indicator {
+  border-radius: 6px !important;
+}
+
+/* Buttons Styling */
+.mat-mdc-raised-button.mat-primary, .mat-mdc-flat-button.mat-primary {
+  background-color: var(--accent-color) !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-raised-button.mat-accent, .mat-mdc-flat-button.mat-accent {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+
+.mat-mdc-button, .mat-mdc-raised-button, .mat-mdc-flat-button, .mat-mdc-icon-button {
+  border-radius: 6px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  font-size: 0.875rem !important;
+}
+
+/* Global Table Override (mat-table) */
+.mat-mdc-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background-color: #ffffff !important;
+}
+
+tr.mat-mdc-header-row {
+  background-color: #f8fafc !important;
+  height: 48px !important;
+  border-bottom: 1px solid var(--border-color) !important;
+}
+
+th.mat-mdc-header-cell {
+  color: var(--text-secondary) !important;
+  font-weight: 600 !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  border-bottom: 1px solid var(--border-color) !important;
+  padding: 12px 16px !important;
+}
+
+tr.mat-mdc-row {
+  height: 48px !important;
+  transition: background-color 0.15s ease !important;
+}
+
+tr.mat-mdc-row:hover {
+  background-color: #f1f5f9 !important;
+}
+
+td.mat-mdc-cell {
+  color: var(--text-main) !important;
+  font-size: 0.875rem !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 12px 16px !important;
+}
+
+/* Navigation Layout Overrides */
+.app-toolbar {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+  box-shadow: var(--shadow-sm);
+  padding: 0 16px !important;
+  height: 64px !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.app-toolbar span {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.nav-container button.mat-mdc-button {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-weight: 500 !important;
+  padding: 0 8px !important;
+  font-size: 0.8rem !important;
+  transition: color 0.15s ease, background-color 0.15s ease !important;
+}
+
+.nav-container button.mat-mdc-button:hover {
+  color: #ffffff !important;
+  background-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Status & Transaction Badges Standard */
+.status-badge, .tx-badge {
+  padding: 4px 10px !important;
+  border-radius: 9999px !important;
+  font-size: 0.75rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  display: inline-block !important;
+  letter-spacing: 0.025em !important;
+  text-align: center !important;
+}
+
+.status-badge.aprovado, .status-badge.ativo, .status-badge.quitado, .status-badge.concluido, .tx-badge.aporte, .tx-badge.recebimento_parcela {
+  background-color: #dcfce7 !important;
+  color: #15803d !important;
+}
+
+.status-badge.pendente, .tx-badge.rendimento {
+  background-color: #fef3c7 !important;
+  color: #b45309 !important;
+}
+
+.status-badge.emanalise, .tx-badge.investimento, .tx-badge.alocacao_automatica {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+}
+
+.status-badge.reprovado, .status-badge.cancelado, .status-badge.atrasado, .status-badge.inadimplente, .tx-badge.prejuizo, .tx-badge.perda {
+  background-color: #fee2e2 !important;
+  color: #b91c1c !important;
+}
+
+.tx-badge.saque {
+  background-color: #ffedd5 !important;
+  color: #c2410c !important;
+}
+
+.tx-badge.ajuste_admin {
+  background-color: #f3e8ff !important;
+  color: #7e22ce !important;
+}
+
+/* Form Container Layouts */
+.form-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.form-row mat-form-field {
+  flex: 1;
+  min-width: 200px;
+}
+
+/* Responsive Container */
+.container {
+  padding: 24px 16px !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+@media (max-width: 768px) {
+  .app-toolbar {
+    height: auto !important;
+    padding: 12px 16px !important;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start !important;
+  }
+  
+  .nav-container {
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-container .user-email {
+    width: 100%;
+    margin-bottom: 4px;
+  }
 }

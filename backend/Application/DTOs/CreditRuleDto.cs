@@ -23,5 +23,7 @@ namespace backend.Application.DTOs
         public int DiasParaInadimplencia { get; set; }
         public decimal ValorMinimoInvestimento { get; set; }
         public int MinimoParcelasPagasNovaSolicitacao { get; set; }
+        public int MaxInvestidoresPorEmprestimo { get; set; }
+        public decimal SpreadMinimoPlataforma { get; set; }
     }
 }

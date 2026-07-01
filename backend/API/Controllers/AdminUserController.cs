@@ -310,7 +310,9 @@ namespace backend.API.Controllers
                 }).ToList(),
                 Answers = answers,
                 Loans = loans,
-                ScoreHistory = scoreHistory
+                ScoreHistory = scoreHistory,
+                Rentabilidade = user.Wallet != null ? user.Wallet.Rentabilidade : (decimal?)null,
+                ObservacaoAdministrativa = user.Wallet != null ? user.Wallet.ObservacaoAdministrativa : null
             };
 
             return Ok(detail);
@@ -393,7 +395,30 @@ namespace backend.API.Controllers
 
                 if (dto != null)
                 {
-                    user.Wallet.Rentabilidade = dto.Rentabilidade ?? 0;
+                    decimal rentabilidadeDesejada = dto.Rentabilidade ?? 0;
+
+                    // Buscar menor taxa de juros ativa nas regras de crédito
+                    var menorTaxaAtiva = await _context.ScoreCreditRules
+                        .Where(r => r.Ativo)
+                        .Select(r => (decimal?)r.TaxaJuros)
+                        .MinAsync();
+
+                    if (menorTaxaAtiva == null)
+                    {
+                        return BadRequest(new { message = "Não há regras de crédito ativas cadastradas no sistema para validar o spread." });
+                    }
+
+                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+                    decimal spreadMinimo = config?.SpreadMinimoPlataforma ?? 1.00m;
+
+                    decimal limiteMaximo = menorTaxaAtiva.Value - spreadMinimo;
+
+                    if (rentabilidadeDesejada > limiteMaximo)
+                    {
+                        return BadRequest(new { message = $"Operação bloqueada: A rentabilidade informada ({rentabilidadeDesejada:F2}%) excede o limite máximo permitido ({limiteMaximo:F2}%) definido pelo spread mínimo da plataforma ({spreadMinimo:F2}%) sob a menor taxa ativa de empréstimo ({menorTaxaAtiva.Value:F2}%)." });
+                    }
+
+                    user.Wallet.Rentabilidade = rentabilidadeDesejada;
                     user.Wallet.ObservacaoAdministrativa = dto.ObservacaoAdministrativa ?? string.Empty;
                 }
                 user.Wallet.DataAtualizacao = DateTime.UtcNow;

@@ -239,7 +239,7 @@
         Aprovar Solicitação
       </button>
     </ng-container>
-    <ng-container *ngIf="selectedLoan.status === 'Aprovado' || selectedLoan.status === 'Ativo' || selectedLoan.status === 'EmAnalise'">
+    <ng-container *ngIf="selectedLoan.status === 'Aprovado' || selectedLoan.status === 'Ativo' || selectedLoan.status === 'EmAnalise' || selectedLoan.status === 'EmPagamento' || selectedLoan.status === 'Inadimplente'">
       <button mat-flat-button style="background-color: #2e7d32; color: white;" (click)="finishLoan(selectedLoan.id!)" [disabled]="isActionProcessing">
         Finalizar / Quitar Empréstimo
       </button>

@@ -26,6 +26,11 @@ namespace backend.Infrastructure
         public DbSet<InvestorTransaction> InvestorTransactions { get; set; }
         public DbSet<LoanInstallment> LoanInstallments { get; set; }
         public DbSet<FinancialEventHistory> FinancialEventHistories { get; set; }
+        public DbSet<PlatformRevenue> PlatformRevenues { get; set; }
+        public DbSet<LedgerTransaction> LedgerTransactions { get; set; }
+        public DbSet<CashFlowSnapshot> CashFlowSnapshots { get; set; }
+        public DbSet<DepositRequest> DepositRequests { get; set; }
+        public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -130,6 +135,10 @@ namespace backend.Infrastructure
                 .Property(i => i.ValorInvestido)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<Investment>()
+                .Property(i => i.SaldoPrincipalPendente)
+                .HasPrecision(18, 2);
+
             modelBuilder.Entity<InvestorWallet>()
                 .Property(iw => iw.SaldoDisponivel)
                 .HasPrecision(18, 2);
@@ -160,6 +169,39 @@ namespace backend.Infrastructure
 
             modelBuilder.Entity<FinancialEventHistory>()
                 .Property(fe => fe.Valor)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<PlatformRevenue>()
+                .Property(pr => pr.Valor)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<LedgerTransaction>()
+                .Property(lt => lt.Valor)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalEntradas)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalSaidas)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.SaldoOperacional)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.ReceitaPlataforma)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalDistribuidoInvestidores)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalCobertoProtectionFund)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalEmprestado)
+                .HasPrecision(18, 2);
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .Property(c => c.TotalRecebidoParcelas)
                 .HasPrecision(18, 2);
 
             modelBuilder.Entity<ScoreCreditRule>()
@@ -242,6 +284,10 @@ namespace backend.Infrastructure
                 .Property(cc => cc.ValorMinimoInvestimento)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<CreditConfig>()
+                .Property(cc => cc.SpreadMinimoPlataforma)
+                .HasPrecision(18, 2);
+
             // =================ÍNDICES CONFIGURADOS PARA PERFORMANCE=================
             
             // Índices em LoanInstallment (Status, DataVencimento, LoanRequestId)
@@ -269,6 +315,26 @@ namespace backend.Infrastructure
             // Índices em FinancialEventHistory (EventoExecutado, Data)
             modelBuilder.Entity<FinancialEventHistory>()
                 .HasIndex(fe => new { fe.EventoExecutado, fe.Data });
+
+            // Índices em PlatformRevenue
+            modelBuilder.Entity<PlatformRevenue>()
+                .HasIndex(pr => new { pr.TipoReceita, pr.DataCriacao });
+            modelBuilder.Entity<PlatformRevenue>()
+                .HasIndex(pr => pr.LoanId);
+
+            // Índices em LedgerTransaction
+            modelBuilder.Entity<LedgerTransaction>()
+                .HasIndex(lt => lt.TransactionDate);
+            modelBuilder.Entity<LedgerTransaction>()
+                .HasIndex(lt => lt.ContaOrigem);
+            modelBuilder.Entity<LedgerTransaction>()
+                .HasIndex(lt => lt.ContaDestino);
+            modelBuilder.Entity<LedgerTransaction>()
+                .HasIndex(lt => lt.ReferenceId);
+
+            // Índices em CashFlowSnapshot
+            modelBuilder.Entity<CashFlowSnapshot>()
+                .HasIndex(c => c.SnapshotDate);
         }
     }
 }

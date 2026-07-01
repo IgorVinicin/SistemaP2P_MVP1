@@ -59,6 +59,8 @@ export interface UserDetailDto {
   answers?: UserAnswerDetailDto[];
   loans?: UserLoanDetailDto[];
   scoreHistory?: UserScoreHistoryDto[];
+  rentabilidade?: number;
+  observacaoAdministrativa?: string;
 }
 
 export interface PendingUserSummaryDto {

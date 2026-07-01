@@ -1,0 +1,169 @@
+<div class="revenue-container" style="padding: 20px;">
+  <h1 style="color: #1e293b; margin-bottom: 24px; font-weight: 700;">Motor de Receita da Plataforma</h1>
+
+  <!-- Métricas de Dashboard -->
+  <div *ngIf="metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    
+    <mat-card style="border-left: 4px solid #10b981; border-radius: 8px;">
+      <mat-card-header>
+        <div mat-card-avatar>
+          <mat-icon style="color: #10b981; transform: scale(1.5);">today</mat-icon>
+        </div>
+        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Hoje</mat-card-title>
+        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+          {{ metrics.receitaHoje | currency:'BRL' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+
+    <mat-card style="border-left: 4px solid #3b82f6; border-radius: 8px;">
+      <mat-card-header>
+        <div mat-card-avatar>
+          <mat-icon style="color: #3b82f6; transform: scale(1.5);">date_range</mat-icon>
+        </div>
+        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Semana</mat-card-title>
+        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+          {{ metrics.receitaSemana | currency:'BRL' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+
+    <mat-card style="border-left: 4px solid #f59e0b; border-radius: 8px;">
+      <mat-card-header>
+        <div mat-card-avatar>
+          <mat-icon style="color: #f59e0b; transform: scale(1.5);">calendar_month</mat-icon>
+        </div>
+        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Mês</mat-card-title>
+        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+          {{ metrics.receitaMes | currency:'BRL' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+
+    <mat-card style="border-left: 4px solid #6366f1; border-radius: 8px; background: #eef2ff;">
+      <mat-card-header>
+        <div mat-card-avatar>
+          <mat-icon style="color: #6366f1; transform: scale(1.5);">account_balance</mat-icon>
+        </div>
+        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Total</mat-card-title>
+        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+          {{ metrics.receitaTotal | currency:'BRL' }}
+        </mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+
+    <mat-card style="border-left: 4px solid #8b5cf6; border-radius: 8px;">
+      <mat-card-header>
+        <div mat-card-avatar>
+          <mat-icon style="color: #8b5cf6; transform: scale(1.5);">receipt_long</mat-icon>
+        </div>
+        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Eventos de Receita</mat-card-title>
+        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+          {{ metrics.quantidadeEventos }}
+        </mat-card-subtitle>
+      </mat-card-header>
+    </mat-card>
+  </div>
+
+  <div *ngIf="isLoadingMetrics" style="text-align: center; padding: 20px; color: #64748b;">
+    Carregando métricas...
+  </div>
+
+  <!-- Filtros e Tabela -->
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>Detalhamento de Receitas</mat-card-title>
+      <mat-card-subtitle>Histórico completo e auditável de entradas na plataforma</mat-card-subtitle>
+    </mat-card-header>
+    
+    <mat-card-content style="padding-top: 20px;">
+      
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 8px;">
+        <mat-form-field appearance="outline" style="min-width: 200px; margin-bottom: -1.25em;">
+          <mat-label>Período</mat-label>
+          <mat-select [(ngModel)]="period" (selectionChange)="onPeriodChange()">
+            <mat-option value="">Todo o Período</mat-option>
+            <mat-option value="hoje">Hoje</mat-option>
+            <mat-option value="7dias">Últimos 7 dias</mat-option>
+            <mat-option value="30dias">Últimos 30 dias</mat-option>
+            <mat-option value="mesatual">Mês Atual</mat-option>
+            <mat-option value="personalizado">Personalizado</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <ng-container *ngIf="isCustomPeriod">
+          <mat-form-field appearance="outline" style="margin-bottom: -1.25em;">
+            <mat-label>Data Início</mat-label>
+            <input matInput [matDatepicker]="startPicker" [(ngModel)]="startDate">
+            <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+            <mat-datepicker #startPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" style="margin-bottom: -1.25em;">
+            <mat-label>Data Fim</mat-label>
+            <input matInput [matDatepicker]="endPicker" [(ngModel)]="endDate">
+            <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+            <mat-datepicker #endPicker></mat-datepicker>
+          </mat-form-field>
+
+          <button mat-flat-button color="primary" (click)="applyCustomFilter()">Filtrar</button>
+        </ng-container>
+      </div>
+
+      <div *ngIf="isLoadingRevenues" style="text-align: center; padding: 20px; color: #64748b;">
+        Carregando receitas...
+      </div>
+
+      <div *ngIf="!isLoadingRevenues && revenues.length === 0" style="text-align: center; padding: 40px; color: #94a3b8;">
+        <mat-icon style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;">money_off</mat-icon>
+        <h3>Nenhuma receita encontrada para os filtros selecionados.</h3>
+      </div>
+
+      <table mat-table [dataSource]="revenues" class="mat-elevation-z1" *ngIf="!isLoadingRevenues && revenues.length > 0">
+        
+        <ng-container matColumnDef="dataCriacao">
+          <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
+          <td mat-cell *matCellDef="let element"> {{ element.dataCriacao | date:'dd/MM/yyyy HH:mm' }} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipoReceita">
+          <th mat-header-cell *matHeaderCellDef> Tipo de Receita </th>
+          <td mat-cell *matCellDef="let element"> 
+            <span style="background: #eef2ff; color: #4f46e5; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 500;">
+              {{ getRevenueTypeName(element.tipoReceita) }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="valor">
+          <th mat-header-cell *matHeaderCellDef> Valor </th>
+          <td mat-cell *matCellDef="let element" style="font-weight: 600; color: #15803d;"> 
+            {{ element.valor | currency:'BRL' }} 
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="observacao">
+          <th mat-header-cell *matHeaderCellDef> Origem / Observação </th>
+          <td mat-cell *matCellDef="let element" style="color: #64748b;"> {{ element.observacao }} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="createdBy">
+          <th mat-header-cell *matHeaderCellDef> Executado Por </th>
+          <td mat-cell *matCellDef="let element"> {{ element.createdBy }} </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <mat-paginator *ngIf="total > 0"
+                     [length]="total"
+                     [pageSize]="pageSize"
+                     [pageSizeOptions]="[10, 20, 50]"
+                     (page)="onPageChange($event)"
+                     style="margin-top: 15px;">
+      </mat-paginator>
+
+    </mat-card-content>
+  </mat-card>
+</div>

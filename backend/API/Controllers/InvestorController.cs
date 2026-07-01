@@ -215,7 +215,7 @@ namespace backend.API.Controllers
                 Id = Guid.NewGuid(),
                 InvestorId = userId,
                 Tipo = "SAQUE",
-                Valor = dto.Valor,
+                Valor = -dto.Valor,
                 SaldoAnterior = saldoAnterior,
                 SaldoPosterior = wallet.SaldoDisponivel,
                 DataMovimentacao = DateTime.UtcNow,

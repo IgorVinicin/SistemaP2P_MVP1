@@ -1,0 +1,131 @@
+using System;
+using System.Linq;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using backend.Application.Services;
+using backend.Infrastructure;
+
+namespace backend.API.Controllers
+{
+    [ApiController]
+    [Route("api/admin/treasury")]
+    [Authorize(Roles = "Admin")]
+    public class AdminTreasuryController : ControllerBase
+    {
+        private readonly ITreasuryService _treasuryService;
+        private readonly AppDbContext _context;
+
+        public AdminTreasuryController(ITreasuryService treasuryService, AppDbContext context)
+        {
+            _treasuryService = treasuryService;
+            _context = context;
+        }
+
+        // --- DEPÓSITOS ---
+
+        [HttpGet("deposits")]
+        public async Task<IActionResult> ListDeposits([FromQuery] string? status)
+        {
+            var query = _context.DepositRequests.Include(d => d.Investor).AsQueryable();
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(d => d.Status == status);
+
+            var deposits = await query.OrderByDescending(d => d.CreatedAt).ToListAsync();
+            return Ok(deposits);
+        }
+
+        [HttpPost("deposits/{id}/confirm")]
+        public async Task<IActionResult> ConfirmDeposit(Guid id, [FromBody] ConfirmRequestDto request)
+        {
+            try
+            {
+                var adminUser = User.Identity?.Name ?? "Admin";
+                var success = await _treasuryService.ConfirmDepositAsync(id, request.GatewayReference ?? "MANUAL-SIMULADO", adminUser);
+                return success ? Ok(new { message = "Depósito confirmado com sucesso." }) : BadRequest("Falha ao confirmar.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("deposits/{id}/cancel")]
+        public async Task<IActionResult> CancelDeposit(Guid id, [FromBody] RejectRequestDto request)
+        {
+            try
+            {
+                var adminUser = User.Identity?.Name ?? "Admin";
+                var success = await _treasuryService.CancelDepositAsync(id, adminUser, request.Motivo);
+                return success ? Ok(new { message = "Depósito cancelado com sucesso." }) : BadRequest("Falha ao cancelar.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+
+        // --- SAQUES ---
+
+        [HttpGet("withdrawals")]
+        public async Task<IActionResult> ListWithdrawals([FromQuery] string? status)
+        {
+            var query = _context.WithdrawalRequests.Include(w => w.Investor).AsQueryable();
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(w => w.Status == status);
+
+            var withdrawals = await query.OrderByDescending(w => w.CreatedAt).ToListAsync();
+            return Ok(withdrawals);
+        }
+
+        [HttpPost("withdrawals/{id}/approve")]
+        public async Task<IActionResult> ApproveWithdrawal(Guid id)
+        {
+            try
+            {
+                var adminUser = User.Identity?.Name ?? "Admin";
+                var success = await _treasuryService.ApproveWithdrawalAsync(id, adminUser);
+                return success ? Ok(new { message = "Saque aprovado e pronto para envio bancário." }) : BadRequest("Falha.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("withdrawals/{id}/reject")]
+        public async Task<IActionResult> RejectWithdrawal(Guid id, [FromBody] RejectRequestDto request)
+        {
+            try
+            {
+                var adminUser = User.Identity?.Name ?? "Admin";
+                var success = await _treasuryService.RejectWithdrawalAsync(id, adminUser, request.Motivo);
+                return success ? Ok(new { message = "Saque rejeitado e saldo desbloqueado." }) : BadRequest("Falha.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("withdrawals/{id}/confirm")]
+        public async Task<IActionResult> ConfirmWithdrawal(Guid id, [FromBody] ConfirmRequestDto request)
+        {
+            try
+            {
+                var adminUser = User.Identity?.Name ?? "Admin";
+                var success = await _treasuryService.ConfirmWithdrawalAsync(id, request.GatewayReference ?? "MANUAL-SIMULADO", adminUser);
+                return success ? Ok(new { message = "Saque confirmado com sucesso no Gateway." }) : BadRequest("Falha.");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+    }
+
+    public class ConfirmRequestDto { public string? GatewayReference { get; set; } }
+    public class RejectRequestDto { public string? Motivo { get; set; } }
+}

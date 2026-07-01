@@ -1,0 +1,71 @@
+.ledger-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header-section {
+  margin-bottom: 24px;
+}
+
+.header-section h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
+  margin: 0 0 8px 0;
+  color: #333;
+}
+
+.header-section p {
+  color: #666;
+  margin: 0;
+}
+
+.filter-card {
+  margin-bottom: 24px;
+}
+
+.filters {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filters mat-form-field {
+  flex: 1;
+  min-width: 250px;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.account-origin {
+  color: #d32f2f;
+  font-weight: 500;
+}
+
+.account-dest {
+  color: #388e3c;
+  font-weight: 500;
+}
+
+.value-cell {
+  font-weight: bold;
+}
+
+.text-muted {
+  color: #888;
+  font-size: 0.85em;
+}
+
+.custom-chip {
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+  font-weight: 500;
+}

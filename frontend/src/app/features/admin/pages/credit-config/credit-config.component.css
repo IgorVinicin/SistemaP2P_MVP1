@@ -149,3 +149,50 @@
   gap: 0.75rem;
   padding-top: 1rem;
 }
+
+/* Explanation Card and Business Rules Grid */
+.explanation-card {
+  border: 1px solid #bfdbfe;
+  background-color: #f8fafc;
+}
+
+.explanation-header {
+  background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+
+.rules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+}
+
+.rule-explain-item {
+  background-color: #ffffff;
+  border-left: 4px solid #3b82f6;
+  border-radius: 4px 8px 8px 4px;
+  padding: 1.25rem;
+  border-top: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 1px solid #e2e8f0;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rule-explain-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -4px rgba(59, 130, 246, 0.1);
+  border-color: #93c5fd;
+}
+
+.rule-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.rule-description {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #475569;
+}

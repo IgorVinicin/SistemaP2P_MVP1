@@ -76,11 +76,11 @@
       </div>
     </div>
 
-    <mat-divider *ngIf="(userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise') && userDetail.role === 'Investidor'"></mat-divider>
+    <mat-divider *ngIf="userDetail.role === 'Investidor'"></mat-divider>
 
     <!-- Parâmetros de Aprovação do Investidor (Etapa 10) -->
-    <div class="detail-section" *ngIf="(userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise') && userDetail.role === 'Investidor'">
-      <h3 class="section-title" style="color: #4f46e5;">Configurações de Aprovação (Investidor)</h3>
+    <div class="detail-section" *ngIf="userDetail.role === 'Investidor'">
+      <h3 class="section-title" style="color: #4f46e5;">Configurações do Investidor</h3>
       <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 10px;">
         <mat-form-field appearance="outline" style="flex: 1; min-width: 150px;">
           <mat-label>Rentabilidade Simulada (%)</mat-label>
@@ -89,7 +89,7 @@
         </mat-form-field>
         <mat-form-field appearance="outline" style="flex: 2; min-width: 250px;">
           <mat-label>Observação Administrativa</mat-label>
-          <input matInput [(ngModel)]="observacaoAdministrativa" placeholder="Notas sobre a aprovação...">
+          <input matInput [(ngModel)]="observacaoAdministrativa" placeholder="Notas sobre o investidor...">
         </mat-form-field>
       </div>
     </div>
@@ -104,11 +104,15 @@
     <mat-icon>picture_as_pdf</mat-icon> Gerar Relatório
   </button>
   
-  <button mat-raised-button color="warn" (click)="reprove()" [disabled]="isProcessing" *ngIf="userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise'">
+  <button mat-raised-button color="warn" (click)="reprove()" [disabled]="isProcessing" *ngIf="userDetail.status !== 'Aprovado'">
     Reprovar Cadastro
   </button>
   
-  <button mat-raised-button color="primary" (click)="approve()" [disabled]="isProcessing" *ngIf="userDetail.status === 'Pendente' || userDetail.status === 'EmAnalise'">
+  <button mat-raised-button color="primary" (click)="approve()" [disabled]="isProcessing" *ngIf="userDetail.status !== 'Aprovado'">
     Aprovar Cadastro
+  </button>
+
+  <button mat-raised-button color="primary" (click)="approve()" [disabled]="isProcessing" *ngIf="userDetail.status === 'Aprovado' && userDetail.role === 'Investidor'">
+    Salvar Parâmetros
   </button>
 </mat-dialog-actions>

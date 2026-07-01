@@ -45,6 +45,63 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("AnswerOptions");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.CashFlowSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("ReceitaPlataforma")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("SaldoOperacional")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("SnapshotDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("TotalCobertoProtectionFund")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalDepositosExternos")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("TotalDistribuidoInvestidores")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalEmprestado")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalEntradas")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalRecebidoParcelas")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalSaidas")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalSaquesExternos")
+                        .HasColumnType("numeric");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SnapshotDate");
+
+                    b.ToTable("CashFlowSnapshots");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.CompanyProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -89,6 +146,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<int>("DiasParaInadimplencia")
                         .HasColumnType("integer");
 
+                    b.Property<int>("MaxInvestidoresPorEmprestimo")
+                        .HasColumnType("integer");
+
                     b.Property<int>("MinimoParcelasPagasNovaSolicitacao")
                         .HasColumnType("integer");
 
@@ -103,6 +163,10 @@ namespace backend.Infrastructure.Migrations
                     b.Property<int>("ScoreMinimoParaSolicitacao")
                         .HasColumnType("integer");
 
+                    b.Property<decimal>("SpreadMinimoPlataforma")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<decimal>("ValorMinimoInvestimento")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -110,6 +174,45 @@ namespace backend.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("CreditConfigs");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.DepositRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GatewayReference")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("InvestorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvestorId");
+
+                    b.ToTable("DepositRequests");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Document", b =>
@@ -192,6 +295,10 @@ namespace backend.Infrastructure.Migrations
 
                     b.Property<Guid>("LoanId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal>("SaldoPrincipalPendente")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<string>("Status")
                         .IsRequired()
@@ -280,6 +387,9 @@ namespace backend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("SaldoBloqueado")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("SaldoComprometido")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -300,9 +410,73 @@ namespace backend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.ToTable("InvestorWallets");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.LedgerTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("ContaDestino")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ContaOrigem")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("InstallmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LoanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text");
+
+                    b.Property<Guid?>("ReferenceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ReferenceType")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TipoMovimentacao")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("TransactionDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ContaDestino");
+
+                    b.HasIndex("ContaOrigem");
+
+                    b.HasIndex("ReferenceId");
+
+                    b.HasIndex("TransactionDate");
+
+                    b.ToTable("LedgerTransactions");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.LoanInstallment", b =>
@@ -459,6 +633,50 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("LoanRequests");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.PlatformRevenue", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CreatedBy")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("DataCriacao")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("InstallmentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("LoanId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text");
+
+                    b.Property<int>("TipoReceita")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Valor")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LoanId");
+
+                    b.HasIndex("TipoReceita", "DataCriacao");
+
+                    b.ToTable("PlatformRevenues");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.ProtectionFund", b =>
                 {
                     b.Property<Guid>("Id")
@@ -479,6 +697,10 @@ namespace backend.Infrastructure.Migrations
 
                     b.Property<DateTime>("UltimaAtualizacao")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 
@@ -657,6 +879,45 @@ namespace backend.Infrastructure.Migrations
                     b.ToTable("UserProfiles");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.WithdrawalRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GatewayReference")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("InvestorId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Observacao")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<decimal>("Valor")
+                        .HasColumnType("numeric");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvestorId");
+
+                    b.ToTable("WithdrawalRequests");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.AnswerOption", b =>
                 {
                     b.HasOne("backend.Domain.Entities.Question", "Question")
@@ -677,6 +938,17 @@ namespace backend.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.DepositRequest", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.User", "Investor")
+                        .WithMany()
+                        .HasForeignKey("InvestorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Investor");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.Document", b =>
@@ -800,6 +1072,17 @@ namespace backend.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.WithdrawalRequest", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.User", "Investor")
+                        .WithMany()
+                        .HasForeignKey("InvestorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Investor");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.LoanRequest", b =>

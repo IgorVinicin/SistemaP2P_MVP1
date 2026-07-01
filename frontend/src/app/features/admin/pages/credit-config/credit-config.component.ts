@@ -52,7 +52,9 @@ export class CreditConfigComponent implements OnInit {
     diasParaCobrancaIntensiva: 31,
     diasParaInadimplencia: 61,
     valorMinimoInvestimento: 5000.00,
-    minimoParcelasPagasNovaSolicitacao: 4
+    minimoParcelasPagasNovaSolicitacao: 4,
+    maxInvestidoresPorEmprestimo: 10,
+    spreadMinimoPlataforma: 1.0
   };
 
   // Dialog and Form elements
@@ -130,6 +132,14 @@ export class CreditConfigComponent implements OnInit {
     }
     if (this.globalConfig.minimoParcelasPagasNovaSolicitacao === undefined || this.globalConfig.minimoParcelasPagasNovaSolicitacao < 0) {
       this.snackBar.open('A quantidade mínima de parcelas pagas deve ser maior ou igual a 0.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.maxInvestidoresPorEmprestimo === undefined || this.globalConfig.maxInvestidoresPorEmprestimo < 1) {
+      this.snackBar.open('O limite máximo de investidores deve ser maior ou igual a 1.', 'Fechar', { duration: 4000 });
+      return;
+    }
+    if (this.globalConfig.spreadMinimoPlataforma === undefined || this.globalConfig.spreadMinimoPlataforma < 0 || this.globalConfig.spreadMinimoPlataforma > 100) {
+      this.snackBar.open('O spread mínimo da plataforma deve estar entre 0% e 100%.', 'Fechar', { duration: 4000 });
       return;
     }
 

@@ -18,4 +18,6 @@ export interface CreditConfig {
   diasParaInadimplencia?: number;
   valorMinimoInvestimento?: number;
   minimoParcelasPagasNovaSolicitacao?: number;
+  maxInvestidoresPorEmprestimo?: number;
+  spreadMinimoPlataforma?: number;
 }
