@@ -25,5 +25,6 @@ namespace backend.Application.DTOs
         public int MinimoParcelasPagasNovaSolicitacao { get; set; }
         public int MaxInvestidoresPorEmprestimo { get; set; }
         public decimal SpreadMinimoPlataforma { get; set; }
+        public decimal TaxaRendimentoPool { get; set; }
     }
 }

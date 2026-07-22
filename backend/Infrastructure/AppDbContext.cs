@@ -31,10 +31,25 @@ namespace backend.Infrastructure
         public DbSet<CashFlowSnapshot> CashFlowSnapshots { get; set; }
         public DbSet<DepositRequest> DepositRequests { get; set; }
         public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+        public DbSet<InvestorGroup> InvestorGroups { get; set; }
+        public DbSet<InvestorGroupMember> InvestorGroupMembers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<InvestorGroupMember>()
+                .HasKey(igm => new { igm.GroupId, igm.InvestorId });
+
+            modelBuilder.Entity<InvestorGroupMember>()
+                .HasOne(igm => igm.Group)
+                .WithMany(g => g.Members)
+                .HasForeignKey(igm => igm.GroupId);
+
+            modelBuilder.Entity<InvestorGroupMember>()
+                .HasOne(igm => igm.Investor)
+                .WithMany()
+                .HasForeignKey(igm => igm.InvestorId);
 
             // Relacionamento N:1 entre InvestorTransaction e User
             modelBuilder.Entity<InvestorTransaction>()

@@ -1,5 +1,10 @@
 <div class="revenue-container" style="padding: 20px;">
-  <h1 style="color: #1e293b; margin-bottom: 24px; font-weight: 700;">Motor de Receita da Plataforma</h1>
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <h1 style="color: #1e293b; margin: 0; font-weight: 700;">Motor de Receita da Plataforma</h1>
+    <button mat-flat-button color="accent" (click)="processYield()" [disabled]="isProcessingYield">
+      <mat-icon>monetization_on</mat-icon> Processar Rendimento Pool
+    </button>
+  </div>
 
   <!-- Métricas de Dashboard -->
   <div *ngIf="metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">

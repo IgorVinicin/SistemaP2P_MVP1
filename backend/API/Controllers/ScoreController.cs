@@ -165,20 +165,11 @@ namespace backend.API.Controllers
 
                 await _context.SaveChangesAsync();
 
-                // Obter classificação de risco
-                string faixaRisco;
-                if (scoreTotal <= 300)
-                {
-                    faixaRisco = "Alto risco";
-                }
-                else if (scoreTotal <= 600)
-                {
-                    faixaRisco = "Médio risco";
-                }
-                else
-                {
-                    faixaRisco = "Baixo risco";
-                }
+                // Obter classificação de risco de acordo com as regras de negócio ativas
+                var activeRule = await _context.ScoreCreditRules
+                    .FirstOrDefaultAsync(r => r.Ativo && scoreTotal >= r.ScoreMin && scoreTotal <= r.ScoreMax);
+                
+                string faixaRisco = activeRule != null ? activeRule.NivelRisco : "Não classificado";
 
                 return Ok(new
                 {

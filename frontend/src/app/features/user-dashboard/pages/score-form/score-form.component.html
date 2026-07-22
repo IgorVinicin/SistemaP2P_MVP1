@@ -1,61 +1,66 @@
+<!-- Breadcrumb removido para não duplicar na tela inicial -->
 <div class="score-form-container">
   <!-- Estado de Carregamento -->
-  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; min-height: 300px;">
+  <div *ngIf="isLoading" class="loading-state">
+    <mat-icon>autorenew</mat-icon>
     <p>Carregando questionário...</p>
   </div>
 
   <!-- Tela de Resultados do Score -->
-  <div *ngIf="!isLoading && showResult" class="result-card">
-    <mat-icon class="success-icon">check_circle</mat-icon>
-    <h2>Questionário Concluído com Sucesso!</h2>
-    <p class="result-subtitle">Suas respostas foram processadas e seu perfil de crédito foi atualizado.</p>
+  <mat-card *ngIf="!isLoading && showResult" class="result-card success-theme">
+    <mat-card-content class="result-content">
+      <mat-icon class="status-icon">check_circle</mat-icon>
+      <h2>Questionário Concluído com Sucesso!</h2>
+      <p class="result-subtitle">Suas respostas foram processadas e seu perfil de crédito foi atualizado.</p>
 
-    <p class="score-desc-text" style="font-size: 1.05rem; line-height: 1.6; max-width: 500px; margin: 1.5rem auto;">
-      Seu questionário foi processado e seu cadastro foi avaliado com sucesso. Os limites disponíveis foram liberados e você já pode prosseguir com a solicitação de empréstimo.
-    </p>
-
-    <button mat-flat-button color="primary" class="continue-btn" routerLink="/dashboard">
-      Ir para o Dashboard
-    </button>
-  </div>
+      <div class="score-desc-box">
+        <p>Os limites disponíveis foram liberados e você já pode prosseguir com a solicitação de empréstimo.</p>
+      </div>
+    </mat-card-content>
+    <div class="card-actions">
+      <button mat-flat-button color="primary" routerLink="/dashboard">Ir para o Dashboard</button>
+    </div>
+  </mat-card>
 
   <!-- Formulário de Questionário -->
-  <div *ngIf="!isLoading && !showResult">
-    <div class="welcome-card">
-      <div class="welcome-header">
-        <h1>Análise de Score de Crédito</h1>
-        <p>Responda às perguntas abaixo para calcular o seu limite de crédito no sistema P2P.</p>
+  <div *ngIf="!isLoading && !showResult" class="questionnaire-flow">
+    
+    <mat-card class="welcome-card primary-theme">
+      <div class="card-header">
+        <h2>Análise de Score de Crédito</h2>
       </div>
-      <div class="welcome-content">
-        Para que seu cadastro seja aprovado e você consiga solicitar empréstimos, precisamos calcular seu score.
-        <ul>
-          <li>Responda todas as perguntas com sinceridade.</li>
-          <li>O score é calculado automaticamente de acordo com as respostas selecionadas.</li>
-          <li>Você poderá ver o resultado logo após o envio.</li>
-        </ul>
-      </div>
-    </div>
+      <mat-card-content class="welcome-content">
+        <p class="intro-text">Responda às perguntas abaixo para calcular o seu limite de crédito no sistema P2P.</p>
+        <div class="instructions">
+          <ul>
+            <li>Responda todas as perguntas com sinceridade.</li>
+            <li>O score é calculado automaticamente de acordo com as respostas selecionadas.</li>
+            <li>Você poderá ver o resultado logo após o envio.</li>
+          </ul>
+        </div>
+      </mat-card-content>
+    </mat-card>
 
-    <div *ngIf="questions.length === 0" style="text-align: center; padding: 3rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
-      <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #94a3b8;">sentiment_dissatisfied</mat-icon>
-      <h3 style="margin-top: 1rem; color: #334155;">Nenhum questionário ativo no momento.</h3>
-      <p style="color: #64748b; margin-bottom: 2rem;">Por favor, tente novamente mais tarde ou contate o administrador.</p>
+    <div *ngIf="questions.length === 0" class="empty-state">
+      <mat-icon>sentiment_dissatisfied</mat-icon>
+      <h3>Nenhum questionário ativo no momento.</h3>
+      <p>Por favor, tente novamente mais tarde ou contate o administrador.</p>
       <button mat-button color="primary" routerLink="/dashboard">Voltar ao Dashboard</button>
     </div>
 
     <!-- Banner de questionário concluído -->
-    <div *ngIf="isCompleted" class="completed-warning-banner" style="margin-bottom: 1.5rem; padding: 1.25rem; background-color: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 4px; display: flex; align-items: center; gap: 0.75rem; color: #0369a1;">
-      <mat-icon style="color: #0284c7;">info</mat-icon>
-      <span style="font-weight: 500; font-size: 0.95rem;">
-        Seu questionário já foi enviado e encontra-se registrado no sistema.
-      </span>
-    </div>
+    <mat-card *ngIf="isCompleted" class="info-banner accent-theme">
+      <mat-card-content>
+        <mat-icon>info</mat-icon>
+        <span>Seu questionário já foi enviado e encontra-se registrado no sistema.</span>
+      </mat-card-content>
+    </mat-card>
 
-    <form (submit)="submitForm()" *ngIf="questions.length > 0">
-      <div *ngFor="let question of questions; let i = index" class="question-card">
-        <mat-card-content style="padding: 1.5rem 2rem;">
+    <form (submit)="submitForm()" *ngIf="questions.length > 0" class="questions-list">
+      <mat-card *ngFor="let question of questions; let i = index" class="question-card">
+        <mat-card-content>
           <h3 class="question-title">
-            {{ i + 1 }}. {{ question.titulo }}
+            <span class="q-number">{{ i + 1 }}</span> {{ question.titulo }}
           </h3>
           
           <mat-radio-group [(ngModel)]="answers[question.id!]" [name]="'question_' + question.id" class="options-group" [disabled]="isCompleted">
@@ -64,11 +69,12 @@
             </mat-radio-button>
           </mat-radio-group>
         </mat-card-content>
-      </div>
+      </mat-card>
 
-      <div class="submit-btn-row" *ngIf="!isCompleted">
-        <button mat-flat-button color="primary" class="submit-btn" type="submit" [disabled]="!isFormValid() || isSubmitting">
-          {{ isSubmitting ? 'Enviando...' : 'Finalizar Questionário' }}
+      <div class="submit-actions" *ngIf="!isCompleted">
+        <button mat-button type="button" routerLink="/dashboard">Cancelar</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="!isFormValid() || isSubmitting">
+          {{ isSubmitting ? 'Enviando...' : 'Finalizar Questionário' }} <mat-icon>send</mat-icon>
         </button>
       </div>
     </form>

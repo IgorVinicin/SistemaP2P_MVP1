@@ -76,16 +76,19 @@
       </div>
     </div>
 
-    <mat-divider *ngIf="userDetail.role === 'Investidor'"></mat-divider>
+    <mat-divider *ngIf="userDetail.role.toLowerCase() === 'investidor'"></mat-divider>
 
     <!-- Parâmetros de Aprovação do Investidor (Etapa 10) -->
-    <div class="detail-section" *ngIf="userDetail.role === 'Investidor'">
+    <div class="detail-section" *ngIf="userDetail.role.toLowerCase() === 'investidor'">
       <h3 class="section-title" style="color: #4f46e5;">Configurações do Investidor</h3>
       <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 10px;">
         <mat-form-field appearance="outline" style="flex: 1; min-width: 150px;">
           <mat-label>Rentabilidade Simulada (%)</mat-label>
           <input matInput type="number" step="0.1" [(ngModel)]="rentabilidade">
           <span matSuffix>%</span>
+          <mat-hint style="color: #64748b; font-size: 0.8rem;">
+            Recomendado: 1.5% a 2.5% a.m.
+          </mat-hint>
         </mat-form-field>
         <mat-form-field appearance="outline" style="flex: 2; min-width: 250px;">
           <mat-label>Observação Administrativa</mat-label>

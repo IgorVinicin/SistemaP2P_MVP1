@@ -1,148 +1,182 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.breadcrumb-item.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
 .loan-req-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   max-width: 800px;
-  margin: 3rem auto;
-  padding: 0 1.5rem;
+  margin: 0 auto;
 }
 
-.eligibility-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 2rem;
-  background-color: #ffffff;
-  overflow: hidden;
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: var(--text-muted);
 }
 
-.eligibility-header {
-  padding: 1.5rem 2rem;
-  background-color: #f8fafc;
-  border-bottom: 1px solid #e2e8f0;
+.loading-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
 }
 
-.eligibility-header h2 {
-  font-size: 1.35rem;
-  font-weight: 700;
-  color: #1e293b;
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Cards Defaults */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 24px;
+  background-color: var(--primary-light);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h2 {
   margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
+/* Blocked Card */
+.blocked-card {
+  text-align: center;
+  padding: 0 !important;
+}
+
+.blocked-content {
+  padding: 32px 24px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.blocked-content h2 { margin-bottom: 8px; }
+.status-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; color: var(--danger-color); }
+.error-text { color: var(--danger-color); font-weight: 600; }
+
+.renovacao-info-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  width: 100%;
+  max-width: 400px;
+  text-align: left;
+  margin-top: 24px;
+}
+
+.renovacao-info-box h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 0;
+  color: var(--text-main);
+}
+
+.renovacao-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.875rem;
+}
+
+.card-actions {
+  background-color: #f8fafc;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Eligible Flow */
+.eligible-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Theme variations */
+.success-theme .card-header { background-color: #ecfdf5; color: var(--success-color); border-bottom-color: #a7f3d0; }
+.success-theme { border-color: #a7f3d0 !important; }
+.success-text { color: var(--success-color) !important; font-weight: 600; }
+
+.primary-theme .card-header { background-color: #f8fafc; }
+
+/* Grid Details */
 .eligibility-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 1.5rem;
-  padding: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  padding: 16px 8px;
 }
 
 .eligibility-item {
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .eligibility-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  color: var(--text-secondary);
 }
 
 .eligibility-val {
-  font-size: 1.4rem;
-  font-weight: 750;
-  color: #0f172a;
-  margin-top: 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
-.risk-badge {
-  display: inline-block;
-  padding: 0.2rem 0.6rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  text-transform: uppercase;
-}
+.eligibility-val.highlight { color: var(--success-color); font-size: 1.5rem; }
+.eligibility-val.highlight-primary { color: var(--primary-color); font-size: 1.5rem; }
+.eligibility-val.highlight-success { color: var(--success-color); font-size: 1.5rem; }
 
-.risk-badge.alto {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.risk-badge.medio {
-  background-color: #ffedd5;
-  color: #ea580c;
-}
-
-.risk-badge.baixo {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.blocked-card {
-  border-radius: 16px;
-  border: 1px solid #fee2e2;
-  background-color: #fffbfa;
-  padding: 2rem;
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.blocked-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-  color: #ef4444;
-  margin-bottom: 1rem;
-}
-
-.blocked-title {
-  font-size: 1.4rem;
-  font-weight: 700;
-  color: #991b1b;
-  margin: 0 0 0.5rem 0;
-}
-
-.blocked-text {
-  color: #b91c1c;
-  font-size: 1rem;
-  margin: 0 0 1.5rem 0;
-}
-
+/* Form Card */
 .form-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  padding: 2.5rem 2rem;
+  padding: 0 !important;
 }
 
-.form-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 1.5rem 0;
-}
-
-.form-field-full {
-  width: 100%;
-  margin-bottom: 1.25rem;
-}
-
-.form-row {
+.loan-form {
+  padding: 8px;
   display: flex;
-  gap: 1.5rem;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.form-row .form-field-full {
-  flex: 1;
+.full-width {
+  width: 100%;
 }
 
-.submit-btn-row {
+.submit-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 1.5rem;
-}
-
-.submit-btn {
-  padding: 0.75rem 2.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
 }

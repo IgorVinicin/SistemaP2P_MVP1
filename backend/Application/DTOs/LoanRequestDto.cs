@@ -31,5 +31,7 @@ namespace backend.Application.DTOs
         public int QuantidadeParcelas { get; set; }
         public decimal TaxaJuros { get; set; }
         public string? PeriodicidadeGold { get; set; } // Semanal, Quinzenal, Mensal
+        public decimal? ValorAprovado { get; set; }
+        public Guid? InvestorGroupId { get; set; }
     }
 }

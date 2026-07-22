@@ -11,6 +11,8 @@ import { LoanRequestComponent } from './features/user-dashboard/pages/loan-reque
 import { MyLoansComponent } from './features/user-dashboard/pages/my-loans/my-loans.component';
 import { LoanHistoryComponent } from './features/user-dashboard/pages/loan-history/loan-history.component';
 import { AdminLoansComponent } from './features/admin/pages/admin-loans/admin-loans.component';
+import { AdminUsersComponent } from './features/admin/pages/admin-users/admin-users.component';
+import { AdminGroupsComponent } from './features/admin/pages/admin-groups/admin-groups.component';
 import { AdminDelinquencyComponent } from './features/admin/pages/admin-delinquency/admin-delinquency.component';
 import { AdminReportsComponent } from './features/admin/pages/admin-reports/admin-reports.component';
 import { AdminRevenueComponent } from './features/admin/pages/admin-revenue/admin-revenue.component';
@@ -38,9 +40,11 @@ export const routes: Routes = [
       { path: 'investor/aguardando-aprovacao', component: InvestorWaitingComponent, canActivate: [investorGuard] },
       { path: 'investor/reprovado', component: InvestorReprovedComponent, canActivate: [investorGuard] },
       { path: 'admin', component: AdminHomeComponent, canActivate: [adminGuard] },
+      { path: 'admin/users', component: AdminUsersComponent, canActivate: [adminGuard] },
       { path: 'admin/questions', component: ScoreConfigComponent, canActivate: [adminGuard] },
       { path: 'admin/credit', component: CreditConfigComponent, canActivate: [adminGuard] },
       { path: 'admin/loans', component: AdminLoansComponent, canActivate: [adminGuard] },
+      { path: 'admin/groups', component: AdminGroupsComponent, canActivate: [adminGuard] },
       { path: 'admin/delinquency', component: AdminDelinquencyComponent, canActivate: [adminGuard] },
       { path: 'admin/reports', component: AdminReportsComponent, canActivate: [adminGuard] },
       { path: 'admin/revenue', component: AdminRevenueComponent, canActivate: [adminGuard] },

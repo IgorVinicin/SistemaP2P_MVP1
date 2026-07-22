@@ -1,4 +1,7 @@
 .cashflow-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
   padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
@@ -8,23 +11,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+  margin-bottom: 8px;
+  align-items: flex-start;
+  margin-bottom: 2rem;
 }
 
-.header-section h1 {
+h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  color: #333;
+  gap: 0.5rem;
 }
 
 .header-section p {
-  color: #666;
   margin: 0;
+  color: var(--text-secondary);
 }
 
 .filter-card {
@@ -32,15 +38,18 @@
 }
 
 .period-select {
-  width: 100%;
-  max-width: 300px;
+  width: 200px;
+}
+
+.date-range-select {
+  width: 320px;
 }
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
 }
 
 .summary-card {
@@ -50,55 +59,72 @@
 .summary-card mat-card-content {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 16px;
+  padding: 24px;
+  gap: 20px;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: var(--primary-main);
+}
+
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.table-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.5rem;
+}
+
+.table-actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.search-field {
+  width: 300px;
+}
+
+.type-select {
+  width: 200px;
 }
 
 .stat-icon {
-  background: #f0f0f0;
-  border-radius: 50%;
-  width: 56px;
-  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
 }
 
-.stat-icon mat-icon {
-  font-size: 32px;
-  width: 32px;
-  height: 32px;
-  color: #666;
-}
+.stat-icon mat-icon { font-size: 28px; width: 28px; height: 28px; }
 
-.stat-info h3 {
-  margin: 0;
-  font-size: 14px;
-  color: #666;
-  text-transform: uppercase;
-}
-
-.stat-info h2 {
-  margin: 4px 0;
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.stat-info small {
-  color: #999;
-}
+.stat-info { display: flex; flex-direction: column; }
+.stat-info h3 { margin: 0; font-size: 0.875rem; color: var(--text-secondary); font-weight: 600; }
+.stat-info h2 { margin: 4px 0; font-size: 1.75rem; font-weight: 700; color: var(--text-main); }
+.stat-info small { font-size: 0.75rem; color: var(--text-muted); }
 
 /* Cores dos Cards */
 .stat-entradas { border-left-color: #2e7d32; }
-.stat-entradas .stat-icon { background: #e8f5e9; }
+.stat-entradas .stat-icon { background-color: #ecfdf5; color: var(--success-color); }
 .stat-entradas .stat-icon mat-icon { color: #2e7d32; }
 
 .stat-saidas { border-left-color: #c62828; }
-.stat-saidas .stat-icon { background: #ffebee; }
+.stat-saidas .stat-icon { background-color: #fef2f2; color: var(--danger-color); }
 .stat-saidas .stat-icon mat-icon { color: #c62828; }
 
 .stat-saldo { border-left-color: #1565c0; }
-.stat-saldo .stat-icon { background: #e3f2fd; }
+.stat-saldo .stat-icon { background-color: #e0e7ff; color: var(--primary-color); }
 .stat-saldo .stat-icon mat-icon { color: #1565c0; }
 
 .stat-receita { border-left-color: #f57f17; }
@@ -110,14 +136,8 @@
 .stat-warning .stat-icon mat-icon { color: #fbc02d; }
 
 .stat-saldo.negative { border-left-color: #c62828; }
-.stat-saldo.negative .stat-icon { background: #ffebee; }
+.stat-saldo.negative .stat-icon { background-color: #fef2f2; color: var(--danger-color); }
 .stat-saldo.negative .stat-icon mat-icon { color: #c62828; }
-.stat-saldo.negative h2 { color: #c62828; }
-
-.table-responsive {
-  overflow-x: auto;
-}
-
 .text-success { color: #2e7d32; font-weight: 500; }
 .text-danger { color: #c62828; font-weight: 500; }
 .text-primary { color: #1565c0; }

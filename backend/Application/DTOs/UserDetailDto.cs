@@ -82,5 +82,6 @@ namespace backend.Application.DTOs
       public string CPF { get; set; } = string.Empty;
       public string Telefone { get; set; } = string.Empty;
       public string DataNascimento { get; set; } = string.Empty;
+      public decimal? Rentabilidade { get; set; }
     }
 }

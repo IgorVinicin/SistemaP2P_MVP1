@@ -49,13 +49,14 @@
           <mat-label>Parcelas Pagas Mínimas para Renovação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.minimoParcelasPagasNovaSolicitacao" placeholder="Ex: 4">
         </mat-form-field>
+
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Limite Máx. de Investidores</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.maxInvestidoresPorEmprestimo" placeholder="Ex: 10">
         </mat-form-field>
         <mat-form-field class="config-input" appearance="outline">
-          <mat-label>Spread Mínimo da Plataforma (%)</mat-label>
-          <input matInput type="number" step="0.01" [(ngModel)]="globalConfig.spreadMinimoPlataforma" placeholder="Ex: 1.00">
+          <mat-label>Taxa Rendimento Pool (% ao Mês)</mat-label>
+          <input matInput type="number" step="0.01" [(ngModel)]="globalConfig.taxaRendimentoPool" placeholder="Ex: 2.00">
         </mat-form-field>
         <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
           Salvar Configuração Geral
@@ -77,12 +78,6 @@
     </div>
     <div class="config-body">
       <div class="rules-grid">
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Spread Mínimo da Plataforma</h4>
-          <p class="rule-description">
-            Taxa percentual mínima de margem reservada para a plataforma. Ao aprovar ou atualizar investidores, a rentabilidade deles é limitada de forma que o spread mínimo seja preservado em relação à menor taxa de juros ativa dos empréstimos.
-          </p>
-        </div>
         <div class="rule-explain-item">
           <h4 class="rule-title">Limite de Investidores</h4>
           <p class="rule-description">
@@ -164,11 +159,7 @@
         <td mat-cell *matCellDef="let rule"> {{ rule.limiteEmprestimo | currency:'BRL':'symbol':'1.2-2' }} </td>
       </ng-container>
 
-      <!-- Coluna Taxa de Juros -->
-      <ng-container matColumnDef="juros">
-        <th mat-header-cell *matHeaderCellDef> Taxa de Juros </th>
-        <td mat-cell *matCellDef="let rule"> {{ rule.taxaJuros }}% </td>
-      </ng-container>
+
 
       <!-- Coluna Risco -->
       <ng-container matColumnDef="risco">
@@ -229,10 +220,6 @@
         <mat-form-field class="form-field-full" appearance="outline">
           <mat-label>Limite de Empréstimo (R$)</mat-label>
           <input matInput type="number" [(ngModel)]="ruleForm.limiteEmprestimo">
-        </mat-form-field>
-        <mat-form-field class="form-field-full" appearance="outline">
-          <mat-label>Taxa de Juros (%)</mat-label>
-          <input matInput type="number" step="0.01" [(ngModel)]="ruleForm.taxaJuros">
         </mat-form-field>
       </div>
 

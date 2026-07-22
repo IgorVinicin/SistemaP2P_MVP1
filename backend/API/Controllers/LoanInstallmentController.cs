@@ -62,12 +62,11 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "Esta parcela já está paga." });
                 }
 
-                using var dbTransaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
                     var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-                    decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
-                    decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+                    decimal percentualMulta = installment.LoanRequest.PercentualMultaAtrasoContrato > 0 ? installment.LoanRequest.PercentualMultaAtrasoContrato : (config?.PercentualMultaAtraso ?? 2.00m);
+                    decimal percentualJurosDiario = installment.LoanRequest.PercentualJurosDiarioContrato > 0 ? installment.LoanRequest.PercentualJurosDiarioContrato : (config?.PercentualJurosDiario ?? 0.033m);
 
                     var today = DateTime.UtcNow.Date;
                     var vencimento = installment.DataVencimento.Date;
@@ -115,13 +114,20 @@ namespace backend.API.Controllers
                     var distService = new WalletDistributionService(_context);
                     await distService.DistributeInstallmentPaymentAsync(installment.Id, userEmail);
 
-                    await dbTransaction.CommitAsync();
-
-                    return Ok(new { message = "Pagamento da parcela simulado com sucesso.", installment });
+                    return Ok(new 
+                    { 
+                        message = "Pagamento da parcela simulado com sucesso.", 
+                        installment = new 
+                        {
+                            id = installment.Id,
+                            status = installment.Status,
+                            valorPago = installment.ValorPago,
+                            dataPagamento = installment.DataPagamento
+                        }
+                    });
                 }
                 catch (Exception innerEx)
                 {
-                    await dbTransaction.RollbackAsync();
                     return BadRequest(new { message = innerEx.Message });
                 }
             }

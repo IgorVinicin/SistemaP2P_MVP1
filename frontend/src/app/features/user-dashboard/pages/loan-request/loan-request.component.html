@@ -1,121 +1,141 @@
+<div class="breadcrumb">
+  <span class="breadcrumb-item">Empréstimos</span>
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-item active">Solicitar Crédito</span>
+</div>
+
 <div class="loan-req-container">
+  
   <!-- Estado de Carregamento -->
-  <div *ngIf="isLoading" style="display: flex; justify-content: center; align-items: center; min-height: 350px;">
+  <div *ngIf="isLoading" class="loading-state">
+    <mat-icon>autorenew</mat-icon>
     <p>Verificando elegibilidade de crédito...</p>
   </div>
 
   <!-- Cliente Não Elegível -->
-  <div *ngIf="!isLoading && eligibility && !eligibility.podeSolicitar" class="blocked-card">
-    <mat-icon class="blocked-icon">block</mat-icon>
-    <h2 class="blocked-title">Solicitação Indisponível</h2>
-    <p class="blocked-text">
-      {{ eligibility.mensagemBlock || 'Você não possui permissão para solicitar empréstimo no momento.' }}
-    </p>
-    
-    <div *ngIf="eligibility.temEmprestimoAtivo" class="renovacao-info-box" style="margin: 1.5rem auto; padding: 1.25rem; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; text-align: left; max-width: 450px;">
-      <h4 style="margin: 0 0 0.75rem 0; color: #1e293b; font-weight: 600; font-size: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-        <mat-icon style="color: #64748b; font-size: 20px; width: 20px; height: 20px;">autorenew</mat-icon> Progresso para Renovação de Crédito
-      </h4>
-      <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.92rem; color: #475569;">
-        <div style="display: flex; justify-content: space-between;">
-          <span><strong>Parcelas pagas:</strong></span>
-          <span style="font-weight: 600; color: #ef4444;">{{ eligibility.parcelasPagas }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span><strong>Mínimo necessário:</strong></span>
-          <span style="font-weight: 500; color: #334155;">{{ eligibility.minimoExigido }}</span>
-        </div>
-        <div style="display: flex; justify-content: space-between; border-top: 1px dashed #e2e8f0; padding-top: 0.5rem; margin-top: 0.25rem;">
-          <span><strong>Status da Renovação:</strong></span>
-          <span style="font-weight: 600; color: #ef4444;">Bloqueado (parcelas insuficientes)</span>
+  <mat-card *ngIf="!isLoading && eligibility && !eligibility.podeSolicitar" class="blocked-card warn-theme">
+    <mat-card-content class="blocked-content">
+      <mat-icon class="status-icon">block</mat-icon>
+      <h2>Solicitação Indisponível</h2>
+      <p>{{ eligibility.mensagemBlock || 'Você não possui permissão para solicitar empréstimo no momento.' }}</p>
+      
+      <div *ngIf="eligibility.temEmprestimoAtivo" class="renovacao-info-box">
+        <h4><mat-icon>autorenew</mat-icon> Progresso para Renovação de Crédito</h4>
+        <div class="renovacao-details">
+          <div class="detail-row">
+            <span class="label">Parcelas pagas:</span>
+            <span class="value error-text">{{ eligibility.parcelasPagas }}</span>
+          </div>
+          <div class="detail-row">
+            <span class="label">Mínimo necessário:</span>
+            <span class="value">{{ eligibility.minimoExigido }}</span>
+          </div>
+          <mat-divider></mat-divider>
+          <div class="detail-row">
+            <span class="label">Status:</span>
+            <span class="value error-text">Bloqueado (parcelas insuficientes)</span>
+          </div>
         </div>
       </div>
+    </mat-card-content>
+    <div class="card-actions">
+      <button mat-button routerLink="/dashboard">Voltar ao Dashboard</button>
     </div>
-
-    <button mat-flat-button color="primary" routerLink="/dashboard">Voltar ao Dashboard</button>
-  </div>
+  </mat-card>
 
   <!-- Cliente Elegível (Formulário) -->
-  <div *ngIf="!isLoading && eligibility && eligibility.podeSolicitar">
+  <div *ngIf="!isLoading && eligibility && eligibility.podeSolicitar" class="eligible-flow">
+    
     <!-- Alerta de Elegibilidade para Renovação de Crédito se possuir empréstimo ativo -->
-    <div class="eligibility-card" *ngIf="eligibility.temEmprestimoAtivo" style="margin-bottom: 1.5rem; border: 1px solid #bbf7d0; background-color: #f0fdf4;">
-      <div class="eligibility-header" style="background: linear-gradient(135deg, #15803d 0%, #166534 100%); padding: 0.75rem 1rem;">
-        <h2 style="color: white; margin: 0; font-size: 1.1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem;">
-          <mat-icon style="color: white;">check_circle</mat-icon> Elegível para Renovação de Crédito
-        </h2>
+    <mat-card class="eligibility-card success-theme" *ngIf="eligibility.temEmprestimoAtivo">
+      <div class="card-header">
+        <mat-icon>check_circle</mat-icon>
+        <h2>Elegível para Renovação de Crédito</h2>
       </div>
-      <div class="eligibility-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); padding: 1rem; gap: 1rem; background-color: #f0fdf4;">
-        <div class="eligibility-item">
-          <span class="eligibility-label" style="color: #166534;">Parcelas pagas no contrato atual</span>
-          <span class="eligibility-val" style="color: #15803d; font-size: 1.5rem; font-weight: 700;">{{ eligibility.parcelasPagas }}</span>
+      <mat-card-content>
+        <div class="eligibility-grid">
+          <div class="eligibility-item">
+            <span class="eligibility-label">Parcelas pagas no contrato atual</span>
+            <span class="eligibility-val highlight">{{ eligibility.parcelasPagas }}</span>
+          </div>
+          <div class="eligibility-item">
+            <span class="eligibility-label">Mínimo necessário para renovar</span>
+            <span class="eligibility-val">{{ eligibility.minimoExigido }}</span>
+          </div>
+          <div class="eligibility-item">
+            <span class="eligibility-label">Status</span>
+            <span class="eligibility-val success-text">Elegível para nova solicitação</span>
+          </div>
         </div>
-        <div class="eligibility-item">
-          <span class="eligibility-label" style="color: #166534;">Mínimo necessário para renovar</span>
-          <span class="eligibility-val" style="color: #334155; font-size: 1.5rem; font-weight: 700;">{{ eligibility.minimoExigido }}</span>
-        </div>
-        <div class="eligibility-item">
-          <span class="eligibility-label" style="color: #166534;">Status</span>
-          <span class="eligibility-val" style="color: #15803d; font-size: 1.1rem; font-weight: 600; margin-top: 0.35rem;">Elegível para nova solicitação</span>
-        </div>
-      </div>
-    </div>
+      </mat-card-content>
+    </mat-card>
 
     <!-- Resumo de Elegibilidade -->
-    <div class="eligibility-card">
-      <div class="eligibility-header">
+    <mat-card class="eligibility-card primary-theme">
+      <div class="card-header">
         <h2>Seu Perfil de Crédito Disponível</h2>
       </div>
-      <div class="eligibility-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-        <div class="eligibility-item">
-          <span class="eligibility-label">Limite Disponível</span>
-          <span class="eligibility-val" style="color: #4f46e5;">
-            {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
-          </span>
+      <mat-card-content>
+        <div class="eligibility-grid">
+          <div class="eligibility-item">
+            <span class="eligibility-label">Limite Disponível</span>
+            <span class="eligibility-val highlight-primary">
+              {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
+            </span>
+          </div>
+          <div class="eligibility-item">
+            <span class="eligibility-label">Valor Máximo Liberado para Solicitação</span>
+            <span class="eligibility-val highlight-success">
+              {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
+            </span>
+          </div>
         </div>
-        <div class="eligibility-item">
-          <span class="eligibility-label">Valor Máximo Liberado para Solicitação</span>
-          <span class="eligibility-val" style="color: #10b981;">
-            {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
-          </span>
-        </div>
-      </div>
-    </div>
+      </mat-card-content>
+    </mat-card>
 
     <!-- Formulário de Solicitação -->
-    <div class="form-card">
-      <h2 class="form-title">Preencha os Dados da Solicitação</h2>
-      
-      <form (submit)="submitRequest()">
-        <div class="form-row" style="grid-template-columns: 1fr;">
-          <mat-form-field class="form-field-full" appearance="outline">
-            <mat-label>Valor Solicitado (R$)</mat-label>
-            <input matInput type="number" [(ngModel)]="loanForm.valorSolicitado" name="valorSolicitado" [max]="eligibility.limiteDisponivel" min="1" placeholder="Ex: 5000">
-            <mat-hint>Limite máximo: {{ eligibility.limiteDisponivel | currency:'BRL' }}</mat-hint>
-          </mat-form-field>
-        </div>
+    <mat-card class="form-card">
+      <div class="card-header">
+        <h2>Preencha os Dados da Solicitação</h2>
+      </div>
+      <mat-card-content>
+        <form (submit)="submitRequest()" class="loan-form">
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Valor Solicitado (R$)</mat-label>
+              <input matInput type="number" [(ngModel)]="loanForm.valorSolicitado" name="valorSolicitado" [max]="eligibility.limiteDisponivel" min="1" placeholder="Ex: 5000">
+              <mat-hint>Limite máximo: {{ eligibility.limiteDisponivel | currency:'BRL' }}</mat-hint>
+            </mat-form-field>
+          </div>
 
-        <mat-form-field class="form-field-full" appearance="outline">
-          <mat-label>Finalidade do Empréstimo</mat-label>
-          <mat-select [(ngModel)]="loanForm.finalidade" name="finalidade" required>
-            <mat-option value="Capital de Giro">Capital de Giro</mat-option>
-            <mat-option value="Expansão de Negócio">Expansão de Negócio</mat-option>
-            <mat-option value="Pagamento de Dívidas">Pagamento de Dívidas</mat-option>
-            <mat-option value="Compra de Equipamentos">Compra de Equipamentos</mat-option>
-            <mat-option value="Outros">Outros</mat-option>
-          </mat-select>
-        </mat-form-field>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Finalidade do Empréstimo</mat-label>
+              <mat-select [(ngModel)]="loanForm.finalidade" name="finalidade" required>
+                <mat-option value="Capital de Giro">Capital de Giro</mat-option>
+                <mat-option value="Expansão de Negócio">Expansão de Negócio</mat-option>
+                <mat-option value="Pagamento de Dívidas">Pagamento de Dívidas</mat-option>
+                <mat-option value="Compra de Equipamentos">Compra de Equipamentos</mat-option>
+                <mat-option value="Outros">Outros</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
 
-        <mat-form-field class="form-field-full" appearance="outline">
-          <mat-label>Observações / Justificativa</mat-label>
-          <textarea matInput rows="4" [(ngModel)]="loanForm.observacoes" name="observacoes" placeholder="Explique resumidamente a necessidade do crédito..."></textarea>
-        </mat-form-field>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Observações / Justificativa (Opcional)</mat-label>
+              <textarea matInput rows="3" [(ngModel)]="loanForm.observacoes" name="observacoes" placeholder="Explique resumidamente a necessidade do crédito..."></textarea>
+            </mat-form-field>
+          </div>
 
-        <div class="submit-btn-row">
-          <button mat-flat-button color="primary" class="submit-btn" type="submit" [disabled]="isSubmitting || !loanForm.valorSolicitado || !loanForm.finalidade">
-            {{ isSubmitting ? 'Processando solicitação...' : 'Solicitar Empréstimo' }}
-          </button>
-        </div>
-      </form>
-    </div>
+          <div class="submit-actions">
+            <button mat-button type="button" routerLink="/dashboard">Cancelar</button>
+            <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting || !loanForm.valorSolicitado || !loanForm.finalidade">
+              {{ isSubmitting ? 'Processando...' : 'Solicitar Empréstimo' }} <mat-icon>send</mat-icon>
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
   </div>
 </div>

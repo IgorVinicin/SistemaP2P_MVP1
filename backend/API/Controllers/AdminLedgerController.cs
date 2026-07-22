@@ -45,6 +45,7 @@ namespace backend.API.Controllers
             }
             catch (Exception ex)
             {
+                System.IO.File.WriteAllText("ledger_error.log", ex.ToString());
                 return BadRequest(new { message = ex.Message });
             }
         }

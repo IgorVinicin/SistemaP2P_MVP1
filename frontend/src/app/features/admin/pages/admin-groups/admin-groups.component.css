@@ -1,0 +1,83 @@
+.admin-groups-container {
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.table-card {
+  padding: 0;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+}
+
+.mat-column-actions {
+  width: 100px;
+  text-align: right;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 500px;
+  padding: 20px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+mat-card-content {
+  overflow-y: auto;
+  flex: 1;
+  padding-right: 8px; /* for scrollbar */
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.selected-investors-list {
+  margin-top: 10px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background-color: #fafafa;
+  padding: 10px;
+}
+
+.list-title {
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+  padding-left: 8px;
+}
+
+.mat-mdc-list-item {
+  border-bottom: 1px solid #eee;
+}
+
+.mat-mdc-list-item:last-child {
+  border-bottom: none;
+}

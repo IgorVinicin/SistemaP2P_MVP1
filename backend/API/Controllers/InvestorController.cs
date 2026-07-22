@@ -17,10 +17,12 @@ namespace backend.API.Controllers
     public class InvestorController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly backend.Application.Services.InvestorYieldService _yieldService;
 
-        public InvestorController(AppDbContext context)
+        public InvestorController(AppDbContext context, backend.Application.Services.InvestorYieldService yieldService)
         {
             _context = context;
+            _yieldService = yieldService;
         }
 
         // GET /api/investor/wallet
@@ -180,6 +182,27 @@ namespace backend.API.Controllers
         }
 
         // POST /api/investor/withdraw
+        // GET /api/investor/yield/preview
+        [HttpGet("yield/preview")]
+        public async Task<IActionResult> GetYieldPreview()
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Investidor não autenticado." });
+            }
+
+            try
+            {
+                decimal preview = await _yieldService.GetDailyYieldPreviewAsync(userId);
+                return Ok(new { rendimentoDiarioEstimado = preview });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         [HttpPost("withdraw")]
         public async Task<IActionResult> MakeWithdraw([FromBody] MakeWithdrawDto dto)
         {

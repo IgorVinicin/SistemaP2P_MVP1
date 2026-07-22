@@ -132,8 +132,11 @@
   font-weight: 500;
 }
 
-.table-responsive {
-  width: 100%;
-  overflow-x: auto;
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
+.clickable-row:hover {
+  background-color: #f1f5f9 !important;
+}

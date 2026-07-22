@@ -38,8 +38,13 @@ namespace backend.Application.Services
                 if (inst.DataVencimento.Date < today)
                 {
                     int dias = (int)(today - inst.DataVencimento.Date).TotalDays;
-                    decimal novaMulta = Math.Round(inst.ValorParcela * (percentualMulta / 100m), 2);
-                    decimal novoJuros = Math.Round(inst.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
+                    
+                    // Fallback para empréstimos antigos que não tem taxa congelada
+                    decimal multa = inst.LoanRequest.PercentualMultaAtrasoContrato > 0 ? inst.LoanRequest.PercentualMultaAtrasoContrato : percentualMulta;
+                    decimal juros = inst.LoanRequest.PercentualJurosDiarioContrato > 0 ? inst.LoanRequest.PercentualJurosDiarioContrato : percentualJurosDiario;
+
+                    decimal novaMulta = Math.Round(inst.ValorParcela * (multa / 100m), 2);
+                    decimal novoJuros = Math.Round(inst.ValorParcela * (juros / 100m) * dias, 2);
 
                     if (inst.DiasAtraso != dias || inst.Multa != novaMulta || inst.JurosMora != novoJuros)
                     {

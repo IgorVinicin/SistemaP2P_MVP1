@@ -41,7 +41,7 @@ export class CreditConfigComponent implements OnInit {
   private snackBar = inject(MatSnackBar);
 
   public rules: ScoreCreditRule[] = [];
-  public displayedColumns: string[] = ['faixaScore', 'limite', 'juros', 'risco', 'status', 'acoes'];
+  public displayedColumns: string[] = ['faixaScore', 'limite', 'risco', 'status', 'acoes'];
   public isLoading = false;
 
   public globalConfig: CreditConfig = {
@@ -54,7 +54,8 @@ export class CreditConfigComponent implements OnInit {
     valorMinimoInvestimento: 5000.00,
     minimoParcelasPagasNovaSolicitacao: 4,
     maxInvestidoresPorEmprestimo: 10,
-    spreadMinimoPlataforma: 1.0
+    spreadMinimoPlataforma: 1.0,
+    taxaRendimentoPool: 2.0
   };
 
   // Dialog and Form elements

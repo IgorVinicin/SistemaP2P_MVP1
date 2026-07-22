@@ -1,182 +1,170 @@
 <div class="cashflow-container">
   <div class="header-section">
     <div>
-      <h1><mat-icon>insert_chart</mat-icon> CashFlow - Fluxo de Caixa</h1>
-      <p>Acompanhamento consolidado (Entradas e Saídas) utilizando o Ledger.</p>
+      <h1><mat-icon>account_balance</mat-icon> Fluxo de Caixa</h1>
+      <p>Acompanhamento das entradas, saídas e transações.</p>
     </div>
-    <div class="actions">
-      <button mat-flat-color="primary" mat-raised-button color="primary" (click)="generateSnapshot()">
-        <mat-icon>camera_alt</mat-icon> Gerar Fechamento de Hoje
-      </button>
-    </div>
+    
+    <!-- Filtro Principal de Período -->
+    <mat-form-field appearance="outline" class="period-select">
+      <mat-label>Período de Análise</mat-label>
+      <mat-select [(ngModel)]="periodoFiltro" (selectionChange)="onPeriodChange()">
+        <mat-option value="hoje">Hoje</mat-option>
+        <mat-option value="ontem">Ontem</mat-option>
+        <mat-option value="7dias">Últimos 7 dias</mat-option>
+        <mat-option value="30dias">Últimos 30 dias</mat-option>
+        <mat-option value="mesatual">Mês Atual</mat-option>
+        <mat-option value="custom">Personalizado</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Calendário Personalizado (Só aparece se período for 'custom') -->
+    <mat-form-field appearance="outline" class="date-range-select" *ngIf="periodoFiltro === 'custom'">
+      <mat-label>Escolha o intervalo</mat-label>
+      <mat-date-range-input [rangePicker]="picker">
+        <input matStartDate [(ngModel)]="startDate" placeholder="Data Inicial">
+        <input matEndDate [(ngModel)]="endDate" (dateChange)="onDateRangeChange()" placeholder="Data Final">
+      </mat-date-range-input>
+      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+      <mat-date-range-picker #picker></mat-date-range-picker>
+    </mat-form-field>
   </div>
 
-  <mat-card class="filter-card">
-    <mat-card-content>
-      <mat-form-field appearance="outline" class="period-select">
-        <mat-label>Período de Análise</mat-label>
-        <mat-select [(ngModel)]="periodoFiltro" (selectionChange)="onPeriodChange()">
-          <mat-option value="hoje">Hoje</mat-option>
-          <mat-option value="ontem">Ontem</mat-option>
-          <mat-option value="7dias">Últimos 7 dias</mat-option>
-          <mat-option value="30dias">Últimos 30 dias</mat-option>
-          <mat-option value="mesatual">Mês Atual</mat-option>
-        </mat-select>
-      </mat-form-field>
-    </mat-card-content>
-  </mat-card>
-
   <div class="summary-grid" *ngIf="summary">
-    <!-- Card Entradas -->
-    <mat-card class="summary-card stat-entradas">
+    <!-- Card Volume/Movimentação -->
+    <mat-card class="summary-card stat-saldo">
       <mat-card-content>
-        <div class="stat-icon"><mat-icon>arrow_downward</mat-icon></div>
+        <div class="stat-icon"><mat-icon>swap_horiz</mat-icon></div>
         <div class="stat-info">
-          <h3>Total Entradas</h3>
-          <h2>{{ summary.totalEntradas | currency:'BRL' }}</h2>
-          <small>Parcelas, Depósitos</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Saídas -->
-    <mat-card class="summary-card stat-saidas">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>arrow_upward</mat-icon></div>
-        <div class="stat-info">
-          <h3>Total Saídas</h3>
-          <h2>{{ summary.totalSaidas | currency:'BRL' }}</h2>
-          <small>Repasses, Saques</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Saldo -->
-    <mat-card class="summary-card stat-saldo" [ngClass]="{'negative': summary.saldoOperacional < 0}">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>account_balance_wallet</mat-icon></div>
-        <div class="stat-info">
-          <h3>Saldo Operacional</h3>
-          <h2>{{ summary.saldoOperacional | currency:'BRL' }}</h2>
-          <small>Diferença do Período</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Depósitos Externos -->
-    <mat-card class="summary-card stat-entradas">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>savings</mat-icon></div>
-        <div class="stat-info">
-          <h3>Aportes Reais</h3>
-          <h2>{{ summary.totalDepositosExternos | currency:'BRL' }}</h2>
-          <small>Capital PIX Externo</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Saques Externos -->
-    <mat-card class="summary-card stat-saidas">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>money_off</mat-icon></div>
-        <div class="stat-info">
-          <h3>Resgates Reais</h3>
-          <h2>{{ summary.totalSaquesExternos | currency:'BRL' }}</h2>
-          <small>Capital PIX Out</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Receita -->
-    <mat-card class="summary-card stat-receita">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>attach_money</mat-icon></div>
-        <div class="stat-info">
-          <h3>Receita da Plataforma</h3>
-          <h2>{{ summary.receitaPlataforma | currency:'BRL' }}</h2>
-          <small>Lucro Acumulado</small>
+          <h3>Total da Movimentação</h3>
+          <h2>{{ totalMovimentacao | currency:'BRL' }}</h2>
+          <small>Volume Transacionado</small>
         </div>
       </mat-card-content>
     </mat-card>
 
     <!-- Card Emprestado -->
-    <mat-card class="summary-card stat-neutral">
+    <mat-card class="summary-card stat-saidas">
       <mat-card-content>
         <div class="stat-icon"><mat-icon>send</mat-icon></div>
         <div class="stat-info">
-          <h3>Desembolsos</h3>
+          <h3>Total Emprestado</h3>
           <h2>{{ summary.totalEmprestado | currency:'BRL' }}</h2>
-          <small>Total Emprestado</small>
+          <small>Desembolsos a Tomadores</small>
         </div>
       </mat-card-content>
     </mat-card>
 
-    <!-- Card Coberto -->
-    <mat-card class="summary-card stat-warning">
+    <!-- Card Recebido -->
+    <mat-card class="summary-card stat-entradas">
       <mat-card-content>
-        <div class="stat-icon"><mat-icon>shield</mat-icon></div>
+        <div class="stat-icon"><mat-icon>request_quote</mat-icon></div>
         <div class="stat-info">
-          <h3>Fundo Acionado</h3>
-          <h2>{{ summary.totalCobertoProtectionFund | currency:'BRL' }}</h2>
-          <small>Calotes Cobertos</small>
+          <h3>Total Recebido</h3>
+          <h2>{{ summary.totalRecebidoParcelas | currency:'BRL' }}</h2>
+          <small>Pagamentos de Parcelas</small>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card Lucro Plataforma -->
+    <mat-card class="summary-card stat-lucro" style="border-left: 4px solid #6366f1;">
+      <mat-card-content>
+        <div class="stat-icon" style="background-color: #eef2ff; color: #6366f1;"><mat-icon>account_balance</mat-icon></div>
+        <div class="stat-info">
+          <h3>Lucro da Plataforma</h3>
+          <h2 style="color: #6366f1;">{{ summary.receitaPlataforma | currency:'BRL' }}</h2>
+          <small>Spread + Multas/Mora</small>
         </div>
       </mat-card-content>
     </mat-card>
   </div>
 
-  <h2>Fechamentos Históricos (Snapshots)</h2>
+  <div class="section-title table-header-flex">
+    <h2>Histórico de Transações</h2>
+    
+    <div class="table-actions">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>Pesquisar Tomador...</mat-label>
+        <input matInput [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" placeholder="Nome ou Razão Social">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="type-select">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="tipoFiltro" (selectionChange)="onFilterChange()">
+          <mat-option [value]="null">Todos (Empr. e Pgto.)</mat-option>
+          <mat-option [value]="0">Empréstimos</mat-option>
+          <mat-option [value]="1">Pagamentos</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-stroked-button color="primary" (click)="downloadReport()" class="download-btn">
+        <mat-icon>cloud_download</mat-icon>
+        Exportar CSV
+      </button>
+    </div>
+  </div>
+
   <mat-card class="table-card">
     <mat-card-content>
+      <div class="loading-shade" *ngIf="loadingTransactions">
+        <mat-icon class="spinner">autorenew</mat-icon>
+      </div>
+
       <div class="table-responsive">
-        <table mat-table [dataSource]="snapshots" class="mat-elevation-z0">
+        <table mat-table [dataSource]="transactions" class="mat-elevation-z0">
           
           <ng-container matColumnDef="data">
-            <th mat-header-cell *matHeaderCellDef> Data </th>
-            <td mat-cell *matCellDef="let element"> {{ element.snapshotDate | date:'dd/MM/yyyy' }} </td>
+            <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
+            <td mat-cell *matCellDef="let element"> {{ element.transactionDate | date:'dd/MM/yyyy HH:mm':'UTC' }} </td>
           </ng-container>
 
-          <ng-container matColumnDef="entradas">
-            <th mat-header-cell *matHeaderCellDef> Entradas </th>
-            <td mat-cell *matCellDef="let element" class="text-success"> {{ element.totalEntradas | currency:'BRL' }} </td>
-          </ng-container>
-
-          <ng-container matColumnDef="saidas">
-            <th mat-header-cell *matHeaderCellDef> Saídas </th>
-            <td mat-cell *matCellDef="let element" class="text-danger"> {{ element.totalSaidas | currency:'BRL' }} </td>
-          </ng-container>
-
-          <ng-container matColumnDef="depositos">
-            <th mat-header-cell *matHeaderCellDef> Aportes (Ext) </th>
-            <td mat-cell *matCellDef="let element" class="text-success"> {{ element.totalDepositosExternos | currency:'BRL' }} </td>
-          </ng-container>
-
-          <ng-container matColumnDef="saques">
-            <th mat-header-cell *matHeaderCellDef> Saques (Ext) </th>
-            <td mat-cell *matCellDef="let element" class="text-danger"> {{ element.totalSaquesExternos | currency:'BRL' }} </td>
-          </ng-container>
-
-          <ng-container matColumnDef="saldo">
-            <th mat-header-cell *matHeaderCellDef> Saldo </th>
-            <td mat-cell *matCellDef="let element" [ngClass]="element.saldoOperacional >= 0 ? 'text-primary' : 'text-danger'"> 
-              <b>{{ element.saldoOperacional | currency:'BRL' }}</b> 
+          <ng-container matColumnDef="tipo">
+            <th mat-header-cell *matHeaderCellDef> Movimentação </th>
+            <td mat-cell *matCellDef="let element"> 
+              <div class="tipo-movimentacao">
+                <mat-icon>{{ getTipoIcon(element.tipoMovimentacao) }}</mat-icon>
+                <span>{{ getTipoDescricao(element.tipoMovimentacao) }}</span>
+              </div>
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="receita">
-            <th mat-header-cell *matHeaderCellDef> Lucro </th>
-            <td mat-cell *matCellDef="let element"> {{ element.receitaPlataforma | currency:'BRL' }} </td>
+          <ng-container matColumnDef="valor">
+            <th mat-header-cell *matHeaderCellDef> Valor </th>
+            <td mat-cell *matCellDef="let element" 
+                [ngClass]="{'text-success': element.tipoMovimentacao === 1,
+                            'text-danger': element.tipoMovimentacao === 0}">
+              <b>{{ (element.tipoMovimentacao === 0 ? '-' : '+') }} {{ element.valor | currency:'BRL' }}</b>
+            </td>
           </ng-container>
 
-          <ng-container matColumnDef="coberturas">
-            <th mat-header-cell *matHeaderCellDef> Coberturas </th>
-            <td mat-cell *matCellDef="let element"> {{ element.totalCobertoProtectionFund | currency:'BRL' }} </td>
+          <ng-container matColumnDef="usuario">
+            <th mat-header-cell *matHeaderCellDef> Tomador </th>
+            <td mat-cell *matCellDef="let element">
+              <b>{{ element.userName || 'Desconhecido' }}</b>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="cpf">
+            <th mat-header-cell *matHeaderCellDef> CPF </th>
+            <td mat-cell *matCellDef="let element"> {{ element.cpf || '-' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="observacao">
+            <th mat-header-cell *matHeaderCellDef> Observação </th>
+            <td mat-cell *matCellDef="let element" class="text-muted"> 
+              {{ element.observacao || '-' }} 
+            </td>
           </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           
           <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell text-center" colspan="8">Nenhum snapshot gerado ainda.</td>
+            <td class="mat-cell text-center" colspan="5">
+              Nenhuma transação registrada no dia de hoje.
+            </td>
           </tr>
         </table>
       </div>
@@ -184,7 +172,7 @@
       <mat-paginator 
         [length]="totalCount"
         [pageSize]="pageSize"
-        [pageSizeOptions]="[5, 10, 20]"
+        [pageSizeOptions]="[10, 15, 30]"
         (page)="onPageChange($event)">
       </mat-paginator>
     </mat-card-content>

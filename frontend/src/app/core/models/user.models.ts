@@ -72,6 +72,7 @@ export interface PendingUserSummaryDto {
   nome: string;
   cpf: string;
   scoreAtual: number;
+  rentabilidade?: number | null;
 }
 
 export interface PagedResult<T> {

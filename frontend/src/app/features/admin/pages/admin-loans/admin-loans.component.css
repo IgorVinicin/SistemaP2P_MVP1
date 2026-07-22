@@ -118,3 +118,12 @@
 .form-field-full {
   width: 100%;
 }
+
+.clickable-row {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+  background-color: #f1f5f9 !important;
+}

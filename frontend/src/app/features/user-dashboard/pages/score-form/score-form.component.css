@@ -1,183 +1,173 @@
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+
+.breadcrumb-item.active {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
 .score-form-container {
-  max-width: 750px;
-  margin: 3rem auto;
-  padding: 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
-.welcome-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 2rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  background-color: #ffffff;
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: var(--text-muted);
 }
 
-.welcome-header {
-  padding: 2rem 2rem 1rem 2rem;
+.loading-state mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
 }
 
-.welcome-header h1 {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #0f172a;
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* Shared Card Styles */
+.card-header {
+  padding: 16px 24px;
+  background-color: var(--primary-light);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.card-header h2 {
   margin: 0;
+  font-size: 1.125rem;
+  font-weight: 600;
 }
 
-.welcome-header p {
-  color: #64748b;
-  margin-top: 0.5rem;
-  margin-bottom: 0;
-  font-size: 1rem;
+.card-actions {
+  background-color: #f8fafc;
+  padding: 12px 24px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid var(--border-color);
 }
 
-.welcome-content {
-  padding: 0 2rem 2rem 2rem;
-  font-size: 0.95rem;
-  color: #475569;
-  line-height: 1.6;
+/* Result Card */
+.result-card {
+  text-align: center;
+  padding: 0 !important;
 }
 
-.welcome-content ul {
-  padding-left: 1.5rem;
-  margin: 0.75rem 0;
-  color: #64748b;
+.result-content {
+  padding: 48px 24px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
-.welcome-content li {
-  margin-bottom: 0.35rem;
+.status-icon {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  color: var(--success-color);
 }
 
-.question-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  margin-bottom: 1.5rem;
-  background-color: #ffffff;
-  transition: all 0.2s ease;
+.score-desc-box {
+  background-color: #f8fafc;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 24px;
+  max-width: 500px;
 }
 
-.question-card:hover {
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.04);
+.score-desc-box p { margin: 0; }
+
+/* Welcome Card */
+.welcome-card { padding: 0 !important; }
+.intro-text { font-weight: 500; margin-bottom: 16px; }
+.instructions ul {
+  padding-left: 20px;
+  margin: 0;
+  color: var(--text-secondary);
+}
+.instructions li { margin-bottom: 8px; }
+
+/* Info Banner */
+.info-banner {
+  background-color: #e0f2fe !important;
+  border-color: #bae6fd !important;
+}
+.info-banner mat-card-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #0369a1;
+}
+
+/* Question List */
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .question-title {
-  font-size: 1.15rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #1e293b;
-  margin: 0 0 1.25rem 0;
-  line-height: 1.4;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-number {
+  background-color: var(--primary-light);
+  border: 1px solid var(--border-color);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
 }
 
 .options-group {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 12px;
 }
 
-.radio-option {
-  padding: 0.85rem 1.25rem;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  cursor: pointer;
-}
-
-.radio-option:hover {
-  border-color: #cbd5e1;
-  background-color: #f8fafc;
-}
-
-.radio-option.mat-mdc-radio-checked {
-  border-color: #6366f1;
-  background-color: #f5f3ff;
-}
-
-.submit-btn-row {
+/* Submit actions */
+.submit-actions {
   display: flex;
   justify-content: flex-end;
-  margin-top: 2.5rem;
+  gap: 16px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
 }
 
-.submit-btn {
-  padding: 0.75rem 2.5rem;
-  font-size: 1rem;
-  font-weight: 600;
-  border-radius: 8px;
-}
-
-/* Result Modal or Card */
-.result-card {
-  border-radius: 16px;
-  border: 1px solid #e2e8f0;
-  text-align: center;
-  padding: 3rem 2rem;
-  background-color: #ffffff;
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-}
-
-.result-icon-wrapper {
-  margin-bottom: 1.5rem;
-}
-
-.result-icon {
-  font-size: 64px;
-  width: 64px;
-  height: 64px;
-  color: #10b981;
-}
-
-.result-title {
-  font-size: 1.75rem;
-  font-weight: 800;
-  color: #0f172a;
-  margin: 0 0 0.5rem 0;
-}
-
-.result-subtitle {
-  color: #64748b;
-  font-size: 1.05rem;
-  margin: 0 0 2rem 0;
-}
-
-.score-display-ring {
-  position: relative;
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
-  background: conic-gradient(#6366f1 var(--score-percentage), #e2e8f0 0);
-  margin: 0 auto 2rem auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.score-display-ring::before {
-  content: "";
-  position: absolute;
-  width: 130px;
-  height: 130px;
-  border-radius: 50%;
-  background-color: #ffffff;
-}
-
-.score-value {
-  position: relative;
-  font-size: 2.5rem;
-  font-weight: 850;
-  color: #4f46e5;
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: var(--text-muted);
+  background: white;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
 }
 
-.score-label {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.back-btn {
-  border-radius: 8px;
-  padding: 0.5rem 1.75rem;
-}
+.empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; }

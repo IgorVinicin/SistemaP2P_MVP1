@@ -15,5 +15,6 @@ namespace backend.Domain.Entities
         public int MinimoParcelasPagasNovaSolicitacao { get; set; } = 4;
         public int MaxInvestidoresPorEmprestimo { get; set; } = 10;
         public decimal SpreadMinimoPlataforma { get; set; } = 1.00m; // 1%
+        public decimal TaxaRendimentoPool { get; set; } = 2.00m; // Rendimento mensal base para o pool de liquidez
     }
 }

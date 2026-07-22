@@ -321,7 +321,7 @@ namespace backend.API.Controllers
                         decimal valorRendimentoRecebido = 0;
                         if (loan.TaxaJuros > 0)
                         {
-                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            decimal rentabilidadeFator = Math.Min(1.0m, inv.Rentabilidade / loan.TaxaJuros);
                             valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * rentabilidadeFator, 2);
                         }
                         else
@@ -541,7 +541,7 @@ namespace backend.API.Controllers
                         decimal valorRendimentoRecebido = 0;
                         if (loan.TaxaJuros > 0)
                         {
-                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            decimal rentabilidadeFator = Math.Min(1.0m, inv.Rentabilidade / loan.TaxaJuros);
                             valorRendimentoRecebido = Math.Round(totalJurosPaid * percentual * rentabilidadeFator, 2);
                         }
                         else
@@ -695,7 +695,7 @@ namespace backend.API.Controllers
                         decimal valorRendimentoRecebido = 0;
                         if (loan.TaxaJuros > 0)
                         {
-                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
+                            decimal rentabilidadeFator = Math.Min(1.0m, inv.Rentabilidade / loan.TaxaJuros);
                             valorRendimentoRecebido = Math.Round(totalJurosUnpaid * percentual * rentabilidadeFator, 2);
                         }
                         else

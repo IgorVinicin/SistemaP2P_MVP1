@@ -15,6 +15,10 @@ export class InvestorService {
     return this.http.get<InvestorWalletDto>(`${this.apiUrl}/wallet`);
   }
 
+  public getYieldPreview(): Observable<{ rendimentoDiarioEstimado: number }> {
+    return this.http.get<{ rendimentoDiarioEstimado: number }>(`${this.apiUrl}/yield/preview`);
+  }
+
   public makeDeposit(valor: number): Observable<any> {
     return this.http.post<any>(`${this.apiUrl}/deposit`, { valor });
   }

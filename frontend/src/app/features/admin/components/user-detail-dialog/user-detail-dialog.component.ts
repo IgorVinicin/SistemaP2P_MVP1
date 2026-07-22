@@ -10,7 +10,9 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AdminService } from '../../../../core/services/admin.service';
+import { AdminCreditService } from '../../../../core/services/admin-credit.service';
 import { UserDetailDto } from '../../../../core/models/user.models';
+import { forkJoin } from 'rxjs';
 import { DocumentPreviewDialogComponent } from '../document-preview-dialog/document-preview-dialog.component';
 import { AdminReportService } from '../../../../core/services/admin-report.service';
 import { AdminReportPdfService } from '../../../../core/services/admin-report-pdf.service';
@@ -39,6 +41,7 @@ export interface UserDetailDialogData {
 })
 export class UserDetailDialogComponent implements OnInit {
   private adminService = inject(AdminService);
+  private adminCreditService = inject(AdminCreditService);
   private reportService = inject(AdminReportService);
   private reportPdfService = inject(AdminReportPdfService);
   private dialog = inject(MatDialog);
@@ -106,7 +109,7 @@ export class UserDetailDialogComponent implements OnInit {
 
   public approve(): void {
     this.isProcessing = true;
-    const rent = this.userDetail?.role === 'Investidor' ? this.rentabilidade : undefined;
+    const rent = this.userDetail?.role?.toLowerCase() === 'investidor' ? this.rentabilidade : undefined;
     const obs = this.userDetail?.role === 'Investidor' ? this.observacaoAdministrativa : undefined;
 
     this.adminService.approveUser(this.data.userId, rent, obs).subscribe({

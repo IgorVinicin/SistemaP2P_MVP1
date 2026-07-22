@@ -37,9 +37,7 @@
   min-width: 250px;
 }
 
-.table-responsive {
-  overflow-x: auto;
-}
+
 
 table {
   width: 100%;

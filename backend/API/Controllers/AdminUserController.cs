@@ -36,11 +36,13 @@ namespace backend.API.Controllers
             [FromQuery] string? role = null,
             [FromQuery] string? status = null,
             [FromQuery] int? minScore = null,
-            [FromQuery] int? maxScore = null)
+            [FromQuery] int? maxScore = null,
+            [FromQuery] string? orderBy = null)
         {
             var query = _context.Users
                 .AsNoTracking()
                 .Include(u => u.Profile)
+                .Include(u => u.Wallet)
                 .AsQueryable();
 
             // Busca rápida inteligente (Nome, CPF, Email)
@@ -96,8 +98,13 @@ namespace backend.API.Controllers
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
 
+            if (orderBy == "score_asc") query = query.OrderBy(u => u.Profile != null ? u.Profile.ScoreAtual : 0);
+            else if (orderBy == "score_desc") query = query.OrderByDescending(u => u.Profile != null ? u.Profile.ScoreAtual : 0);
+            else if (orderBy == "rent_asc") query = query.OrderBy(u => u.Wallet != null ? u.Wallet.Rentabilidade : 0);
+            else if (orderBy == "rent_desc") query = query.OrderByDescending(u => u.Wallet != null ? u.Wallet.Rentabilidade : 0);
+            else query = query.OrderByDescending(u => u.CreatedAt);
+
             var items = await query
-                .OrderByDescending(u => u.CreatedAt)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .Select(u => new
@@ -109,7 +116,8 @@ namespace backend.API.Controllers
                     u.CreatedAt,
                     Nome = u.Profile != null ? u.Profile.Nome : string.Empty,
                     CPF = u.Profile != null ? u.Profile.CPF : string.Empty,
-                    ScoreAtual = u.Profile != null ? u.Profile.ScoreAtual : 0
+                    ScoreAtual = u.Profile != null ? u.Profile.ScoreAtual : 0,
+                    Rentabilidade = u.Wallet != null ? u.Wallet.Rentabilidade : (decimal?)null
                 })
                 .ToListAsync();
 
@@ -198,6 +206,12 @@ namespace backend.API.Controllers
                 profile.DataNascimento = DateTime.SpecifyKind(dt, DateTimeKind.Utc);
             }
 
+            var user = await _context.Users.Include(u => u.Wallet).FirstOrDefaultAsync(u => u.Id == id);
+            if (user != null && user.Role == "Investidor" && dto.Rentabilidade.HasValue && user.Wallet != null)
+            {
+                user.Wallet.Rentabilidade = dto.Rentabilidade.Value;
+            }
+
             await _context.SaveChangesAsync();
             return Ok(new { message = "Perfil atualizado com sucesso." });
         }
@@ -226,6 +240,7 @@ namespace backend.API.Controllers
                 .Include(u => u.Profile)
                 .Include(u => u.Company)
                 .Include(u => u.Documents)
+                .Include(u => u.Wallet)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null)
@@ -396,28 +411,6 @@ namespace backend.API.Controllers
                 if (dto != null)
                 {
                     decimal rentabilidadeDesejada = dto.Rentabilidade ?? 0;
-
-                    // Buscar menor taxa de juros ativa nas regras de crédito
-                    var menorTaxaAtiva = await _context.ScoreCreditRules
-                        .Where(r => r.Ativo)
-                        .Select(r => (decimal?)r.TaxaJuros)
-                        .MinAsync();
-
-                    if (menorTaxaAtiva == null)
-                    {
-                        return BadRequest(new { message = "Não há regras de crédito ativas cadastradas no sistema para validar o spread." });
-                    }
-
-                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-                    decimal spreadMinimo = config?.SpreadMinimoPlataforma ?? 1.00m;
-
-                    decimal limiteMaximo = menorTaxaAtiva.Value - spreadMinimo;
-
-                    if (rentabilidadeDesejada > limiteMaximo)
-                    {
-                        return BadRequest(new { message = $"Operação bloqueada: A rentabilidade informada ({rentabilidadeDesejada:F2}%) excede o limite máximo permitido ({limiteMaximo:F2}%) definido pelo spread mínimo da plataforma ({spreadMinimo:F2}%) sob a menor taxa ativa de empréstimo ({menorTaxaAtiva.Value:F2}%)." });
-                    }
-
                     user.Wallet.Rentabilidade = rentabilidadeDesejada;
                     user.Wallet.ObservacaoAdministrativa = dto.ObservacaoAdministrativa ?? string.Empty;
                 }

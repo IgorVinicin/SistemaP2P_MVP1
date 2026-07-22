@@ -190,7 +190,14 @@ namespace backend.API.Controllers
                 _context.AnswerOptions.Add(option);
                 await _context.SaveChangesAsync();
 
-                return Ok(option);
+                // FIX: avoid circular reference in serialization
+                return Ok(new
+                {
+                    id = option.Id,
+                    questionId = option.QuestionId,
+                    texto = option.Texto,
+                    pontuacao = option.Pontuacao
+                });
             }
             catch (Exception ex)
             {
@@ -214,7 +221,14 @@ namespace backend.API.Controllers
                 option.Pontuacao = dto.Pontuacao;
 
                 await _context.SaveChangesAsync();
-                return Ok(option);
+                // FIX: avoid circular reference in serialization
+                return Ok(new
+                {
+                    id = option.Id,
+                    questionId = option.QuestionId,
+                    texto = option.Texto,
+                    pontuacao = option.Pontuacao
+                });
             }
             catch (Exception ex)
             {

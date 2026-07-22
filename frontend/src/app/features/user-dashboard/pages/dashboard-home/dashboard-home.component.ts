@@ -10,6 +10,7 @@ import { DocumentService } from '../../../../core/services/document.service';
 import { DocumentStatusDto } from '../../../../core/models/document.models';
 import { LoanService } from '../../../../core/services/loan.service';
 import { LoanEligibility } from '../../../../core/models/loan.models';
+import { ScoreFormComponent } from '../score-form/score-form.component';
 
 @Component({
   selector: 'app-dashboard-home',
@@ -20,7 +21,8 @@ import { LoanEligibility } from '../../../../core/models/loan.models';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    DocumentUploadCardComponent
+    DocumentUploadCardComponent,
+    ScoreFormComponent
   ],
   templateUrl: './dashboard-home.component.html',
   styleUrl: './dashboard-home.component.css'
@@ -36,15 +38,36 @@ export class DashboardHomeComponent implements OnInit {
   public eligibility: LoanEligibility | null = null;
 
   public ngOnInit(): void {
-    if (this.authService.userRole() === 'Cliente') {
-      const status = this.authService.userStatus();
+    const role = this.authService.userRole();
+    const status = this.authService.userStatus();
+
+    if (role === 'Administrador') {
+      this.router.navigate(['/admin']);
+      return;
+    }
+
+    if (role === 'Investidor') {
+      if (status === 'Aprovado') {
+        this.router.navigate(['/investor/dashboard']);
+        return;
+      } else if (status === 'EmAnalise') {
+        this.router.navigate(['/investor/aguardando-aprovacao']);
+        return;
+      } else if (status === 'Reprovado') {
+        this.router.navigate(['/investor/reprovado']);
+        return;
+      }
+    }
+
+    if (role === 'Cliente') {
       if (status === 'Aprovado' || status === 'EmAnalise') {
         this.router.navigate(['/loans/my']);
         return;
       }
     }
+
     this.loadDocumentsStatus();
-    if (this.authService.userStatus() === 'Aprovado' && this.authService.userRole() === 'Cliente') {
+    if (status === 'Aprovado' && role === 'Cliente') {
       this.loadEligibility();
     }
   }

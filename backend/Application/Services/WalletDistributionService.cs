@@ -83,29 +83,20 @@ namespace backend.Application.Services
                         // Proportional principal paid
                         decimal valorPrincipalRecebido = Math.Round(installment.ValorPrincipal * fraction, 2);
 
-                        // Proportional interest scaled by investor rentabilidade, capped at loan interest rate to prevent creating money out of thin air
-                        decimal valorJurosRecebido = 0;
-                        if (loan.TaxaJuros > 0)
-                        {
-                            decimal rentabilidadeFator = Math.Min(1.0m, wallet.Rentabilidade / loan.TaxaJuros);
-                            valorJurosRecebido = Math.Round(installment.ValorJuros * fraction * rentabilidadeFator, 2);
-                        }
-                        else
-                        {
-                            valorJurosRecebido = Math.Round(installment.ValorJuros * fraction, 2);
-                        }
+                        // No novo modelo de Pool de Liquidez, o investidor não recebe o juros da parcela do tomador.
+                        // O juros do investidor será calculado globalmente por um serviço separado.
+                        decimal valorJurosRecebido = 0; 
 
-                        decimal valorRecebido = valorPrincipalRecebido + valorJurosRecebido;
+                        decimal valorRecebido = valorPrincipalRecebido; // Apenas principal retorna
 
                         decimal saldoAnterior = wallet.SaldoDisponivel;
                         wallet.SaldoDisponivel += valorRecebido;
                         wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - valorPrincipalRecebido);
                         inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - valorPrincipalRecebido);
-                        wallet.Rendimentos += valorJurosRecebido;
                         wallet.DataAtualizacao = DateTime.UtcNow;
 
                         totalPrincipalPaid += valorPrincipalRecebido;
-                        totalInterestPaid += valorJurosRecebido;
+                        totalInterestPaid += 0;
 
                         // Record Investor Transaction
                         var investorTx = new InvestorTransaction
@@ -117,7 +108,7 @@ namespace backend.Application.Services
                             SaldoAnterior = saldoAnterior,
                             SaldoPosterior = wallet.SaldoDisponivel,
                             DataMovimentacao = DateTime.UtcNow,
-                            Descricao = $"Recebimento de parcela {installment.NumeroParcela} do empréstimo {loan.Id} (Principal: {valorPrincipalRecebido:C2}, Rendimento: {valorJurosRecebido:C2}).",
+                            Descricao = $"Retorno de capital da parcela {installment.NumeroParcela} do empréstimo {loan.Id} (Principal: {valorPrincipalRecebido:C2}).",
                             UsuarioResponsavel = usuarioResponsavel
                         };
                         _context.InvestorTransactions.Add(investorTx);
@@ -128,8 +119,8 @@ namespace backend.Application.Services
                             Id = Guid.NewGuid(),
                             Data = DateTime.UtcNow,
                             UsuarioResponsavel = usuarioResponsavel,
-                            EventoExecutado = "RENDIMENTO_PAGO",
-                            Observacao = $"Investidor {inv.InvestorId} recebeu {valorRecebido:C2} da parcela {installment.NumeroParcela} (Principal: {valorPrincipalRecebido:C2}, Rendimento: {valorJurosRecebido:C2}).",
+                            EventoExecutado = "RETORNO_CAPITAL_POOL",
+                            Observacao = $"Investidor {inv.InvestorId} recebeu retorno de {valorRecebido:C2} referente ao principal da parcela {installment.NumeroParcela}.",
                             LoanRequestId = loan.Id,
                             Valor = valorRecebido
                         });

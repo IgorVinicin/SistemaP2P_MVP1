@@ -1,9 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet, RouterLink, Router } from '@angular/router';
+import { RouterOutlet, RouterLink, Router, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -12,10 +15,14 @@ import { AuthService } from '../../../core/services/auth.service';
   imports: [
     RouterOutlet,
     RouterLink,
+    RouterLinkActive,
     CommonModule,
     MatToolbarModule,
     MatButtonModule,
-    MatIconModule
+    MatIconModule,
+    MatSidenavModule,
+    MatListModule,
+    MatDividerModule
   ],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.css'
@@ -23,7 +30,7 @@ import { AuthService } from '../../../core/services/auth.service';
 export class LayoutComponent {
   public authService = inject(AuthService);
   private router = inject(Router);
-  public isMobileMenuOpen = false;
+  public isMobileMenuOpen = false; // also used for sidenav toggle state
 
   public toggleMobileMenu(): void {
     this.isMobileMenuOpen = !this.isMobileMenuOpen;

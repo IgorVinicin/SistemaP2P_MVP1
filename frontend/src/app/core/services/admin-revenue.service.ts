@@ -43,6 +43,10 @@ export class AdminRevenueService {
     return this.http.get<RevenueDashboardMetricsDto>(`${this.apiUrl}/dashboard`);
   }
 
+  processYield(): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/yield/process`, {});
+  }
+
   getRevenues(
     page: number = 1,
     pageSize: number = 20,

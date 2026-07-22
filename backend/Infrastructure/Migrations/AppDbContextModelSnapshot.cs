@@ -167,6 +167,9 @@ namespace backend.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal>("TaxaRendimentoPool")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("ValorMinimoInvestimento")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -296,6 +299,9 @@ namespace backend.Infrastructure.Migrations
                     b.Property<Guid>("LoanId")
                         .HasColumnType("uuid");
 
+                    b.Property<decimal>("Rentabilidade")
+                        .HasColumnType("numeric");
+
                     b.Property<decimal>("SaldoPrincipalPendente")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -315,6 +321,45 @@ namespace backend.Infrastructure.Migrations
                     b.HasIndex("LoanId");
 
                     b.ToTable("Investments");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.InvestorGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Descricao")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Nome")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("InvestorGroups");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.InvestorGroupMember", b =>
+                {
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("InvestorId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("GroupId", "InvestorId");
+
+                    b.HasIndex("InvestorId");
+
+                    b.ToTable("InvestorGroupMembers");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.InvestorTransaction", b =>
@@ -585,6 +630,12 @@ namespace backend.Infrastructure.Migrations
 
                     b.Property<int>("Parcelas")
                         .HasColumnType("integer");
+
+                    b.Property<decimal>("PercentualJurosDiarioContrato")
+                        .HasColumnType("numeric");
+
+                    b.Property<decimal>("PercentualMultaAtrasoContrato")
+                        .HasColumnType("numeric");
 
                     b.Property<string>("Periodicidade")
                         .HasColumnType("text");
@@ -981,6 +1032,25 @@ namespace backend.Infrastructure.Migrations
                     b.Navigation("Loan");
                 });
 
+            modelBuilder.Entity("backend.Domain.Entities.InvestorGroupMember", b =>
+                {
+                    b.HasOne("backend.Domain.Entities.InvestorGroup", "Group")
+                        .WithMany("Members")
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("backend.Domain.Entities.User", "Investor")
+                        .WithMany()
+                        .HasForeignKey("InvestorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Investor");
+                });
+
             modelBuilder.Entity("backend.Domain.Entities.InvestorTransaction", b =>
                 {
                     b.HasOne("backend.Domain.Entities.User", "Investor")
@@ -1083,6 +1153,11 @@ namespace backend.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Investor");
+                });
+
+            modelBuilder.Entity("backend.Domain.Entities.InvestorGroup", b =>
+                {
+                    b.Navigation("Members");
                 });
 
             modelBuilder.Entity("backend.Domain.Entities.LoanRequest", b =>

@@ -20,6 +20,8 @@ builder.Services.AddScoped<AllocationEngineService>();
 builder.Services.AddScoped<PlatformRevenueService>();
 builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<CashFlowService>();
+builder.Services.AddScoped<WalletDistributionService>();
+builder.Services.AddScoped<InvestorYieldService>();
 
 // Configuração JWT
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
@@ -62,7 +64,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.WithOrigins("http://localhost:4200") // Origem padrão do Angular
+        policy.SetIsOriginAllowed(origin => true) // Permite acesso via IP local (celular)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

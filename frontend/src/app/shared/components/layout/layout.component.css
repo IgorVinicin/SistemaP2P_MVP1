@@ -1,90 +1,149 @@
-.app-toolbar {
+.sidenav-container {
+  height: 100vh;
+  background-color: var(--bg-main);
+}
+
+.sidenav {
+  width: 260px;
+  background-color: var(--primary-color);
+  color: white;
+  border-right: none;
+  box-shadow: var(--shadow-md);
+}
+
+.sidenav-header {
+  height: 64px;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  position: relative;
-  z-index: 1000;
+  padding: 0 16px;
+  background-color: var(--primary-hover);
+}
+
+.sidenav-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: white;
+  letter-spacing: -0.025em;
+}
+
+.nav-list {
+  padding-top: 16px;
+}
+
+.nav-list a.mat-mdc-list-item,
+.nav-list a.mat-mdc-list-item .mdc-list-item__primary-text,
+.nav-list a.mat-mdc-list-item .mat-mdc-list-item-title {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.nav-list a.mat-mdc-list-item {
+  margin: 4px 12px;
+  border-radius: 8px;
+}
+
+.nav-list a.mat-mdc-list-item:hover,
+.nav-list a.mat-mdc-list-item:hover .mdc-list-item__primary-text,
+.nav-list a.mat-mdc-list-item:hover .mat-mdc-list-item-title {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  color: white !important;
+}
+
+.nav-list a.mat-mdc-list-item.active-link,
+.nav-list a.mat-mdc-list-item.active-link .mdc-list-item__primary-text,
+.nav-list a.mat-mdc-list-item.active-link .mat-mdc-list-item-title {
+  background-color: var(--accent-color) !important;
+  color: white !important;
+}
+
+.nav-list a.mat-mdc-list-item .mat-icon {
+  color: inherit !important;
+  margin-right: 8px;
+}
+
+.nav-section-title {
+  padding: 16px 24px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.main-content {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-main);
+}
+
+.topbar {
+  background-color: #ffffff;
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+  border-bottom: 1px solid var(--border-color);
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  z-index: 2;
+}
+
+.menu-button {
+  color: var(--text-secondary);
 }
 
 .spacer {
   flex: 1 1 auto;
 }
 
-.nav-container {
+.user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
+}
+
+.user-details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
 }
 
 .user-email {
-  font-size: 12px;
-  font-weight: 500;
-  opacity: 0.9;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-main);
 }
 
-.container {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
+.user-role {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
-/* Hamburguer button (hidden by default on desktop) */
-.mobile-menu-btn {
-  display: none;
+.logout-btn {
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
 }
 
-/* Mobile responsive styles */
-@media (max-width: 1024px) {
-  .mobile-menu-btn {
-    display: block;
-    color: white;
-  }
+.logout-btn:hover {
+  color: var(--danger-color);
+}
 
-  .nav-container {
-    display: none;
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-    position: absolute;
-    top: 64px;
-    left: 0;
-    background-color: #0f172a; /* Slate 900 primary theme */
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-    padding: 1rem 1.5rem;
-    gap: 0.75rem;
-    box-sizing: border-box;
-    z-index: 999;
-  }
+.content-container {
+  padding: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
 
-  .nav-container.mobile-open {
-    display: flex;
-  }
+mat-divider {
+  border-top-color: rgba(255, 255, 255, 0.1) !important;
+}
 
-  .user-email {
-    padding: 8px 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-    margin-bottom: 8px;
-    color: white;
+@media (max-width: 768px) {
+  .sidenav {
+    width: 240px;
   }
-
-  .nav-container button {
-    text-align: left;
-    justify-content: flex-start;
-    padding: 10px 12px !important;
-    width: 100%;
-    border-radius: 6px;
-    color: white !important;
-  }
-
-  .logout-btn {
-    align-self: flex-start;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100% !important;
-    border-radius: 6px !important;
-    justify-content: flex-start !important;
-    color: rgba(255, 255, 255, 0.8) !important;
-    padding: 10px 12px !important;
+  .content-container {
+    padding: 16px;
   }
 }

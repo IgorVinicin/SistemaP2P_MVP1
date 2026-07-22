@@ -173,6 +173,91 @@ namespace backend.API.Controllers
             return Ok(result);
         }
 
+        // GET /api/admin/loans/active/grouped
+        [HttpGet("active/grouped")]
+        public async Task<IActionResult> GetGroupedActiveLoans(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? tipoEmprestimo = null)
+        {
+            var query = _context.LoanRequests
+                .AsNoTracking()
+                .Include(l => l.User)
+                .ThenInclude(u => u!.Profile)
+                .Where(l => l.Status == "Aprovado" || l.Status == "Ativo" || l.Status == "EmAnalise" || l.Status == "EmPagamento" || l.Status == "Inadimplente")
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(l => (l.User != null && l.User.Email.ToLower().Contains(term)) ||
+                                         (l.User != null && l.User.Profile != null && l.User.Profile.Nome.ToLower().Contains(term)) ||
+                                         (l.User != null && l.User.Profile != null && l.User.Profile.CPF.Contains(term)));
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                query = query.Where(l => l.Status == status);
+            }
+
+            if (!string.IsNullOrWhiteSpace(tipoEmprestimo))
+            {
+                query = query.Where(l => l.TipoEmprestimo == tipoEmprestimo);
+            }
+
+            var tomadorIdsQuery = query.Select(l => l.UserId).Distinct();
+            var totalCount = await tomadorIdsQuery.CountAsync();
+            
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var pagedTomadorIds = await tomadorIdsQuery
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            var loans = await query
+                .Where(l => pagedTomadorIds.Contains(l.UserId))
+                .OrderByDescending(l => l.DataCriacao)
+                .ToListAsync();
+
+            var grouped = loans.GroupBy(l => l.UserId).Select(g => new
+            {
+                TomadorId = g.Key,
+                Nome = g.First().User?.Profile?.Nome ?? "N/A",
+                CPF = g.First().User?.Profile?.CPF ?? "N/A",
+                Loans = g.Select(l => new
+                {
+                    Id = l.Id,
+                    ValorSolicitado = l.ValorSolicitado,
+                    QuantidadeParcelas = l.QuantidadeParcelas > 0 ? l.QuantidadeParcelas : l.Parcelas,
+                    Status = l.Status,
+                    TaxaJuros = l.TaxaJuros > 0 ? l.TaxaJuros : l.TaxaJurosAplicada,
+                    ValorTotal = l.ValorTotal,
+                    Risco = l.NivelRisco,
+                    DataCriacao = l.DataCriacao,
+                    DataSolicitacao = l.DataSolicitacao,
+                    TipoEmprestimo = l.TipoEmprestimo,
+                    Periodicidade = l.Periodicidade,
+                    Score = l.ScoreNoMomento > 0 ? l.ScoreNoMomento : l.ScoreNaSolicitacao
+                }).ToList()
+            }).ToList();
+
+            var result = new PagedResultDto<object>
+            {
+                Items = grouped.Cast<object>().ToList(),
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+
+            return Ok(result);
+        }
+
         // GET /api/admin/loans/{id}
         [HttpGet("{id}")]
         public async Task<IActionResult> GetLoanDetails(Guid id)
@@ -249,9 +334,13 @@ namespace backend.API.Controllers
 
                 string periodicidade = tipo switch { "Master" => "Diario", "Plus" => "DiarioUtil", _ => dto.PeriodicidadeGold! };
                 
-                using var dbTransaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
+                    if (dto.ValorAprovado.HasValue && dto.ValorAprovado.Value > 0)
+                    {
+                        loan.ValorSolicitado = dto.ValorAprovado.Value;
+                    }
+
                     loan.TipoEmprestimo = tipo;
                     loan.Periodicidade = periodicidade;
                     loan.QuantidadeParcelas = dto.QuantidadeParcelas;
@@ -267,19 +356,17 @@ namespace backend.API.Controllers
                     loan.ValorTotal = installments.Sum(inst => inst.ValorParcela);
                     _context.LoanInstallments.AddRange(installments);
 
-                    bool allocated = await _allocationService.AllocateInvestorsForLoanAsync(loan.Id);
+                    var (allocated, errorMessage) = await _allocationService.AllocateInvestorsForLoanAsync(loan.Id, dto.InvestorGroupId);
                     if (!allocated)
                     {
-                        throw new Exception("Falha na alocação: Saldo insuficiente entre investidores elegíveis.");
+                        throw new Exception(errorMessage);
                     }
 
                     await _context.SaveChangesAsync();
-                    await dbTransaction.CommitAsync();
                     return Ok(new { message = "Solicitação de empréstimo aprovada com sucesso.", status = loan.Status });
                 }
                 catch (Exception innerEx)
                 {
-                    await dbTransaction.RollbackAsync();
                     return BadRequest(new { message = innerEx.Message });
                 }
             }
@@ -343,12 +430,13 @@ namespace backend.API.Controllers
                     .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada")
                     .ToListAsync();
 
-                using var dbTransaction = await _context.Database.BeginTransactionAsync();
                 try
                 {
                     var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-                    decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
-                    decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+                    decimal defaultMulta = config?.PercentualMultaAtraso ?? 2.00m;
+                    decimal defaultJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+                    decimal percentualMulta = loan.PercentualMultaAtrasoContrato > 0 ? loan.PercentualMultaAtrasoContrato : defaultMulta;
+                    decimal percentualJurosDiario = loan.PercentualJurosDiarioContrato > 0 ? loan.PercentualJurosDiarioContrato : defaultJurosDiario;
                     var today = DateTime.UtcNow.Date;
                     var adminEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Administrador";
 
@@ -412,13 +500,10 @@ namespace backend.API.Controllers
                     });
 
                     await _context.SaveChangesAsync();
-                    await dbTransaction.CommitAsync();
-
-                    return Ok(new { message = "Empréstimo finalizado com sucesso.", status = loan.Status });
+                    return Ok(new { message = "Empréstimo quitado com sucesso.", status = loan.Status });
                 }
                 catch (Exception innerEx)
                 {
-                    await dbTransaction.RollbackAsync();
                     return BadRequest(new { message = innerEx.Message });
                 }
             }

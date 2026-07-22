@@ -10,6 +10,7 @@ namespace backend.Domain.Entities
         public decimal ValorInvestido { get; set; }
         public decimal SaldoPrincipalPendente { get; set; }
         public string Status { get; set; } = "Comprometido"; // Comprometido, Ativo
+        public decimal Rentabilidade { get; set; } = 0;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public User? Investor { get; set; }

@@ -261,6 +261,11 @@ namespace backend.API.Controllers
                 var simulatedInstallments = priceCalc.CalculateInstallments(Guid.Empty, dto.ValorSolicitado, dto.QuantidadeParcelas, validation.TaxaJuros, "Mensal");
                 decimal valorTotalCalculado = simulatedInstallments.Sum(inst => inst.ValorParcela);
 
+                // Obter as taxas globais no momento da criação para congelá-las no contrato
+                var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+                decimal multaAtraso = config?.PercentualMultaAtraso ?? 2.00m;
+                decimal jurosDiario = config?.PercentualJurosDiario ?? 0.033m;
+
                 // Criar a solicitação
                 var loan = new LoanRequest
                 {
@@ -278,6 +283,8 @@ namespace backend.API.Controllers
                     TaxaJuros = validation.TaxaJuros,
                     ValorTotal = valorTotalCalculado,
                     NivelRisco = validation.NivelRisco,
+                    PercentualMultaAtrasoContrato = multaAtraso,
+                    PercentualJurosDiarioContrato = jurosDiario,
                     CreatedAt = DateTime.UtcNow,
                     DataCriacao = DateTime.UtcNow,
                     DataSolicitacao = DateTime.UtcNow

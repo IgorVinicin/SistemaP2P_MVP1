@@ -134,3 +134,5 @@ C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\refint
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\backend.pdb
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\backend.genruntimeconfig.cache
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\ref\backend.dll
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\package-lock.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\package.json

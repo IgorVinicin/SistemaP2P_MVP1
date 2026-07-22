@@ -52,7 +52,8 @@ export class AdminService {
       status?: string;
       minScore?: number | null;
       maxScore?: number | null;
-    }
+    },
+    orderBy?: string
   ): Observable<PagedResult<PendingUserSummaryDto>> {
     let params = new HttpParams()
       .set('page', page.toString())
@@ -68,6 +69,9 @@ export class AdminService {
       if (filters.status) params = params.set('status', filters.status);
       if (filters.minScore !== undefined && filters.minScore !== null) params = params.set('minScore', filters.minScore.toString());
       if (filters.maxScore !== undefined && filters.maxScore !== null) params = params.set('maxScore', filters.maxScore.toString());
+    }
+    if (orderBy) {
+      params = params.set('orderBy', orderBy);
     }
     return this.http.get<PagedResult<PendingUserSummaryDto>>(this.apiUrl, { params });
   }

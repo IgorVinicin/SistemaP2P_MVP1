@@ -1,40 +1,103 @@
-<mat-toolbar color="primary" class="app-toolbar">
-  <span>Sistema P2P</span>
-  <span class="spacer"></span>
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
   
-  <!-- Hamburguer button for Mobile -->
-  <button mat-icon-button class="mobile-menu-btn" (click)="toggleMobileMenu()" *ngIf="authService.isAuthenticated()">
-    <mat-icon>{{ isMobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
-  </button>
-
-  <div *ngIf="authService.isAuthenticated()" class="nav-container" [class.mobile-open]="isMobileMenuOpen">
-    <button mat-button routerLink="/dashboard" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() !== 'Administrador' && authService.userRole() !== 'Investidor'">Início</button>
-    <button mat-button routerLink="/investor/dashboard" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Investidor'">Área do Investidor</button>
-    <button mat-button routerLink="/score" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Cliente'">Score</button>
-    <button mat-button routerLink="/loans/request" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Cliente'">Solicitar</button>
-    <button mat-button routerLink="/loans/my" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Cliente'">Meus Empréstimos</button>
-    <button mat-button routerLink="/loans/history" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Cliente'">Histórico</button>
+  <!-- Sidebar Menu -->
+  <mat-sidenav #sidenav [mode]="'side'" [opened]="authService.isAuthenticated()" class="sidenav">
+    <div class="sidenav-header">
+      <img src="assets/images/logo.png" alt="Logo" class="sidenav-logo" *ngIf="false"> <!-- Placeholder for Logo -->
+      <span class="sidenav-title">Sistema P2P</span>
+    </div>
     
-    <button mat-button routerLink="/admin" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Início</button>
-    <button mat-button routerLink="/admin/questions" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Score</button>
-    <button mat-button routerLink="/admin/credit" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Crédito</button>
-    <button mat-button routerLink="/admin/loans" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Empréstimos</button>
-    <button mat-button routerLink="/admin/delinquency" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Fundo/Cobrança</button>
-    <button mat-button routerLink="/admin/revenue" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Receita da Plataforma</button>
-    <button mat-button routerLink="/admin/ledger" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Livro-Razão</button>
-    <button mat-button routerLink="/admin/cashflow" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Fluxo de Caixa</button>
-    <button mat-button routerLink="/admin/reports" (click)="isMobileMenuOpen = false" *ngIf="authService.userRole() === 'Administrador'">Relatórios</button>
-    
-    <button mat-button (click)="logout(); isMobileMenuOpen = false" title="Sair" class="logout-btn">
-      <mat-icon style="margin-right: 4px;">exit_to_app</mat-icon> Sair
-    </button>
-  </div>
-</mat-toolbar>
+    <mat-divider></mat-divider>
 
-<div class="container">
-  <!-- Conectado como (exibido na tela principal) -->
-  <div class="user-info-bar" *ngIf="authService.isAuthenticated()" style="display: flex; justify-content: flex-end; font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem;">
-    Conectado como: <strong style="color: #334155; margin-left: 4px;">{{ authService.currentUser()?.email }} ({{ authService.userRole() }})</strong>
-  </div>
-  <router-outlet></router-outlet>
-</div>
+    <!-- Tomador Menu -->
+    <mat-nav-list *ngIf="authService.userRole() === 'Cliente'" class="nav-list">
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Início</span>
+      </a>
+      <a mat-list-item routerLink="/loans/request" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>add_circle_outline</mat-icon> <span matListItemTitle>Solicitar Empréstimo</span>
+      </a>
+      <a mat-list-item routerLink="/loans/my" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>receipt_long</mat-icon> <span matListItemTitle>Meus Empréstimos</span>
+      </a>
+      <a mat-list-item routerLink="/loans/history" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>history</mat-icon> <span matListItemTitle>Histórico</span>
+      </a>
+      <mat-divider></mat-divider>
+      <a mat-list-item routerLink="/score" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>account_circle</mat-icon> <span matListItemTitle>Meu Perfil</span>
+      </a>
+    </mat-nav-list>
+
+    <!-- Investidor Menu -->
+    <mat-nav-list *ngIf="authService.userRole() === 'Investidor'" class="nav-list">
+      <a mat-list-item routerLink="/investor/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Dashboard</span>
+      </a>
+    </mat-nav-list>
+
+    <!-- Admin Menu -->
+    <mat-nav-list *ngIf="authService.userRole() === 'Administrador'" class="nav-list">
+      <a mat-list-item routerLink="/admin" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
+        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Dashboard</span>
+      </a>
+      <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>people</mat-icon> <span matListItemTitle>Usuários</span>
+      </a>
+      <a mat-list-item routerLink="/admin/groups" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>groups</mat-icon> <span matListItemTitle>Grupos (Investidores)</span>
+      </a>
+      
+      <div class="nav-section-title">Empréstimos</div>
+      <a mat-list-item routerLink="/admin/loans" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>request_quote</mat-icon> <span matListItemTitle>Solicitações</span>
+      </a>
+
+      <div class="nav-section-title">Financeiro</div>
+      <a mat-list-item routerLink="/admin/cashflow" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>account_balance</mat-icon> <span matListItemTitle>Fluxo de Caixa</span>
+      </a>
+
+      <div class="nav-section-title">Sistema</div>
+      <a mat-list-item routerLink="/admin/reports" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>bar_chart</mat-icon> <span matListItemTitle>Relatórios</span>
+      </a>
+      <a mat-list-item routerLink="/admin/credit" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>settings</mat-icon> <span matListItemTitle>Config. de Crédito</span>
+      </a>
+      <a mat-list-item routerLink="/admin/questions" routerLinkActive="active-link">
+        <mat-icon matListItemIcon>quiz</mat-icon> <span matListItemTitle>Config. de Score</span>
+      </a>
+    </mat-nav-list>
+
+  </mat-sidenav>
+
+  <!-- Main Content -->
+  <mat-sidenav-content class="main-content">
+    
+    <!-- Topbar -->
+    <mat-toolbar class="topbar" *ngIf="authService.isAuthenticated()">
+      <button mat-icon-button (click)="sidenav.toggle()" class="menu-button">
+        <mat-icon>menu</mat-icon>
+      </button>
+      
+      <span class="spacer"></span>
+      
+      <div class="user-info">
+        <div class="user-details">
+          <span class="user-email">{{ authService.currentUser()?.email }}</span>
+          <span class="user-role">{{ authService.userRole() }}</span>
+        </div>
+        <button mat-icon-button (click)="logout()" title="Sair" class="logout-btn">
+          <mat-icon>logout</mat-icon>
+        </button>
+      </div>
+    </mat-toolbar>
+
+    <!-- Outlet -->
+    <div class="content-container">
+      <router-outlet></router-outlet>
+    </div>
+    
+  </mat-sidenav-content>
+</mat-sidenav-container>

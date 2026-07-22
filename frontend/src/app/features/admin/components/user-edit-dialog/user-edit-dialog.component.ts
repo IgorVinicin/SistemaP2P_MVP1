@@ -10,7 +10,9 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AdminService } from '../../../../core/services/admin.service';
+import { AdminCreditService } from '../../../../core/services/admin-credit.service';
 import { UserDetailDto } from '../../../../core/models/user.models';
+import { forkJoin } from 'rxjs';
 
 export interface UserEditDialogData {
   userId: string;
@@ -41,6 +43,7 @@ export class UserEditDialogComponent implements OnInit {
   public userDetail: UserDetailDto | null = null;
   public isLoading = false;
   public isProcessing = false;
+  public observacaoAdministrativa: string = '';
 
   // Form Fields
   public editForm = {
@@ -48,7 +51,8 @@ export class UserEditDialogComponent implements OnInit {
     cpf: '',
     telefone: '',
     dataNascimento: '',
-    status: ''
+    status: '',
+    rentabilidade: null as number | null
   };
 
   // Score Fields
@@ -78,6 +82,14 @@ export class UserEditDialogComponent implements OnInit {
           this.editForm.dataNascimento = detail.profile.dataNascimento ? detail.profile.dataNascimento.substring(0, 10) : '';
         }
         this.editForm.status = detail.status;
+        if (detail.role.toLowerCase() === 'investidor') {
+          if (detail.rentabilidade !== undefined) {
+            this.editForm.rentabilidade = detail.rentabilidade;
+          }
+        }
+        if (detail.observacaoAdministrativa) {
+          this.observacaoAdministrativa = detail.observacaoAdministrativa;
+        }
       },
       error: () => {
         this.isLoading = false;

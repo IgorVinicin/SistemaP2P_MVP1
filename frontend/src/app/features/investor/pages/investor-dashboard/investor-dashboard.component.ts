@@ -32,7 +32,9 @@ import { InvestorWalletDto, InvestorTransactionDto } from '../../../../core/mode
 export class InvestorDashboardComponent implements OnInit {
   private investorService = inject(InvestorService);
   private snackBar = inject(MatSnackBar);
-  public authService = inject(AuthService);  public wallet: InvestorWalletDto | null = null;
+  public authService = inject(AuthService);
+  public wallet: InvestorWalletDto | null = null;
+  public rendimentoDiarioEstimado: number = 0;
   public transactions: InvestorTransactionDto[] = [];
   public displayedColumns: string[] = ['data', 'tipo', 'descricao', 'valor', 'saldoAnterior', 'saldoPosterior', 'responsavel'];
   
@@ -59,6 +61,13 @@ export class InvestorDashboardComponent implements OnInit {
       next: (data) => {
         this.wallet = data;
         this.isLoadingWallet = false;
+        
+        // Load yield preview after wallet
+        this.investorService.getYieldPreview().subscribe({
+          next: (previewData) => {
+            this.rendimentoDiarioEstimado = previewData.rendimentoDiarioEstimado;
+          }
+        });
       },
       error: () => {
         this.isLoadingWallet = false;

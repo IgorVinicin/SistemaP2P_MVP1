@@ -100,7 +100,39 @@ namespace backend.API.Controllers
         /// Retorna empréstimos aprovados recentes.
         /// GET /api/diagnostic/loans
         /// </summary>
-        [HttpGet("loans")]
+        [HttpGet("debug-last-loan")]
+        public async Task<IActionResult> DebugLastLoan()
+        {
+            var lastRevenue = await _context.PlatformRevenues
+                .OrderByDescending(r => r.DataCriacao)
+                .FirstOrDefaultAsync();
+
+            if (lastRevenue == null) return Ok("No revenues found.");
+
+            var installment = await _context.LoanInstallments
+                .Include(i => i.LoanRequest)
+                .FirstOrDefaultAsync(i => i.Id == lastRevenue.InstallmentId);
+
+            var investorTxs = await _context.InvestorTransactions
+                .Where(t => t.Descricao.Contains(lastRevenue.InstallmentId.ToString()) || t.DataMovimentacao >= lastRevenue.DataCriacao.AddMinutes(-1))
+                .OrderByDescending(t => t.DataMovimentacao)
+                .Take(5)
+                .ToListAsync();
+
+            var investments = await _context.Investments
+                .Where(inv => inv.LoanId == lastRevenue.LoanId)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                LastRevenue = lastRevenue,
+                Installment = installment,
+                Investments = investments,
+                InvestorTransactions = investorTxs
+            });
+        }
+
+        [HttpGet("ping")]
         public async Task<IActionResult> GetLoans()
         {
             var loans = await _context.LoanRequests
@@ -298,7 +330,7 @@ namespace backend.API.Controllers
                 SaldoComprometidoAntes = w.SaldoComprometido
             }).ToList();
 
-            bool result = await allocationService.AllocateInvestorsForLoanAsync(loanId);
+            var (result, _) = await allocationService.AllocateInvestorsForLoanAsync(loanId);
 
             if (!result)
             {
@@ -647,7 +679,7 @@ namespace backend.API.Controllers
 
                     Log($"[TEST 1] Empréstimo criado para {cliente.Email} | Valor: {loan.ValorSolicitado:C2} | Valor Total com Juros: {loan.ValorTotal:C2}");
 
-                    bool allocated = await allocationEngine.AllocateInvestorsForLoanAsync(loan.Id);
+                    var (allocated, _) = await allocationEngine.AllocateInvestorsForLoanAsync(loan.Id);
                     if (!allocated)
                     {
                         Log($"[TEST 1] FALHA ao alocar investidores para o empréstimo {loan.Id}");
@@ -751,7 +783,7 @@ namespace backend.API.Controllers
                             var pre = preWalletState[inv.InvestorId];
                             decimal fraction = inv.ValorInvestido / loan.ValorSolicitado;
                             decimal principalEsperado = Math.Round(installment.ValorPrincipal * fraction, 2);
-                            decimal jurosEsperado = loan.TaxaJuros > 0 ? Math.Round(installment.ValorJuros * fraction * (w.Rentabilidade / loan.TaxaJuros), 2) : Math.Round(installment.ValorJuros * fraction, 2);
+                            decimal jurosEsperado = loan.TaxaJuros > 0 ? Math.Round(installment.ValorJuros * fraction * (inv.Rentabilidade / loan.TaxaJuros), 2) : Math.Round(installment.ValorJuros * fraction, 2);
                             decimal totalEsperado = principalEsperado + jurosEsperado;
 
                             decimal diffDisp = w.SaldoDisponivel - pre.Disp;
@@ -853,7 +885,7 @@ namespace backend.API.Controllers
 
                         decimal percentual = inv.ValorInvestido / totalInvestidoA;
                         decimal principalRec = Math.Round(totalPrincipalUnpaid * percentual, 2);
-                        decimal rentabilidadeFator = loanA.TaxaJuros > 0 ? Math.Min(1.0m, wallet.Rentabilidade / loanA.TaxaJuros) : 1.0m;
+                        decimal rentabilidadeFator = loanA.TaxaJuros > 0 ? Math.Min(1.0m, inv.Rentabilidade / loanA.TaxaJuros) : 1.0m;
                         decimal jurosRec = Math.Round(totalJurosUnpaid * percentual * rentabilidadeFator, 2);
                         decimal rec = principalRec + jurosRec;
 

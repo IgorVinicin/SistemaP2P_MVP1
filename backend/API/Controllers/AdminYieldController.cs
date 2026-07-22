@@ -1,0 +1,43 @@
+using System;
+using System.Threading.Tasks;
+using backend.Application.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace backend.API.Controllers
+{
+    [ApiController]
+    [Route("api/admin/yield")]
+    [Authorize(Roles = "Administrador")]
+    public class AdminYieldController : ControllerBase
+    {
+        private readonly InvestorYieldService _yieldService;
+
+        public AdminYieldController(InvestorYieldService yieldService)
+        {
+            _yieldService = yieldService;
+        }
+
+        // POST /api/admin/yield/process
+        [HttpPost("process")]
+        public async Task<IActionResult> ProcessMonthlyYield()
+        {
+            try
+            {
+                var usuario = User.Identity?.Name ?? "Admin";
+                var (processed, totalYield) = await _yieldService.ProcessMonthlyYieldAsync(usuario);
+
+                return Ok(new 
+                { 
+                    message = "Fechamento de rendimentos processado com sucesso.", 
+                    investidoresProcessados = processed, 
+                    totalRendimentoDistribuido = totalYield 
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+    }
+}

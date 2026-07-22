@@ -138,5 +138,127 @@ namespace backend.Application.Services
                 TotalPages = totalPages
             };
         }
+
+        public async Task<PagedResultDto<CashFlowTransactionDto>> GetTransactionsAsync(
+            string? period = "hoje",
+            string? searchTerm = null,
+            int? type = null,
+            int page = 1,
+            int pageSize = 20,
+            DateTime? startDate = null,
+            DateTime? endDate = null)
+        {
+            var query = _context.LedgerTransactions.AsNoTracking().AsQueryable();
+
+            var now = DateTime.UtcNow;
+            var today = now.Date;
+
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                var end = endDate.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(t => t.TransactionDate >= startDate.Value.Date && t.TransactionDate <= end);
+            }
+            else if (!string.IsNullOrEmpty(period))
+            {
+                switch (period.ToLower())
+                {
+                    case "hoje":
+                        query = query.Where(t => t.TransactionDate >= today);
+                        break;
+                    case "ontem":
+                        query = query.Where(t => t.TransactionDate >= today.AddDays(-1) && t.TransactionDate < today);
+                        break;
+                    case "7dias":
+                        query = query.Where(t => t.TransactionDate >= today.AddDays(-7));
+                        break;
+                    case "30dias":
+                        query = query.Where(t => t.TransactionDate >= today.AddDays(-30));
+                        break;
+                    case "mesatual":
+                        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                        query = query.Where(t => t.TransactionDate >= startOfMonth);
+                        break;
+                }
+            }
+
+            // O Fluxo de caixa de transações só importa para Empréstimos e Pagamentos (nesta visão específica)
+            if (type.HasValue)
+            {
+                var ledgerType = (LedgerTransactionType)type.Value;
+                query = query.Where(t => t.TipoMovimentacao == ledgerType);
+            }
+            else
+            {
+                query = query.Where(t => t.TipoMovimentacao == LedgerTransactionType.LoanDisbursement || t.TipoMovimentacao == LedgerTransactionType.InstallmentPayment);
+            }
+
+            var joinedQuery = from t in query
+                              join lr in _context.LoanRequests.AsNoTracking() on t.LoanId equals lr.Id into loanGroup
+                              from lr in loanGroup.DefaultIfEmpty()
+                              
+                              let borrowerId = lr != null ? (Guid?)lr.UserId : t.UserId
+                              
+                              let p = _context.UserProfiles.AsNoTracking().FirstOrDefault(prof => prof.Id == borrowerId)
+                              let c = _context.CompanyProfiles.AsNoTracking().FirstOrDefault(comp => comp.Id == borrowerId)
+                              
+                              select new CashFlowTransactionDto
+                              {
+                                  Id = t.Id,
+                                  TransactionDate = t.TransactionDate,
+                                  TipoMovimentacao = (int)t.TipoMovimentacao,
+                                  Valor = t.Valor,
+                                  UserName = c != null && !string.IsNullOrEmpty(c.RazaoSocial) ? c.RazaoSocial :
+                                             p != null && !string.IsNullOrEmpty(p.Nome) ? p.Nome : 
+                                             "Desconhecido",
+                                  CPF = p != null ? p.CPF : "",
+                                  Observacao = t.Observacao
+                              };
+
+            // Filtro de Busca (Nome, Razão Social ou CPF)
+            if (!string.IsNullOrEmpty(searchTerm))
+            {
+                var term = searchTerm.ToLower();
+                joinedQuery = joinedQuery.Where(dto => dto.UserName.ToLower().Contains(term) || (dto.CPF != null && dto.CPF.Contains(term)));
+            }
+
+            var totalCount = await joinedQuery.CountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 20;
+
+            var items = await joinedQuery
+                .OrderByDescending(t => t.TransactionDate)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResultDto<CashFlowTransactionDto>
+            {
+                Items = items,
+                TotalCount = totalCount,
+                Page = page,
+                PageSize = pageSize,
+                TotalPages = totalPages
+            };
+        }
+
+        public async Task<byte[]> GetTransactionsCsvAsync(string? period = "hoje", string? searchTerm = null, int? type = null, DateTime? startDate = null, DateTime? endDate = null)
+        {
+            // Reutiliza a lógica de busca com limite alto para não sobrecarregar
+            var result = await GetTransactionsAsync(period, searchTerm, type, 1, 10000, startDate, endDate);
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("DataHora;TipoMovimentacao;Valor;Tomador;CPF;Observacao");
+
+            foreach (var item in result.Items)
+            {
+                var tipoDesc = item.TipoMovimentacao == 0 ? "Emprestimo" : (item.TipoMovimentacao == 1 ? "Pagamento Parcela" : item.TipoMovimentacao.ToString());
+                
+                sb.AppendLine($"{item.TransactionDate:yyyy-MM-dd HH:mm};{tipoDesc};{item.Valor};{item.UserName};{item.CPF};{item.Observacao}");
+            }
+
+            return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        }
     }
 }

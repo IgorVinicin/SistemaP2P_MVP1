@@ -1,139 +1,153 @@
+<div class="breadcrumb">
+  <span class="breadcrumb-item active">Início</span>
+</div>
+
 <div class="dashboard-container">
+  
+  <div class="welcome-header">
+    <h2>Olá, {{ authService.currentUser()?.email || 'Usuário' }}</h2>
+    <p>Acompanhe o status da sua conta e gerencie suas ações.</p>
+  </div>
+
   <!-- Ações do Cliente Aprovado -->
-  <div class="actions-card" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Cliente'" style="margin-bottom: 1.5rem;">
-    <mat-card style="background: linear-gradient(135deg, #3f51b5 0%, #1a237e 100%); color: white; padding: 1rem; border-radius: 12px;">
-      <mat-card-content style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;">
-        <div>
-          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: white;">Solicitações de Crédito</h3>
-          <p style="margin: 0.25rem 0 0 0; opacity: 0.9; font-size: 0.9rem; color: #e8eaf6;">Consulte seu histórico de propostas, acompanhe empréstimos ativos ou solicite novo crédito.</p>
-        </div>
-        <div style="display: flex; gap: 0.75rem;">
-          <button mat-flat-button style="background-color: #ff4081; color: white;" routerLink="/loans/my">
-            <mat-icon>receipt_long</mat-icon> Meus Empréstimos
-          </button>
-          <button mat-flat-button style="background-color: white; color: #1a237e;" routerLink="/loans/request">
-            <mat-icon>add</mat-icon> Solicitar Crédito
-          </button>
+  <div class="kpi-grid" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Cliente'">
+    <mat-card class="kpi-card accent-card">
+      <mat-card-content>
+        <div class="kpi-icon"><mat-icon>request_quote</mat-icon></div>
+        <div class="kpi-details">
+          <span class="kpi-title">Novo Crédito</span>
+          <span class="kpi-value-text">Solicitar Agora</span>
         </div>
       </mat-card-content>
+      <div class="kpi-action">
+        <a mat-button color="accent" routerLink="/loans/request">Iniciar <mat-icon>arrow_forward</mat-icon></a>
+      </div>
     </mat-card>
 
-    <!-- Progresso de Elegibilidade / Renovação se possuir empréstimo ativo -->
-    <mat-card *ngIf="eligibility && eligibility.temEmprestimoAtivo" style="margin-top: 1rem; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1.25rem; border-radius: 12px; box-shadow: none;">
-      <mat-card-content style="padding: 0;">
-        <h4 style="margin: 0 0 0.75rem 0; color: #1e293b; font-weight: 600; font-size: 0.95rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
-          <mat-icon style="color: #4f46e5; font-size: 20px; width: 20px; height: 20px;">autorenew</mat-icon> Elegibilidade para Renovação de Crédito
-        </h4>
-        <div style="display: flex; flex-wrap: wrap; gap: 2rem; font-size: 0.9rem; color: #475569;">
-          <div>
-            <strong>Parcelas pagas no contrato ativo:</strong> 
-            <span style="font-weight: 600; color: #1e293b; margin-left: 0.25rem;">{{ eligibility.parcelasPagas }}</span>
-          </div>
-          <div>
-            <strong>Mínimo necessário:</strong> 
-            <span style="font-weight: 500; color: #1e293b; margin-left: 0.25rem;">{{ eligibility.minimoExigido }}</span>
-          </div>
-          <div>
-            <strong>Status de Renovação:</strong>
-            <span *ngIf="eligibility.podeSolicitar" style="color: #10b981; font-weight: 600; margin-left: 0.25rem;">Elegível para nova solicitação</span>
-            <span *ngIf="!eligibility.podeSolicitar" style="color: #ef4444; font-weight: 600; margin-left: 0.25rem;">Bloqueado (parcelas insuficientes)</span>
-          </div>
+    <mat-card class="kpi-card primary-card">
+      <mat-card-content>
+        <div class="kpi-icon"><mat-icon>receipt_long</mat-icon></div>
+        <div class="kpi-details">
+          <span class="kpi-title">Meus Empréstimos</span>
+          <span class="kpi-value-text">Acompanhar</span>
         </div>
       </mat-card-content>
+      <div class="kpi-action">
+        <a mat-button color="primary" routerLink="/loans/my">Acessar <mat-icon>arrow_forward</mat-icon></a>
+      </div>
     </mat-card>
   </div>
+
+  <!-- Progresso de Elegibilidade / Renovação se possuir empréstimo ativo -->
+  <mat-card class="eligibility-card" *ngIf="eligibility && eligibility.temEmprestimoAtivo">
+    <mat-card-content>
+      <div class="eligibility-header">
+        <mat-icon color="primary">autorenew</mat-icon>
+        <h4>Elegibilidade para Renovação de Crédito</h4>
+      </div>
+      <div class="eligibility-details">
+        <div class="detail-item">
+          <span class="label">Parcelas pagas no contrato ativo:</span>
+          <span class="value">{{ eligibility.parcelasPagas }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Mínimo necessário:</span>
+          <span class="value">{{ eligibility.minimoExigido }}</span>
+        </div>
+        <div class="detail-item">
+          <span class="label">Status:</span>
+          <span class="status-badge" [ngClass]="eligibility.podeSolicitar ? 'aprovado' : 'reprovado'">
+            {{ eligibility.podeSolicitar ? 'Elegível' : 'Bloqueado (parcelas insuficientes)' }}
+          </span>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
 
   <!-- Ações do Investidor Aprovado -->
-  <div class="actions-card" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Investidor'" style="margin-bottom: 1.5rem;">
-    <mat-card style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: white; padding: 1rem; border-radius: 12px;">
-      <mat-card-content style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 1rem;">
-        <div>
-          <h3 style="margin: 0; font-size: 1.25rem; font-weight: 600; color: white;">Área do Investidor</h3>
-          <p style="margin: 0.25rem 0 0 0; opacity: 0.9; font-size: 0.9rem; color: #cbd5e1;">Acesse sua carteira e gerencie seus investimentos simulados.</p>
-        </div>
-        <div>
-          <button mat-flat-button style="background-color: #10b981; color: white;" routerLink="/investor/dashboard">
-            <mat-icon>trending_up</mat-icon> Acessar Carteira
-          </button>
+  <div class="kpi-grid" *ngIf="authService.userStatus() === 'Aprovado' && authService.userRole() === 'Investidor'">
+    <mat-card class="kpi-card primary-card">
+      <mat-card-content>
+        <div class="kpi-icon"><mat-icon>trending_up</mat-icon></div>
+        <div class="kpi-details">
+          <span class="kpi-title">Minha Carteira</span>
+          <span class="kpi-value-text">Gerenciar</span>
         </div>
       </mat-card-content>
+      <div class="kpi-action">
+        <a mat-button color="primary" routerLink="/investor/dashboard">Acessar <mat-icon>arrow_forward</mat-icon></a>
+      </div>
     </mat-card>
   </div>
 
-  <div class="status-summary-card">
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>Status da sua Conta</mat-card-title>
-      </mat-card-header>
-      
-      <mat-card-content class="status-content">
-        <div class="user-status-display">
-          <mat-icon [ngClass]="authService.userStatus().toLowerCase()" class="status-icon">
-            {{ authService.userStatus() === 'Aprovado' ? 'check_circle' : 
-               authService.userStatus() === 'Reprovado' ? 'cancel' : 
-               authService.userStatus() === 'EmAnalise' ? 'hourglass_empty' : 'info' }}
-          </mat-icon>
-          
-          <div class="status-text-details">
-            <h2>{{ authService.userStatus() === 'EmAnalise' ? 'Em Análise' : authService.userStatus() }}</h2>
-            <p *ngIf="authService.userStatus() === 'Pendente'">
-              Sua conta ainda possui pendências de validação. Por favor, envie todos os documentos obrigatórios listados abaixo para enviar sua conta para análise.
-            </p>
-            <p *ngIf="authService.userStatus() === 'EmAnalise'">
-              Seus documentos foram enviados e estão sendo analisados pela nossa equipe administrativa. O tempo estimado de análise é de até 24 horas úteis.
-            </p>
-            <p *ngIf="authService.userStatus() === 'Aprovado'">
-              Parabéns! Sua conta e documentos foram verificados e aprovados. Você está pronto para utilizar o sistema.
-            </p>
-            <p *ngIf="authService.userStatus() === 'Reprovado'">
-              Seu cadastro foi reprovado por inconsistência nos documentos. Por favor, revise e reenvie os documentos pendentes de correção.
-            </p>
-          </div>
+  <!-- Status Resumo da Conta -->
+  <mat-card class="status-summary-card">
+    <mat-card-content class="status-content">
+      <div class="user-status-display">
+        <mat-icon [ngClass]="authService.userStatus().toLowerCase()" class="status-icon">
+          {{ authService.userStatus() === 'Aprovado' ? 'check_circle' : 
+             authService.userStatus() === 'Reprovado' ? 'cancel' : 
+             authService.userStatus() === 'EmAnalise' ? 'hourglass_empty' : 'info' }}
+        </mat-icon>
+        
+        <div class="status-text-details">
+          <h2>Status: {{ authService.userStatus() === 'EmAnalise' ? 'Em Análise' : authService.userStatus() }}</h2>
+          <p *ngIf="authService.userStatus() === 'Pendente'">
+            Sua conta possui pendências. Envie os documentos listados abaixo para análise.
+          </p>
+          <p *ngIf="authService.userStatus() === 'EmAnalise'">
+            Seus documentos estão em análise. Tempo estimado: até 24 horas úteis.
+          </p>
+          <p *ngIf="authService.userStatus() === 'Aprovado'">
+            Conta verificada e aprovada. Você pode utilizar todas as funcionalidades do sistema.
+          </p>
+          <p *ngIf="authService.userStatus() === 'Reprovado'">
+            Cadastro reprovado. Revise e reenvie os documentos indicados.
+          </p>
         </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
 
+  <!-- Documentos -->
   <div class="document-section">
-    <h2>Upload de Documentos Obrigatórios</h2>
+    <h3>Upload de Documentos Obrigatórios</h3>
     
     <div class="documents-grid">
-      <div class="grid-item">
-        <app-document-upload-card
-          tipoDocumento="Frente"
-          label="Documento de Identidade (Frente)"
-          [currentStatus]="getDocStatus('Frente')"
-          (uploadSuccess)="onUploadSuccess($event)">
-        </app-document-upload-card>
-      </div>
+      <app-document-upload-card class="grid-item"
+        tipoDocumento="Frente"
+        label="Documento (Frente)"
+        [currentStatus]="getDocStatus('Frente')"
+        (uploadSuccess)="onUploadSuccess($event)">
+      </app-document-upload-card>
 
-      <div class="grid-item">
-        <app-document-upload-card
-          tipoDocumento="Verso"
-          label="Documento de Identidade (Verso)"
-          [currentStatus]="getDocStatus('Verso')"
-          (uploadSuccess)="onUploadSuccess($event)">
-        </app-document-upload-card>
-      </div>
+      <app-document-upload-card class="grid-item"
+        tipoDocumento="Verso"
+        label="Documento (Verso)"
+        [currentStatus]="getDocStatus('Verso')"
+        (uploadSuccess)="onUploadSuccess($event)">
+      </app-document-upload-card>
 
-      <div class="grid-item">
-        <app-document-upload-card
-          tipoDocumento="Selfie"
-          label="Selfie segurando o Documento"
-          [currentStatus]="getDocStatus('Selfie')"
-          (uploadSuccess)="onUploadSuccess($event)">
-        </app-document-upload-card>
-      </div>
+      <app-document-upload-card class="grid-item"
+        tipoDocumento="Selfie"
+        label="Selfie com Documento"
+        [currentStatus]="getDocStatus('Selfie')"
+        (uploadSuccess)="onUploadSuccess($event)">
+      </app-document-upload-card>
 
-      <!-- Fachada da empresa (Exibida dinamicamente apenas se o usuário declarou possuir empresa) -->
-      <div class="grid-item" *ngIf="authService.possuiEmpresa()">
-        <app-document-upload-card
-          tipoDocumento="FachadaEmpresa"
-          label="Foto da Fachada da Empresa"
-          [currentStatus]="getDocStatus('FachadaEmpresa')"
-          (uploadSuccess)="onUploadSuccess($event)">
-        </app-document-upload-card>
-      </div>
+      <app-document-upload-card class="grid-item" *ngIf="authService.possuiEmpresa()"
+        tipoDocumento="FachadaEmpresa"
+        label="Fachada da Empresa"
+        [currentStatus]="getDocStatus('FachadaEmpresa')"
+        (uploadSuccess)="onUploadSuccess($event)">
+      </app-document-upload-card>
     </div>
+  </div>
+
+  <!-- Questionário de Score (Apenas para Clientes não aprovados ainda ou pendentes) -->
+  <div class="score-section" *ngIf="authService.userRole() === 'Cliente'" style="margin-top: 2rem;">
+    <h3>Questionário de Perfil de Crédito</h3>
+    <p style="color: #64748b; margin-bottom: 1rem;">Para calcular seu limite de empréstimo inicial, responda o questionário abaixo.</p>
+    <app-score-form></app-score-form>
   </div>
 </div>

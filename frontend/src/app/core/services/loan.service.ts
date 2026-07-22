@@ -62,6 +62,22 @@ export class LoanService {
     return this.http.get<PagedResult<LoanRequest>>(`${this.apiUrl}/admin/loans/active`, { params });
   }
 
+  public getActiveLoansGrouped(
+    page: number = 1,
+    pageSize: number = 10,
+    search?: string,
+    status?: string,
+    tipoEmprestimo?: string
+  ): Observable<PagedResult<any>> {
+    let params = new HttpParams()
+      .set('page', page.toString())
+      .set('pageSize', pageSize.toString());
+    if (search) params = params.set('search', search);
+    if (status) params = params.set('status', status);
+    if (tipoEmprestimo) params = params.set('tipoEmprestimo', tipoEmprestimo);
+    return this.http.get<PagedResult<any>>(`${this.apiUrl}/admin/loans/active/grouped`, { params });
+  }
+
   public getLoanDetails(id: string): Observable<LoanRequest> {
     return this.http.get<LoanRequest>(`${this.apiUrl}/admin/loans/${id}`);
   }

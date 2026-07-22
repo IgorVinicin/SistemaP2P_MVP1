@@ -20,4 +20,5 @@ export interface CreditConfig {
   minimoParcelasPagasNovaSolicitacao?: number;
   maxInvestidoresPorEmprestimo?: number;
   spreadMinimoPlataforma?: number;
+  taxaRendimentoPool?: number;
 }

@@ -6,17 +6,17 @@
   --primary-color: #0f172a;       /* Slate 900 */
   --primary-hover: #1e293b;       /* Slate 800 */
   --primary-light: #f8fafc;       /* Slate 50 */
-  --accent-color: #2563eb;        /* Blue 600 */
-  --accent-hover: #1d4ed8;        /* Blue 700 */
-  --success-color: #10b981;       /* Emerald 500 */
-  --warning-color: #f59e0b;       /* Amber 500 */
-  --danger-color: #ef4444;        /* Red 500 */
-  --text-main: #0f172a;           /* Dark Slate */
-  --text-secondary: #475569;      /* Cool Gray */
-  --text-muted: #94a3b8;          /* Light Slate Gray */
-  --border-color: #e2e8f0;        /* Card/Grid Borders */
-  --bg-main: #f8fafc;             /* Screen Background */
-  --bg-card: #ffffff;             /* Card Background */
+  --accent-color: #0284c7;        /* Light Blue 600 */
+  --accent-hover: #0369a1;        /* Light Blue 700 */
+  --success-color: #059669;       /* Emerald 600 */
+  --warning-color: #d97706;       /* Amber 600 */
+  --danger-color: #dc2626;        /* Red 600 */
+  --text-main: #1e293b;           /* Slate 800 */
+  --text-secondary: #475569;      /* Slate 600 */
+  --text-muted: #94a3b8;          /* Slate 400 */
+  --border-color: #e2e8f0;        /* Slate 200 */
+  --bg-main: #f1f5f9;             /* Slate 100 */
+  --bg-card: #ffffff;             /* White */
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
@@ -38,11 +38,12 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 600;
   color: var(--text-main);
   letter-spacing: -0.025em;
+  margin-top: 0;
 }
 
 p {
   color: var(--text-secondary);
-  line-height: 1.6;
+  line-height: 1.5;
 }
 
 /* Angular Material Card Override */
@@ -52,14 +53,18 @@ p {
   box-shadow: var(--shadow-sm) !important;
   border-radius: 8px !important;
   overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.mat-mdc-card-content {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mat-mdc-card-title {
   font-size: 1.1rem !important;
   font-weight: 600 !important;
   color: var(--text-main) !important;
-  letter-spacing: -0.02em !important;
+  letter-spacing: -0.01em !important;
 }
 
 .mat-mdc-card-subtitle {
@@ -229,22 +234,34 @@ td.mat-mdc-cell {
 }
 
 @media (max-width: 768px) {
-  .app-toolbar {
-    height: auto !important;
-    padding: 12px 16px !important;
-    flex-direction: column;
-    gap: 8px;
-    align-items: flex-start !important;
+  .container {
+    padding: 16px 8px !important;
   }
   
-  .nav-container {
-    flex-wrap: wrap;
+  .mat-mdc-card {
+    border-radius: 4px !important;
+  }
+  
+  .form-row {
+    flex-direction: column;
     gap: 8px;
-    width: 100%;
   }
+  
+  .form-row mat-form-field {
+    width: 100%;
+    min-width: 100%;
+  }
+}
 
-  .nav-container .user-email {
-    width: 100%;
-    margin-bottom: 4px;
-  }
+/* Utilitário Global para Tabelas Responsivas */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin-bottom: 1rem;
+}
+
+.table-responsive table {
+  width: 100%;
+  min-width: 600px; /* Garante que a tabela não fique espremida, forçando o scroll */
 }

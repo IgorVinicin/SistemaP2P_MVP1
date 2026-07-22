@@ -6,54 +6,58 @@ namespace backend.Application.Services
 {
     public class PriceCalculationService
     {
-        public List<LoanInstallment> CalculateInstallments(Guid loanRequestId, decimal valorSolicitado, int quantidadeParcelas, decimal taxaJurosMensal, string? periodicidade = "Mensal")
+        /// <summary>
+        /// Calcula as parcelas de um empréstimo usando JUROS SIMPLES.
+        /// Fórmula: Juros = ValorSolicitado × (Taxa / 100)
+        ///          Total = ValorSolicitado + Juros
+        ///          Parcela = Total / NúmeroParcelas
+        /// A taxa é aplicada UMA VEZ sobre o valor total solicitado, independente da periodicidade.
+        /// </summary>
+        public List<LoanInstallment> CalculateInstallments(Guid loanRequestId, decimal valorSolicitado, int quantidadeParcelas, decimal taxaJuros, string? periodicidade = "Mensal")
         {
             var installments = new List<LoanInstallment>();
 
-            double pv = (double)valorSolicitado;
             int n = quantidadeParcelas;
-            double i = (double)taxaJurosMensal / 100.0;
 
-            double pmt;
-            if (i == 0)
-            {
-                pmt = pv / n;
-            }
-            else
-            {
-                pmt = pv * (i * Math.Pow(1 + i, n)) / (Math.Pow(1 + i, n) - 1);
-            }
+            // === JUROS SIMPLES ===
+            // A taxa é aplicada sobre o valor total solicitado, sobre o período total
+            decimal jurosTotal = Math.Round(valorSolicitado * (taxaJuros / 100m), 2);
+            decimal valorTotal = valorSolicitado + jurosTotal;
 
-            decimal valorParcela = Math.Round((decimal)pmt, 2);
-            decimal remainingPrincipal = valorSolicitado;
+            // Cada parcela tem valor igual (principal + juros distribuídos igualmente)
+            decimal valorParcelaPadrao = Math.Round(valorTotal / n, 2);
+            decimal principalPorParcela = Math.Round(valorSolicitado / n, 2);
+            decimal jurosPorParcela = Math.Round(jurosTotal / n, 2);
+
             DateTime baseDate = DateTime.UtcNow;
             DateTime currentDueDate = baseDate;
 
+            decimal somaParcelasAnteriores = 0;
+            decimal somaPrincipalAnterior = 0;
+            decimal somaJurosAnterior = 0;
+
             for (int k = 1; k <= n; k++)
             {
-                decimal juros;
+                decimal parcela;
                 decimal principal;
+                decimal juros;
 
                 if (k == n)
                 {
-                    // Na última parcela, ajusta para absorver qualquer erro de arredondamento
-                    principal = remainingPrincipal;
-                    juros = Math.Round(remainingPrincipal * (decimal)i, 2);
-                    // O valor total da parcela se torna a soma exata dos juros e principal restantes
-                    valorParcela = principal + juros;
+                    // Na última parcela, absorve qualquer diferença de arredondamento
+                    principal = valorSolicitado - somaPrincipalAnterior;
+                    juros = jurosTotal - somaJurosAnterior;
+                    parcela = valorTotal - somaParcelasAnteriores;
                 }
                 else
                 {
-                    juros = Math.Round(remainingPrincipal * (decimal)i, 2);
-                    principal = valorParcela - juros;
+                    principal = principalPorParcela;
+                    juros = jurosPorParcela;
+                    parcela = valorParcelaPadrao;
 
-                    if (principal > remainingPrincipal)
-                    {
-                        principal = remainingPrincipal;
-                        valorParcela = principal + juros;
-                    }
-
-                    remainingPrincipal -= principal;
+                    somaPrincipalAnterior += principal;
+                    somaJurosAnterior += juros;
+                    somaParcelasAnteriores += parcela;
                 }
 
                 // Cálculo do vencimento com base na periodicidade
@@ -84,7 +88,7 @@ namespace backend.Application.Services
                     Id = Guid.NewGuid(),
                     LoanRequestId = loanRequestId,
                     NumeroParcela = k,
-                    ValorParcela = valorParcela,
+                    ValorParcela = parcela,
                     ValorPrincipal = principal,
                     ValorJuros = juros,
                     DataVencimento = currentDueDate,
@@ -111,3 +115,4 @@ namespace backend.Application.Services
         }
     }
 }
+

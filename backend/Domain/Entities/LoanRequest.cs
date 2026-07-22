@@ -19,6 +19,11 @@ namespace backend.Domain.Entities
         public decimal TaxaJuros { get; set; }
         public decimal ValorTotal { get; set; }
         public string NivelRisco { get; set; } = string.Empty;
+        
+        // Taxas de juros de mora e multa congeladas no momento do contrato
+        public decimal PercentualMultaAtrasoContrato { get; set; }
+        public decimal PercentualJurosDiarioContrato { get; set; }
+        
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow; // Compatibilidade
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow; // Novo campo solicitado
         public DateTime DataSolicitacao { get; set; } = DateTime.UtcNow;

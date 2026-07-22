@@ -98,5 +98,47 @@ namespace backend.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // GET /api/admin/cashflow/transactions
+        [HttpGet("transactions")]
+        public async Task<IActionResult> GetTransactions(
+            [FromQuery] string period = "hoje", 
+            [FromQuery] string? search = null, 
+            [FromQuery] int? type = null, 
+            [FromQuery] int page = 1, 
+            [FromQuery] int pageSize = 20,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var result = await _cashFlowService.GetTransactionsAsync(period, search, type, page, pageSize, startDate, endDate);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // GET /api/admin/cashflow/transactions/export
+        [HttpGet("transactions/export")]
+        public async Task<IActionResult> ExportTransactions(
+            [FromQuery] string period = "hoje", 
+            [FromQuery] string? search = null, 
+            [FromQuery] int? type = null,
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null)
+        {
+            try
+            {
+                var csvBytes = await _cashFlowService.GetTransactionsCsvAsync(period, search, type, startDate, endDate);
+                return File(csvBytes, "text/csv", "relatorio-fluxo-caixa.csv");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

@@ -147,7 +147,8 @@ namespace backend.API.Controllers
                     ValorMinimoInvestimento = 5000.00m,
                     MinimoParcelasPagasNovaSolicitacao = 4,
                     MaxInvestidoresPorEmprestimo = 10,
-                    SpreadMinimoPlataforma = 1.00m
+                    SpreadMinimoPlataforma = 1.00m,
+                    TaxaRendimentoPool = 2.00m
                 };
                 _context.CreditConfigs.Add(config);
                 await _context.SaveChangesAsync();
@@ -177,6 +178,11 @@ namespace backend.API.Controllers
                     return BadRequest(new { message = "O spread mínimo da plataforma deve estar entre 0% e 100%." });
                 }
 
+                if (dto.TaxaRendimentoPool < 0 || dto.TaxaRendimentoPool > 100)
+                {
+                    return BadRequest(new { message = "A taxa de rendimento do pool deve estar entre 0% e 100%." });
+                }
+
                 var config = await _context.CreditConfigs.FirstOrDefaultAsync();
                 if (config == null)
                 {
@@ -197,6 +203,7 @@ namespace backend.API.Controllers
                 config.MinimoParcelasPagasNovaSolicitacao = dto.MinimoParcelasPagasNovaSolicitacao;
                 config.MaxInvestidoresPorEmprestimo = dto.MaxInvestidoresPorEmprestimo;
                 config.SpreadMinimoPlataforma = dto.SpreadMinimoPlataforma;
+                config.TaxaRendimentoPool = dto.TaxaRendimentoPool;
 
                 await _context.SaveChangesAsync();
 

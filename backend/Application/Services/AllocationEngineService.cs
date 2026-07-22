@@ -24,7 +24,7 @@ namespace backend.Application.Services
         /// Retorna (true, diagnostico) em caso de sucesso ou (false, mensagem_erro) em caso de falha.
         /// IMPORTANTE: Este método NÃO chama SaveChangesAsync — o chamador é responsável por persistir.
         /// </summary>
-        public async Task<bool> AllocateInvestorsForLoanAsync(Guid loanRequestId)
+        public async Task<(bool Success, string ErrorMessage)> AllocateInvestorsForLoanAsync(Guid loanRequestId, Guid? investorGroupId = null)
         {
             var loan = await _context.LoanRequests
                 .FirstOrDefaultAsync(l => l.Id == loanRequestId);
@@ -32,7 +32,7 @@ namespace backend.Application.Services
             if (loan == null)
             {
                 Console.WriteLine($"[ALOCACAO-LOG] Empréstimo {loanRequestId} não encontrado.");
-                return false;
+                return (false, "Solicitação de empréstimo não encontrada.");
             }
 
             decimal loanAmount = loan.ValorSolicitado;
@@ -40,9 +40,6 @@ namespace backend.Application.Services
 
             // ====================================================================
             // PASSO 1 e 2 UNIFICADOS E OTIMIZADOS
-            // Buscar apenas os investidores Aprovados com Saldo Disponível > 0, 
-            // limitados a no máximo maxInvestors, diretamente no banco de dados.
-            // Isso previne estouro de memória (Out Of Memory) e lentidão.
             // ====================================================================
             var config = await _context.CreditConfigs.FirstOrDefaultAsync();
             int maxInvestors = config?.MaxInvestidoresPorEmprestimo ?? 10;
@@ -57,7 +54,18 @@ namespace backend.Application.Services
                     u => u.Id,
                     w => w.Id,
                     (u, w) => new { User = u, Wallet = w }
-                )
+                );
+
+            if (investorGroupId.HasValue && investorGroupId.Value != Guid.Empty)
+            {
+                var groupInvestorIds = _context.InvestorGroupMembers
+                    .Where(m => m.GroupId == investorGroupId.Value)
+                    .Select(m => m.InvestorId);
+
+                eligibleQuery = eligibleQuery.Where(x => groupInvestorIds.Contains(x.User.Id));
+            }
+
+            eligibleQuery = eligibleQuery
                 .Where(x => x.Wallet.SaldoDisponivel > 0)
                 .OrderByDescending(x => x.Wallet.SaldoDisponivel)
                 .Take(maxInvestors);
@@ -69,7 +77,11 @@ namespace backend.Application.Services
             if (!eligibleInvestors.Any())
             {
                 Console.WriteLine($"[ALOCACAO-LOG] FALHOU: Nenhum investidor elegível encontrado.");
-                return false;
+                if (investorGroupId.HasValue && investorGroupId.Value != Guid.Empty)
+                {
+                    return (false, "Nenhum investidor do grupo selecionado possui saldo disponível.");
+                }
+                return (false, "Nenhum investidor elegível encontrado na plataforma com saldo disponível.");
             }
 
             // ====================================================================
@@ -148,7 +160,22 @@ namespace backend.Application.Services
                 decimal saldoTotalPool = eligibleInvestors.Sum(p => p.Wallet.SaldoDisponivel);
                 Console.WriteLine($"[ALOCACAO-LOG] FALHOU: Pool de investidores insuficiente.");
                 Console.WriteLine($"[ALOCACAO-LOG]   Valor do empréstimo: {loanAmount:C2} | Saldo total no pool: {saldoTotalPool:C2}");
-                return false;
+                
+                if (investorGroupId.HasValue && investorGroupId.Value != Guid.Empty)
+                {
+                    var groupMembers = await _context.InvestorGroupMembers
+                        .Where(m => m.GroupId == investorGroupId.Value)
+                        .Include(m => m.Investor)
+                        .ThenInclude(u => u.Profile)
+                        .Join(_context.InvestorWallets, m => m.InvestorId, w => w.Id, (m, w) => new { m, w })
+                        .ToListAsync();
+                    
+                    var details = groupMembers.Select(x => $"{x.m.Investor.Profile?.Nome ?? x.m.Investor.Email}: {x.w.SaldoDisponivel:C2}");
+                    string detailsStr = string.Join(" | ", details);
+                    return (false, $"O grupo selecionado não possui saldo suficiente para cobrir {loanAmount:C2}. Saldos atuais: {detailsStr}");
+                }
+
+                return (false, "Falha na alocação: Saldo insuficiente entre os investidores elegíveis na plataforma.");
             }
 
             // ====================================================================
@@ -183,6 +210,7 @@ namespace backend.Application.Services
                             ValorInvestido = allocatedShare,
                             SaldoPrincipalPendente = allocatedShare,
                             Status = "Comprometido",
+                            Rentabilidade = wallet.Rentabilidade,
                             CreatedAt = DateTime.UtcNow
                         };
                         _context.Investments.Add(investment);
@@ -237,7 +265,7 @@ namespace backend.Application.Services
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"[ALOCACAO-LOG] Alocação concluída com sucesso! {pool.Count} investidores alocados.");
-                    return true;
+                    return (true, string.Empty);
                 }
                 catch (DbUpdateConcurrencyException)
                 {
@@ -246,7 +274,7 @@ namespace backend.Application.Services
                     if (attempt == maxRetries)
                     {
                         Console.WriteLine($"[ALOCACAO-LOG] Falha ao alocar após múltiplas tentativas de concorrência.");
-                        return false;
+                        return (false, "Falha de concorrência ao atualizar saldos.");
                     }
                     
                     // Atualiza a entidade do context para a versão do banco
@@ -260,11 +288,11 @@ namespace backend.Application.Services
                 {
                     await transaction.RollbackAsync();
                     Console.WriteLine($"[ALOCACAO-LOG] Erro durante a alocação: {ex.Message}");
-                    return false;
+                    return (false, $"Erro interno durante alocação: {ex.Message}");
                 }
             }
 
-            return false;
+            return (false, "Falha inesperada na alocação.");
         }
     }
 }
