@@ -1,0 +1,110 @@
+<div class="pay-dialog">
+  <!-- Cabeçalho -->
+  <div class="dialog-header">
+    <mat-icon class="pix-icon">pix</mat-icon>
+    <h2 mat-dialog-title>Pagar Parcela {{ data.installment.numeroParcela }}</h2>
+  </div>
+
+  <mat-dialog-content>
+    <!-- Resumo da Parcela -->
+    <div class="installment-summary">
+      <div class="summary-row">
+        <span class="label">Valor total da parcela</span>
+        <span class="value highlight">{{ data.installment.valorParcela | currency:'BRL' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="data.installment.multa > 0">
+        <span class="label">Multa</span>
+        <span class="value warn">+ {{ data.installment.multa | currency:'BRL' }}</span>
+      </div>
+      <div class="summary-row" *ngIf="data.installment.jurosMora > 0">
+        <span class="label">Juros de mora</span>
+        <span class="value warn">+ {{ data.installment.jurosMora | currency:'BRL' }}</span>
+      </div>
+      <div class="summary-row total-row">
+        <span class="label"><strong>Total a pagar</strong></span>
+        <span class="value highlight"><strong>{{ totalDevido | currency:'BRL' }}</strong></span>
+      </div>
+      <div class="summary-row" *ngIf="data.installment.valorPago > 0">
+        <span class="label">Já pago</span>
+        <span class="value ok">- {{ data.installment.valorPago | currency:'BRL' }}</span>
+      </div>
+    </div>
+
+    <mat-divider style="margin: 1rem 0;"></mat-divider>
+
+    <!-- Campo de valor a pagar -->
+    <div class="amount-section">
+      <p class="amount-label">Quanto deseja pagar agora?</p>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Valor a pagar (R$)</mat-label>
+        <span matTextPrefix>R$&nbsp;</span>
+        <input matInput
+               type="number"
+               [min]="0.01"
+               [max]="totalDevido"
+               [(ngModel)]="valorDigitado"
+               placeholder="0,00"
+               step="0.01">
+        <mat-hint>Máximo: {{ totalDevido | currency:'BRL' }}</mat-hint>
+      </mat-form-field>
+      
+      <!-- Preview do que ficará pendente -->
+      <div class="saldo-info" *ngIf="valorDigitado > 0 && valorDigitado < totalDevido" style="margin-top: 0.5rem; display: flex; align-items: center; gap: 8px; color: #0284c7; font-size: 0.85rem; background-color: #f0f9ff; padding: 8px 12px; border-radius: 6px; border: 1px solid #bae6fd;">
+        <mat-icon style="font-size: 1.1rem; height: 18px; width: 18px; color: #0284c7;">info</mat-icon>
+        <span>Restará <strong>{{ (totalDevido - valorDigitado) | currency:'BRL' }}</strong> pendente. O valor não pago será acumulado para a parcela seguinte/final.</span>
+      </div>
+    </div>
+
+    <!-- Seção de agrupamento de parcelas (Lote) -->
+    <div *ngIf="otherPending.length > 0" class="batch-pay-section" style="margin-top: 1.5rem; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
+      <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; line-height: 1.35;">
+        <mat-icon style="color: var(--dj-warning); font-size: 1.25rem; height: 22px; width: 22px;">account_balance_wallet</mat-icon> Existem outros contratos pendentes e parcelas que vencem hoje, gostaria de pagar?
+      </h3>
+
+      <div class="pending-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 180px; overflow-y: auto; padding-right: 4px;">
+        <div *ngFor="let item of otherPending" 
+             style="display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <mat-checkbox [(ngModel)]="selectedAdditional[item.id]" color="primary"></mat-checkbox>
+            <div style="display: flex; flex-direction: column;">
+              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
+                Parcela {{ item.numeroParcela }} — {{ item.emprestimoTipo }}
+              </span>
+              <span style="font-size: 0.75rem; color: var(--text-secondary);">
+                Vence em: {{ item.dataVencimento | date:'dd/MM/yyyy':'UTC' }}
+              </span>
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <strong style="color: var(--text-muted); font-size: 0.9rem;">{{ item.totalDevido | currency:'BRL' }}</strong>
+            <span *ngIf="item.diasAtraso > 0" style="display: block; font-size: 0.7rem; color: var(--dj-danger); font-weight: 500;">
+              Atrasada ({{ item.diasAtraso }} dias)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Botões de marcar/limpar lote -->
+      <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end; gap: 8px;">
+        <button mat-stroked-button type="button" (click)="toggleAllAdditional(true)" style="font-size: 0.75rem; height: 30px; padding: 0 10px; min-width: 80px; line-height: 28px;">
+          Selecionar todas
+        </button>
+        <button mat-stroked-button type="button" (click)="toggleAllAdditional(false)" style="font-size: 0.75rem; height: 30px; padding: 0 10px; min-width: 80px; line-height: 28px;">
+          Limpar seleção
+        </button>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" style="border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+    <button mat-button mat-dialog-close type="button">Cancelar</button>
+    <button mat-flat-button color="primary"
+            [disabled]="!isValid()"
+            (click)="confirm()"
+            type="button"
+            style="background-color: var(--dj-success); color: white;">
+      <mat-icon>pix</mat-icon>
+      Gerar Pix: {{ totalGeral | currency:'BRL' }}
+    </button>
+  </mat-dialog-actions>
+</div>

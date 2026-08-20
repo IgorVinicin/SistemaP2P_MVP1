@@ -1,0 +1,127 @@
+<div class="breadcrumb">
+  <span class="breadcrumb-item">Configurações</span>
+  <span class="breadcrumb-separator">/</span>
+  <span class="breadcrumb-item active">Solicitar Aumento de Limite</span>
+</div>
+
+<div class="limit-req-container">
+  
+  <!-- Estado de Carregamento -->
+  <div *ngIf="isLoading" class="loading-state" style="text-align: center; padding: 3rem 1rem; color: var(--text-secondary);">
+    <mat-icon style="font-size: 3rem; width: 48px; height: 48px;">autorenew</mat-icon>
+    <p>Carregando dados de limite...</p>
+  </div>
+
+  <!-- Fluxo Principal -->
+  <div *ngIf="!isLoading && eligibility" class="main-flow" style="display: flex; flex-direction: column; gap: 1.5rem;">
+    
+    <!-- Resumo de Limite Atual -->
+    <mat-card class="eligibility-card primary-theme" style="border-left: 4px solid #3b82f6;">
+      <mat-card-header style="margin-bottom: 0.5rem;">
+        <mat-card-title style="font-size: 1.2rem; font-weight: 600; color: #1e3a8a;">Seu Limite de Crédito Atual</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="eligibility-grid">
+          <div class="eligibility-item">
+            <span class="eligibility-label" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Limite Máximo do Perfil</span>
+            <span class="eligibility-val highlight-primary" style="font-size: 1.8rem; font-weight: 700; color: var(--dj-blue);">
+              {{ eligibility.limiteDisponivel | currency:'BRL':'symbol':'1.2-2' }}
+            </span>
+          </div>
+          <div class="eligibility-item">
+            <span class="eligibility-label" style="display: block; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.25rem;">Nível de Risco</span>
+            <span class="eligibility-val" style="font-size: 1.2rem; font-weight: 600; color: var(--text-muted);">
+              {{ eligibility.risco }}
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="limit-grid-content">
+      <!-- Formulário de Solicitação -->
+      <mat-card class="form-card">
+        <mat-card-header style="margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+          <mat-card-title style="font-size: 1.1rem; font-weight: 600;">Nova Solicitação de Limite</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">
+            Seu limite é calculado com base no seu histórico de pagamentos e pontuação de score. Caso queira solicitar um aumento do limite atual, preencha o valor pretendido abaixo. O administrador analisará sua solicitação.
+          </p>
+
+          <form (ngSubmit)="submitRequest()" #limitForm="ngForm">
+            <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 1rem;">
+              <mat-label>Novo Limite Pretendido (R$)</mat-label>
+              <input matInput type="number" name="requestedValue" [(ngModel)]="requestedValue" required min="1" placeholder="Ex: 1500">
+              <span matTextPrefix style="margin-right: 4px;">R$&nbsp;</span>
+              <mat-hint>O valor solicitado deve ser maior que o seu limite atual.</mat-hint>
+            </mat-form-field>
+
+            <div class="actions-row">
+              <button mat-button type="button" routerLink="/dashboard">Voltar</button>
+              <button mat-flat-button color="primary" type="submit" [disabled]="isSubmitting || !limitForm.valid">
+                {{ isSubmitting ? 'Enviando...' : 'Solicitar Aumento' }}
+              </button>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Histórico de Pedidos de Aumento -->
+      <mat-card class="history-card">
+        <mat-card-header style="margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.5rem;">
+          <mat-card-title style="font-size: 1.1rem; font-weight: 600;">Histórico de Solicitações</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <div *ngIf="myRequests.length === 0" class="empty-state" style="text-align: center; padding: 2rem 1rem; color: var(--text-secondary);">
+            <mat-icon style="font-size: 2.5rem; width: 40px; height: 40px;">history</mat-icon>
+            <p>Você ainda não realizou solicitações de aumento de limite.</p>
+          </div>
+
+          <div class="table-responsive" *ngIf="myRequests.length > 0">
+            <table mat-table [dataSource]="myRequests" style="width: 100%;">
+              <ng-container matColumnDef="limiteSolicitado">
+                <th mat-header-cell *matHeaderCellDef> Limite Solicitado </th>
+                <td mat-cell *matCellDef="let req" style="font-weight: 600; color: var(--dj-blue);"> {{ req.limiteSolicitado | currency:'BRL' }} </td>
+              </ng-container>
+
+              <ng-container matColumnDef="limiteAtual">
+                <th mat-header-cell *matHeaderCellDef> Limite Anterior </th>
+                <td mat-cell *matCellDef="let req"> {{ req.limiteAtualNoMomento | currency:'BRL' }} </td>
+              </ng-container>
+
+              <ng-container matColumnDef="status">
+                <th mat-header-cell *matHeaderCellDef> Status </th>
+                <td mat-cell *matCellDef="let req">
+                  <span class="status-badge" [ngClass]="{
+                    'pending': req.status === 'Pendente',
+                    'approved': req.status === 'Aprovado',
+                    'rejected': req.status === 'Rejeitado'
+                  }" style="font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 12px; text-transform: uppercase;">
+                    {{ req.status === 'Pendente' ? 'Pendente' : req.status === 'Aprovado' ? 'Aprovado' : 'Rejeitado' }}
+                  </span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="dataCriacao">
+                <th mat-header-cell *matHeaderCellDef> Data </th>
+                <td mat-cell *matCellDef="let req"> {{ req.dataCriacao | date:'dd/MM/yyyy' }} </td>
+              </ng-container>
+
+              <ng-container matColumnDef="observacoes">
+                <th mat-header-cell *matHeaderCellDef> Observações / Retorno </th>
+                <td mat-cell *matCellDef="let req" style="font-size: 0.85rem; color: var(--text-muted); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                  {{ req.observacaoAdmin || 'Nenhuma observação.' }}
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+            </table>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+
+  </div>
+</div>

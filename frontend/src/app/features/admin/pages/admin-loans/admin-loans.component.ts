@@ -21,6 +21,8 @@ import { AdminGroupService, InvestorGroup } from '../../../../core/services/admi
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import { ActivatedRoute } from '@angular/router';
+
 @Component({
   selector: 'app-admin-loans',
   standalone: true,
@@ -48,13 +50,14 @@ export class AdminLoansComponent implements OnInit {
   private groupService = inject(AdminGroupService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private route = inject(ActivatedRoute);
 
   public availableGroups: InvestorGroup[] = [];
 
   public loans: LoanRequest[] = [];
   public activeLoans: any[] = [];
-  public displayedColumns: string[] = ['nome', 'cpf', 'score', 'valor', 'parcelas', 'risco', 'data', 'acoes'];
-  public activeDisplayedColumns: string[] = ['nome', 'cpf', 'valor', 'parcelas', 'status', 'data', 'acoes'];
+  public displayedColumns: string[] = ['nome', 'cpf', 'score', 'valor', 'risco', 'data', 'acoes'];
+  public activeDisplayedColumns: string[] = ['nome', 'cpf', 'valor', 'status', 'data', 'acoes'];
   public isLoading = false;
 
   // Pagination states
@@ -93,14 +96,26 @@ export class AdminLoansComponent implements OnInit {
   @ViewChild('detailDialog') detailDialogTpl!: TemplateRef<any>;
   @ViewChild('reproveDialog') reproveDialogTpl!: TemplateRef<any>;
   @ViewChild('approveDialog') approveDialogTpl!: TemplateRef<any>;
+  @ViewChild('settleInstallmentDialog') settleInstallmentDialogTpl!: TemplateRef<any>;
   
-  private mainDialogRef?: MatDialogRef<any>;
-  private subDialogRef?: MatDialogRef<any>;
+  public mainDialogRef?: MatDialogRef<any>;
+  public subDialogRef?: MatDialogRef<any>;
 
   public selectedLoan: LoanRequest | null = null;
   public isActionProcessing = false;
 
   public reproveForm = {
+    observacao: ''
+  };
+
+  public settleForm = {
+    installmentId: '',
+    clienteNome: '',
+    numeroParcela: 0,
+    valorParcela: 0,
+    valorTotalDevido: 0,
+    valorPago: 0,
+    formaPagamento: 'PIX',
     observacao: ''
   };
 
@@ -111,7 +126,8 @@ export class AdminLoansComponent implements OnInit {
     taxaJuros: 0,
     periodicidadeGold: 'Semanal',
     valorAprovado: 0,
-    investorGroupId: null as string | null
+    investorGroupId: null as string | null,
+    dataPrimeiraParcela: null as string | null
   };
 
   ngOnInit(): void {
@@ -119,11 +135,21 @@ export class AdminLoansComponent implements OnInit {
     this.loadActiveLoans();
     this.loadAdminInstallments();
     this.loadGroups();
+
+    this.route.queryParams.subscribe(params => {
+      if (params['loanId']) {
+        setTimeout(() => {
+          this.openDetailDialog(params['loanId']);
+        }, 300);
+      }
+    });
   }
 
   public loadGroups(): void {
-    this.groupService.getGroups().subscribe({
-      next: (data) => this.availableGroups = data,
+    this.groupService.getAllGroups().subscribe({
+      next: (data: any) => {
+        this.availableGroups = data.items || data;
+      },
       error: () => console.error('Erro ao carregar grupos de investidores')
     });
   }
@@ -310,7 +336,8 @@ export class AdminLoansComponent implements OnInit {
       taxaJuros: this.approveForm.taxaJuros,
       periodicidadeGold: this.approveForm.tipoEmprestimo === 'Gold' ? this.approveForm.periodicidadeGold : null,
       valorAprovado: this.approveForm.valorAprovado,
-      investorGroupId: this.approveForm.investorGroupId
+      investorGroupId: this.approveForm.investorGroupId,
+      dataPrimeiraParcela: this.approveForm.dataPrimeiraParcela ? new Date(this.approveForm.dataPrimeiraParcela).toISOString() : null
     };
 
     this.api.approveLoan(this.selectedLoan.id!, payload).subscribe({
@@ -345,8 +372,8 @@ export class AdminLoansComponent implements OnInit {
 
   private generateFichinhaPdf(loan: any, installments: any[]): void {
     const doc = new jsPDF();
-    const nomeCliente = loan.usuarioNome || loan.user?.profile?.nome || 'Cliente Desconhecido';
-    const cpfCliente = loan.usuarioCpf || loan.user?.profile?.cpf || 'CPF Indisponível';
+    const nomeCliente = loan.userProfile?.nome || loan.nome || loan.usuarioNome || loan.user?.profile?.nome || 'Cliente';
+    const cpfCliente = loan.userProfile?.cpf || loan.cpf || loan.usuarioCpf || loan.user?.profile?.cpf || 'CPF Indisponível';
     const valorStr = (loan.valorAprovado || loan.valorSolicitado).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const dataAprovacao = new Date().toLocaleDateString('pt-BR');
     
@@ -475,5 +502,53 @@ export class AdminLoansComponent implements OnInit {
         }
       });
     }
+  }
+
+  public openSettleInstallmentDialog(installment: any, fallbackNome?: string): void {
+    const valorBase = installment.valorParcela || 0;
+    const multa = installment.multa || 0;
+    const jurosMora = installment.jurosMora || 0;
+    const totalDevido = valorBase + multa + jurosMora;
+
+    this.settleForm = {
+      installmentId: installment.id,
+      clienteNome: installment.clienteNome || installment.cliente || fallbackNome || 'Cliente',
+      numeroParcela: installment.numeroParcela,
+      valorParcela: valorBase,
+      valorTotalDevido: totalDevido,
+      valorPago: totalDevido,
+      formaPagamento: 'PIX',
+      observacao: ''
+    };
+
+    this.subDialogRef = this.dialog.open(this.settleInstallmentDialogTpl, {
+      width: '500px',
+      disableClose: true
+    });
+  }
+
+  public confirmSettleInstallment(): void {
+    if (!this.settleForm.installmentId) return;
+
+    this.isActionProcessing = true;
+    this.installmentService.settleInstallment(
+      this.settleForm.installmentId,
+      this.settleForm.valorPago,
+      this.settleForm.formaPagamento,
+      this.settleForm.observacao
+    ).subscribe({
+      next: (res) => {
+        this.isActionProcessing = false;
+        this.snackBar.open(res.message || 'Parcela quitada com sucesso!', 'Fechar', { duration: 3000 });
+        this.subDialogRef?.close();
+        this.loadAdminInstallments();
+        this.loadActiveLoans();
+      },
+      error: (err) => {
+        this.isActionProcessing = false;
+        const msg = err.error?.message || 'Erro ao quitar parcela.';
+        this.snackBar.open(msg, 'Fechar', { duration: 5000 });
+      }
+    });
   }
 }

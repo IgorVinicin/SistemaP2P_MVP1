@@ -1,74 +1,89 @@
-<mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="isMobile">
   
-  <!-- Sidebar Menu -->
-  <mat-sidenav #sidenav [mode]="'side'" [opened]="authService.isAuthenticated()" class="sidenav">
+  <!-- Sidebar Menu (Oculto para Investidor) -->
+  <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="sidenavOpened && !isInvestidor" class="sidenav" *ngIf="!isInvestidor">
+    <div class="sidenav-wrapper">
+    <!-- Sidebar Header — Brand -->
     <div class="sidenav-header">
-      <img src="assets/images/logo.png" alt="Logo" class="sidenav-logo" *ngIf="false"> <!-- Placeholder for Logo -->
-      <span class="sidenav-title">Sistema P2P</span>
+      <img src="logo.png" alt="Dinheiro a Jato" class="sidenav-logo">
+      <div class="sidenav-brand">
+        <span class="sidenav-title">DINHEIRO A JATO</span>
+        <!-- Removido subtítulo da instituição -->
+      </div>
     </div>
     
     <mat-divider></mat-divider>
 
     <!-- Tomador Menu -->
     <mat-nav-list *ngIf="authService.userRole() === 'Cliente'" class="nav-list">
-      <a mat-list-item routerLink="/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
-        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Início</span>
+      <a mat-list-item routerLink="/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>home</mat-icon> <span matListItemTitle>Início</span>
       </a>
-      <a mat-list-item routerLink="/loans/request" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/loans/request" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>add_circle_outline</mat-icon> <span matListItemTitle>Solicitar Empréstimo</span>
       </a>
-      <a mat-list-item routerLink="/loans/my" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/limits/request" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>trending_up</mat-icon> <span matListItemTitle>Aumento de Limite</span>
+      </a>
+      <a mat-list-item routerLink="/loans/my" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>receipt_long</mat-icon> <span matListItemTitle>Meus Empréstimos</span>
       </a>
-      <a mat-list-item routerLink="/loans/history" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/loans/history" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>history</mat-icon> <span matListItemTitle>Histórico</span>
       </a>
       <mat-divider></mat-divider>
-      <a mat-list-item routerLink="/score" routerLinkActive="active-link">
-        <mat-icon matListItemIcon>account_circle</mat-icon> <span matListItemTitle>Meu Perfil</span>
+      <a mat-list-item routerLink="/profile" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>person</mat-icon> <span matListItemTitle>Meu Perfil</span>
       </a>
-    </mat-nav-list>
-
-    <!-- Investidor Menu -->
-    <mat-nav-list *ngIf="authService.userRole() === 'Investidor'" class="nav-list">
-      <a mat-list-item routerLink="/investor/dashboard" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
-        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Dashboard</span>
+      <a mat-list-item routerLink="/score" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>dynamic_form</mat-icon> <span matListItemTitle>Formulário Cadastral</span>
       </a>
     </mat-nav-list>
 
     <!-- Admin Menu -->
     <mat-nav-list *ngIf="authService.userRole() === 'Administrador'" class="nav-list">
-      <a mat-list-item routerLink="/admin" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">
-        <mat-icon matListItemIcon>dashboard</mat-icon> <span matListItemTitle>Dashboard</span>
-      </a>
-      <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
-        <mat-icon matListItemIcon>people</mat-icon> <span matListItemTitle>Usuários</span>
-      </a>
-      <a mat-list-item routerLink="/admin/groups" routerLinkActive="active-link">
-        <mat-icon matListItemIcon>groups</mat-icon> <span matListItemTitle>Grupos (Investidores)</span>
+      <div class="nav-section-label">VISÃO GERAL</div>
+      <a mat-list-item routerLink="/admin" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>space_dashboard</mat-icon> <span matListItemTitle>Dashboard</span>
       </a>
       
-      <div class="nav-section-title">Empréstimos</div>
-      <a mat-list-item routerLink="/admin/loans" routerLinkActive="active-link">
-        <mat-icon matListItemIcon>request_quote</mat-icon> <span matListItemTitle>Solicitações</span>
+      <div class="nav-section-label">USUÁRIOS</div>
+      <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>people</mat-icon> <span matListItemTitle>Usuários</span>
+      </a>
+      <a mat-list-item routerLink="/admin/groups" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>groups</mat-icon> <span matListItemTitle>Grupos de Investidores</span>
+      </a>
+      
+      <div class="nav-section-label">EMPRÉSTIMOS</div>
+      <a mat-list-item routerLink="/admin/loans" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>request_quote</mat-icon> <span matListItemTitle>Gestão</span>
       </a>
 
-      <div class="nav-section-title">Financeiro</div>
-      <a mat-list-item routerLink="/admin/cashflow" routerLinkActive="active-link">
+      <div class="nav-section-label">FINANCEIRO</div>
+      <a mat-list-item routerLink="/admin/cashflow" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>account_balance</mat-icon> <span matListItemTitle>Fluxo de Caixa</span>
       </a>
 
-      <div class="nav-section-title">Sistema</div>
-      <a mat-list-item routerLink="/admin/reports" routerLinkActive="active-link">
+      <div class="nav-section-label">SISTEMA</div>
+      <a mat-list-item routerLink="/admin/reports" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>bar_chart</mat-icon> <span matListItemTitle>Relatórios</span>
       </a>
-      <a mat-list-item routerLink="/admin/credit" routerLinkActive="active-link">
-        <mat-icon matListItemIcon>settings</mat-icon> <span matListItemTitle>Config. de Crédito</span>
+      <a mat-list-item routerLink="/admin/credit" routerLinkActive="active-link" (click)="onNavItemClick()">
+        <mat-icon matListItemIcon>tune</mat-icon> <span matListItemTitle>Config. de Crédito</span>
       </a>
-      <a mat-list-item routerLink="/admin/questions" routerLinkActive="active-link">
+      <a mat-list-item routerLink="/admin/questions" routerLinkActive="active-link" (click)="onNavItemClick()">
         <mat-icon matListItemIcon>quiz</mat-icon> <span matListItemTitle>Config. de Score</span>
       </a>
     </mat-nav-list>
+
+    <!-- Banner Inferior -->
+    <div class="sidebar-spacer"></div>
+    <div class="sidebar-banner">
+      <div class="banner-speed-lines"></div>
+      <span>AGILIDADE QUE<br><strong>MOVE SONHOS.</strong></span>
+    </div>
+    </div>
 
   </mat-sidenav>
 
@@ -77,18 +92,28 @@
     
     <!-- Topbar -->
     <mat-toolbar class="topbar" *ngIf="authService.isAuthenticated()">
-      <button mat-icon-button (click)="sidenav.toggle()" class="menu-button">
+      <!-- Menu toggle apenas se não for Investidor -->
+      <button mat-icon-button (click)="sidenav.toggle()" class="menu-button" *ngIf="!isInvestidor">
         <mat-icon>menu</mat-icon>
       </button>
+      
+      <!-- Logo na Topbar (visível para investidor sem sidebar) -->
+      <div class="topbar-brand" *ngIf="isInvestidor">
+        <img src="logo.png" alt="Dinheiro a Jato" class="topbar-logo">
+        <span class="topbar-title">DINHEIRO A JATO</span>
+      </div>
       
       <span class="spacer"></span>
       
       <div class="user-info">
         <div class="user-details">
-          <span class="user-email">{{ authService.currentUser()?.email }}</span>
-          <span class="user-role">{{ authService.userRole() }}</span>
+          <span class="user-name">{{ authService.currentUser()?.nome || authService.currentUser()?.email }}</span>
+          <span class="user-role-label">{{ authService.userRole() }}</span>
         </div>
-        <button mat-icon-button (click)="logout()" title="Sair" class="logout-btn">
+        <div class="user-avatar">
+          <mat-icon>person</mat-icon>
+        </div>
+        <button mat-icon-button (click)="logout()" title="Sair da Conta" class="logout-btn">
           <mat-icon>logout</mat-icon>
         </button>
       </div>

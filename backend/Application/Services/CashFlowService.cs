@@ -92,20 +92,37 @@ namespace backend.Application.Services
             };
         }
 
+        public static DateTime ToBrasiliaDate(DateTime dt)
+        {
+            var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
+            return utc.AddHours(-3).Date;
+        }
+
+        public static (DateTime StartUtc, DateTime EndUtc) GetBrasiliaDayRangeUtc(DateTime brasiliaDate)
+        {
+            var dateOnly = brasiliaDate.Date;
+            var startUtc = DateTime.SpecifyKind(dateOnly.AddHours(3), DateTimeKind.Utc);
+            var endUtc = DateTime.SpecifyKind(dateOnly.AddDays(1).AddHours(3).AddTicks(-1), DateTimeKind.Utc);
+            return (startUtc, endUtc);
+        }
+
         public async Task<CashFlowSnapshot> GenerateSnapshotAsync(DateTime targetDate)
         {
-            var date = targetDate.Date.ToUniversalTime();
+            var brasiliaDate = ToBrasiliaDate(targetDate);
+            var (startUtc, endUtc) = GetBrasiliaDayRangeUtc(brasiliaDate);
+            var snapshotDateStored = DateTime.SpecifyKind(brasiliaDate, DateTimeKind.Utc);
+
             var existingSnapshot = await _context.CashFlowSnapshots
-                .FirstOrDefaultAsync(s => s.SnapshotDate.Date == date.Date);
+                .FirstOrDefaultAsync(s => s.SnapshotDate.Date == snapshotDateStored.Date);
 
             if (existingSnapshot != null)
-                throw new InvalidOperationException($"Já existe um snapshot para a data {date.ToShortDateString()}");
+                throw new InvalidOperationException($"Já existe um snapshot para a data {brasiliaDate:dd/MM/yyyy}");
 
-            var summary = await GetSummaryAsync(date, date);
+            var summary = await GetSummaryAsync(startUtc, endUtc);
             
-            // Asseguramos a data exata sem a fração de tempo
             summary.Id = Guid.NewGuid();
-            summary.SnapshotDate = date;
+            summary.SnapshotDate = snapshotDateStored;
+            summary.CreatedAt = DateTime.UtcNow;
 
             _context.CashFlowSnapshots.Add(summary);
             await _context.SaveChangesAsync();
@@ -218,7 +235,7 @@ namespace backend.Application.Services
             if (!string.IsNullOrEmpty(searchTerm))
             {
                 var term = searchTerm.ToLower();
-                joinedQuery = joinedQuery.Where(dto => dto.UserName.ToLower().Contains(term) || (dto.CPF != null && dto.CPF.Contains(term)));
+                joinedQuery = joinedQuery.Where(dto => dto.UserName!.ToLower().Contains(term) || (dto.CPF != null && dto.CPF.Contains(term)));
             }
 
             var totalCount = await joinedQuery.CountAsync();
@@ -259,6 +276,175 @@ namespace backend.Application.Services
             }
 
             return System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        }
+
+        public async Task<CashFlowClosingConferenceDto> GetClosingConferenceAsync(
+            string period = "hoje",
+            DateTime? startDate = null,
+            DateTime? endDate = null,
+            string? status = null,
+            string? tipoEmprestimo = null,
+            string? tomador = null)
+        {
+            DateTime start;
+            DateTime end;
+            var now = DateTime.UtcNow;
+
+            if (startDate.HasValue && endDate.HasValue)
+            {
+                start = startDate.Value.Date;
+                end = endDate.Value.Date.AddDays(1).AddTicks(-1);
+            }
+            else
+            {
+                switch (period.ToLower())
+                {
+                    case "ontem":
+                        start = now.Date.AddDays(-1);
+                        end = start.AddDays(1).AddTicks(-1);
+                        break;
+                    case "7dias":
+                        start = now.Date.AddDays(-7);
+                        end = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                    case "30dias":
+                        start = now.Date.AddDays(-30);
+                        end = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                    case "mesatual":
+                        start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+                        end = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                    case "hoje":
+                    default:
+                        start = now.Date;
+                        end = now.Date.AddDays(1).AddTicks(-1);
+                        break;
+                }
+            }
+
+            var query = _context.LoanInstallments
+                .AsNoTracking()
+                .Include(i => i.LoanRequest)
+                .ThenInclude(l => l!.User)
+                .ThenInclude(u => u!.Profile)
+                .Where(i => (i.DataVencimento >= start && i.DataVencimento <= end) || 
+                            (i.DataPagamento.HasValue && i.DataPagamento.Value >= start && i.DataPagamento.Value <= end))
+                .AsQueryable();
+
+            var list = await query.ToListAsync();
+
+            var userIds = list.Where(i => i.LoanRequest?.UserId != null).Select(i => i.LoanRequest!.UserId).Distinct().ToList();
+            var companies = await _context.CompanyProfiles.AsNoTracking()
+                .Where(c => userIds.Contains(c.Id))
+                .ToDictionaryAsync(c => c.Id, c => c);
+
+            var items = list.Select(i => {
+                var lr = i.LoanRequest;
+                var user = lr?.User;
+                var profile = user?.Profile;
+                var company = user != null && companies.TryGetValue(user.Id, out var comp) ? comp : null;
+
+                string tomadorNome = company != null && !string.IsNullOrEmpty(company.RazaoSocial) ? company.RazaoSocial :
+                                     profile != null && !string.IsNullOrEmpty(profile.Nome) ? profile.Nome :
+                                     user?.Email ?? "Tomador";
+
+                string tomadorCpf = profile?.CPF ?? company?.CNPJ ?? "";
+
+                decimal totalDevido = i.ValorParcela + i.Multa + i.JurosMora;
+                decimal valorPago = i.ValorPago;
+                decimal valorRestante = Math.Max(0, totalDevido - valorPago);
+                decimal percentualPago = totalDevido > 0 ? Math.Min(100, Math.Round((valorPago / totalDevido) * 100m, 2)) : 0;
+
+                string statusCalc;
+                if (i.Status == "Paga" || (totalDevido > 0 && valorPago >= totalDevido))
+                {
+                    statusCalc = "Paga";
+                }
+                else if (valorPago > 0 && valorPago < totalDevido)
+                {
+                    statusCalc = "Parcialmente Paga";
+                }
+                else
+                {
+                    statusCalc = "Em Débito";
+                }
+
+                return new CashFlowClosingItemDto
+                {
+                    InstallmentId = i.Id,
+                    LoanRequestId = i.LoanRequestId,
+                    TomadorNome = tomadorNome,
+                    TomadorCpf = tomadorCpf,
+                    TipoEmprestimo = lr?.TipoEmprestimo ?? "Master",
+                    ValorParcela = i.ValorParcela,
+                    Multa = i.Multa,
+                    JurosMora = i.JurosMora,
+                    ValorTotalDevido = totalDevido,
+                    ValorPago = valorPago,
+                    ValorRestante = valorRestante,
+                    PercentualPago = percentualPago,
+                    NumeroParcela = i.NumeroParcela,
+                    QuantidadeTotalParcelas = lr?.QuantidadeParcelas ?? 0,
+                    NumeroParcelaFormatado = $"{i.NumeroParcela}/{(lr?.QuantidadeParcelas > 0 ? lr.QuantidadeParcelas : 1)}",
+                    DataVencimento = i.DataVencimento,
+                    DataPagamento = i.DataPagamento,
+                    StatusOriginal = i.Status,
+                    StatusCalculado = statusCalc,
+                    DiasAtraso = i.DiasAtraso
+                };
+            }).ToList();
+
+            if (!string.IsNullOrWhiteSpace(tomador))
+            {
+                var term = tomador.ToLower();
+                items = items.Where(x => x.TomadorNome.ToLower().Contains(term) || x.TomadorCpf.Contains(term)).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(tipoEmprestimo))
+            {
+                items = items.Where(x => x.TipoEmprestimo.Equals(tipoEmprestimo, StringComparison.OrdinalIgnoreCase)).ToList();
+            }
+
+            if (!string.IsNullOrWhiteSpace(status))
+            {
+                if (status.Equals("paga", StringComparison.OrdinalIgnoreCase))
+                {
+                    items = items.Where(x => x.StatusCalculado == "Paga").ToList();
+                }
+                else if (status.Equals("parcial", StringComparison.OrdinalIgnoreCase) || status.Equals("parcialmente paga", StringComparison.OrdinalIgnoreCase))
+                {
+                    items = items.Where(x => x.StatusCalculado == "Parcialmente Paga").ToList();
+                }
+                else if (status.Equals("debito", StringComparison.OrdinalIgnoreCase) || status.Equals("em débito", StringComparison.OrdinalIgnoreCase))
+                {
+                    items = items.Where(x => x.StatusCalculado == "Em Débito").ToList();
+                }
+            }
+
+            int totalPrevistas = items.Count;
+            int totalPagas = items.Count(x => x.StatusCalculado == "Paga");
+            int totalParciais = items.Count(x => x.StatusCalculado == "Parcialmente Paga");
+            int totalEmDebito = items.Count(x => x.StatusCalculado == "Em Débito");
+
+            decimal valorTotalRecebido = items.Sum(x => x.ValorPago);
+            decimal valorAindaPendente = items.Sum(x => x.ValorRestante);
+
+            decimal percentualAdimplencia = totalPrevistas > 0 
+                ? Math.Round(((decimal)(totalPagas + totalParciais) / totalPrevistas) * 100m, 2)
+                : 100m;
+
+            return new CashFlowClosingConferenceDto
+            {
+                TotalParcelasPrevistas = totalPrevistas,
+                TotalParcelasPagas = totalPagas,
+                TotalParcelasParciais = totalParciais,
+                TotalParcelasEmDebito = totalEmDebito,
+                ValorTotalRecebido = valorTotalRecebido,
+                ValorAindaPendente = valorAindaPendente,
+                PercentualAdimplencia = percentualAdimplencia,
+                Items = items
+            };
         }
     }
 }

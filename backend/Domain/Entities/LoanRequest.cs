@@ -33,6 +33,8 @@ namespace backend.Domain.Entities
         public string ObservacaoAdmin { get; set; } = string.Empty;
         public string? TipoEmprestimo { get; set; }
         public string? Periodicidade { get; set; }
+        public bool SolicitaAumentoLimite { get; set; }
+        public decimal LimiteNoMomentoSolicitacao { get; set; }
 
         public User? User { get; set; }
         public ICollection<Investment> Investments { get; set; } = new List<Investment>();

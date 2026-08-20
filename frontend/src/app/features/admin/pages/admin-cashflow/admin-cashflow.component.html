@@ -1,180 +1,717 @@
 <div class="cashflow-container">
   <div class="header-section">
     <div>
-      <h1><mat-icon>account_balance</mat-icon> Fluxo de Caixa</h1>
-      <p>Acompanhamento das entradas, saídas e transações.</p>
-    </div>
-    
-    <!-- Filtro Principal de Período -->
-    <mat-form-field appearance="outline" class="period-select">
-      <mat-label>Período de Análise</mat-label>
-      <mat-select [(ngModel)]="periodoFiltro" (selectionChange)="onPeriodChange()">
-        <mat-option value="hoje">Hoje</mat-option>
-        <mat-option value="ontem">Ontem</mat-option>
-        <mat-option value="7dias">Últimos 7 dias</mat-option>
-        <mat-option value="30dias">Últimos 30 dias</mat-option>
-        <mat-option value="mesatual">Mês Atual</mat-option>
-        <mat-option value="custom">Personalizado</mat-option>
-      </mat-select>
-    </mat-form-field>
-
-    <!-- Calendário Personalizado (Só aparece se período for 'custom') -->
-    <mat-form-field appearance="outline" class="date-range-select" *ngIf="periodoFiltro === 'custom'">
-      <mat-label>Escolha o intervalo</mat-label>
-      <mat-date-range-input [rangePicker]="picker">
-        <input matStartDate [(ngModel)]="startDate" placeholder="Data Inicial">
-        <input matEndDate [(ngModel)]="endDate" (dateChange)="onDateRangeChange()" placeholder="Data Final">
-      </mat-date-range-input>
-      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-date-range-picker #picker></mat-date-range-picker>
-    </mat-form-field>
-  </div>
-
-  <div class="summary-grid" *ngIf="summary">
-    <!-- Card Volume/Movimentação -->
-    <mat-card class="summary-card stat-saldo">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>swap_horiz</mat-icon></div>
-        <div class="stat-info">
-          <h3>Total da Movimentação</h3>
-          <h2>{{ totalMovimentacao | currency:'BRL' }}</h2>
-          <small>Volume Transacionado</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Emprestado -->
-    <mat-card class="summary-card stat-saidas">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>send</mat-icon></div>
-        <div class="stat-info">
-          <h3>Total Emprestado</h3>
-          <h2>{{ summary.totalEmprestado | currency:'BRL' }}</h2>
-          <small>Desembolsos a Tomadores</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Recebido -->
-    <mat-card class="summary-card stat-entradas">
-      <mat-card-content>
-        <div class="stat-icon"><mat-icon>request_quote</mat-icon></div>
-        <div class="stat-info">
-          <h3>Total Recebido</h3>
-          <h2>{{ summary.totalRecebidoParcelas | currency:'BRL' }}</h2>
-          <small>Pagamentos de Parcelas</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- Card Lucro Plataforma -->
-    <mat-card class="summary-card stat-lucro" style="border-left: 4px solid #6366f1;">
-      <mat-card-content>
-        <div class="stat-icon" style="background-color: #eef2ff; color: #6366f1;"><mat-icon>account_balance</mat-icon></div>
-        <div class="stat-info">
-          <h3>Lucro da Plataforma</h3>
-          <h2 style="color: #6366f1;">{{ summary.receitaPlataforma | currency:'BRL' }}</h2>
-          <small>Spread + Multas/Mora</small>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <div class="section-title table-header-flex">
-    <h2>Histórico de Transações</h2>
-    
-    <div class="table-actions">
-      <mat-form-field appearance="outline" class="search-field">
-        <mat-label>Pesquisar Tomador...</mat-label>
-        <input matInput [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" placeholder="Nome ou Razão Social">
-        <mat-icon matSuffix>search</mat-icon>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" class="type-select">
-        <mat-label>Tipo</mat-label>
-        <mat-select [(ngModel)]="tipoFiltro" (selectionChange)="onFilterChange()">
-          <mat-option [value]="null">Todos (Empr. e Pgto.)</mat-option>
-          <mat-option [value]="0">Empréstimos</mat-option>
-          <mat-option [value]="1">Pagamentos</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <button mat-stroked-button color="primary" (click)="downloadReport()" class="download-btn">
-        <mat-icon>cloud_download</mat-icon>
-        Exportar CSV
-      </button>
+      <h1><mat-icon style="color: var(--dj-blue);">account_balance</mat-icon> Fluxo de Caixa</h1>
+      <p>Acompanhamento das entradas, saídas, transações e fechamentos.</p>
     </div>
   </div>
 
-  <mat-card class="table-card">
-    <mat-card-content>
-      <div class="loading-shade" *ngIf="loadingTransactions">
-        <mat-icon class="spinner">autorenew</mat-icon>
+  <mat-tab-group class="cashflow-tabs">
+    <!-- ABA 1: FLUXO DE CAIXA ATUAL -->
+    <mat-tab>
+      <ng-template matTabLabel>
+        <mat-icon style="margin-right: 8px; vertical-align: middle;">query_stats</mat-icon> Fluxo Atual
+      </ng-template>
+
+      <div class="tab-content" style="padding-top: 1.5rem;">
+        <!-- Filtros e Botão de Fechamento -->
+        <div style="display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
+          <!-- Filtro Principal de Período -->
+          <mat-form-field appearance="outline" class="period-select" style="margin-bottom: 0;">
+            <mat-label>Período de Análise</mat-label>
+            <mat-select [(ngModel)]="periodoFiltro" (selectionChange)="onPeriodChange()">
+              <mat-option value="hoje">Hoje</mat-option>
+              <mat-option value="ontem">Ontem</mat-option>
+              <mat-option value="7dias">Últimos 7 dias</mat-option>
+              <mat-option value="30dias">Últimos 30 dias</mat-option>
+              <mat-option value="mesatual">Mês Atual</mat-option>
+              <mat-option value="custom">Personalizado</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <!-- Calendário Personalizado (Só aparece se período for 'custom') -->
+          <mat-form-field appearance="outline" class="date-range-select" *ngIf="periodoFiltro === 'custom'" style="margin-bottom: 0;">
+            <mat-label>Escolha o intervalo</mat-label>
+            <mat-date-range-input [rangePicker]="picker">
+              <input matStartDate [(ngModel)]="startDate" placeholder="Data Inicial">
+              <input matEndDate [(ngModel)]="endDate" (dateChange)="onDateRangeChange()" placeholder="Data Final">
+            </mat-date-range-input>
+            <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
+            <mat-date-range-picker #picker></mat-date-range-picker>
+          </mat-form-field>
+
+          <button mat-raised-button color="primary" (click)="openClosingConferenceDialog()" style="height: 48px; display: flex; align-items: center; gap: 6px; font-weight: 600; background-color: var(--dj-success); color: white;">
+            <mat-icon>point_of_sale</mat-icon> Fechar Caixa
+          </button>
+        </div>
+
+        <div class="summary-grid" *ngIf="summary">
+          <!-- Card Volume/Movimentação -->
+          <mat-card class="summary-card stat-saldo">
+            <mat-card-content>
+              <div class="stat-icon"><mat-icon>swap_horiz</mat-icon></div>
+              <div class="stat-info">
+                <h3>Total da Movimentação</h3>
+                <h2>{{ totalMovimentacao | currency:'BRL' }}</h2>
+                <small>Volume Transacionado</small>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Card Emprestado -->
+          <mat-card class="summary-card stat-saidas">
+            <mat-card-content>
+              <div class="stat-icon"><mat-icon>send</mat-icon></div>
+              <div class="stat-info">
+                <h3>Total Emprestado</h3>
+                <h2>{{ summary.totalEmprestado | currency:'BRL' }}</h2>
+                <small>Desembolsos a Tomadores</small>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Card Recebido -->
+          <mat-card class="summary-card stat-entradas">
+            <mat-card-content>
+              <div class="stat-icon"><mat-icon>request_quote</mat-icon></div>
+              <div class="stat-info">
+                <h3>Total Recebido</h3>
+                <h2>{{ summary.totalRecebidoParcelas | currency:'BRL' }}</h2>
+                <small>Pagamentos de Parcelas</small>
+              </div>
+            </mat-card-content>
+          </mat-card>
+
+          <!-- Card Lucro Plataforma -->
+          <mat-card class="summary-card stat-lucro" style="border-left: 4px solid #6366f1;">
+            <mat-card-content>
+              <div class="stat-icon" style="background-color: #eef2ff; color: #6366f1;"><mat-icon>account_balance</mat-icon></div>
+              <div class="stat-info">
+                <h3>Lucro da Plataforma</h3>
+                <h2 style="color: #6366f1;">{{ summary.receitaPlataforma | currency:'BRL' }}</h2>
+                <small>Spread + Multas/Mora</small>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+
+        <div class="section-title table-header-flex" style="margin-top: 2rem;">
+          <h2>Histórico de Transações</h2>
+          
+          <div class="table-actions">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Pesquisar Tomador...</mat-label>
+              <input matInput [(ngModel)]="searchQuery" (ngModelChange)="onSearchChange()" placeholder="Nome ou Razão Social">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="type-select">
+              <mat-label>Tipo</mat-label>
+              <mat-select [(ngModel)]="tipoFiltro" (selectionChange)="onFilterChange()">
+                <mat-option [value]="null">Todos (Empr. e Pgto.)</mat-option>
+                <mat-option [value]="0">Empréstimos</mat-option>
+                <mat-option [value]="1">Pagamentos</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <button mat-stroked-button color="primary" (click)="downloadReport()" class="download-btn">
+              <mat-icon>cloud_download</mat-icon>
+              Exportar CSV
+            </button>
+          </div>
+        </div>
+
+        <mat-card class="table-card">
+          <mat-card-content>
+            <div class="loading-shade" *ngIf="loadingTransactions">
+              <mat-icon class="spinner">autorenew</mat-icon>
+            </div>
+
+            <div class="table-responsive">
+              <table mat-table [dataSource]="transactions" class="mat-elevation-z0">
+                
+                <ng-container matColumnDef="data">
+                  <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.transactionDate | date:'dd/MM/yyyy HH:mm':'UTC' }} </td>
+                </ng-container>
+
+                <ng-container matColumnDef="tipo">
+                  <th mat-header-cell *matHeaderCellDef> Movimentação </th>
+                  <td mat-cell *matCellDef="let element"> 
+                    <div class="tipo-movimentacao">
+                      <mat-icon>{{ getTipoIcon(element.tipoMovimentacao) }}</mat-icon>
+                      <span>{{ getTipoDescricao(element.tipoMovimentacao) }}</span>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="valor">
+                  <th mat-header-cell *matHeaderCellDef> Valor </th>
+                  <td mat-cell *matCellDef="let element" 
+                      [ngClass]="{'text-success': element.tipoMovimentacao === 1,
+                                  'text-danger': element.tipoMovimentacao === 0}">
+                    <b>{{ (element.tipoMovimentacao === 0 ? '-' : '+') }} {{ element.valor | currency:'BRL' }}</b>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="usuario">
+                  <th mat-header-cell *matHeaderCellDef> Tomador </th>
+                  <td mat-cell *matCellDef="let element">
+                    <b>{{ element.userName || 'Desconhecido' }}</b>
+                  </td>
+                </ng-container>
+
+                <ng-container matColumnDef="cpf">
+                  <th mat-header-cell *matHeaderCellDef> CPF </th>
+                  <td mat-cell *matCellDef="let element"> {{ element.cpf || '-' }} </td>
+                </ng-container>
+
+                <ng-container matColumnDef="observacao">
+                  <th mat-header-cell *matHeaderCellDef> Observação </th>
+                  <td mat-cell *matCellDef="let element" class="text-muted"> 
+                    {{ element.observacao || '-' }} 
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                
+                <tr class="mat-row" *matNoDataRow>
+                  <td class="mat-cell text-center" colspan="5">
+                    Nenhuma transação registrada no dia de hoje.
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <mat-paginator 
+              [length]="totalCount"
+              [pageSize]="pageSize"
+              [pageSizeOptions]="[10, 15, 30]"
+              (page)="onPageChange($event)">
+            </mat-paginator>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- ABA 2: HISTÓRICO DE FECHAMENTOS -->
+    <mat-tab>
+      <ng-template matTabLabel>
+        <mat-icon style="margin-right: 8px; vertical-align: middle;">history</mat-icon> Histórico de Fechamentos
+      </ng-template>
+
+      <div class="tab-content" style="padding-top: 1.5rem;">
+        <mat-card class="table-card">
+          <mat-card-content>
+            <div class="loading-shade" *ngIf="loadingSnapshots">
+              <mat-icon class="spinner">autorenew</mat-icon>
+            </div>
+
+            <div class="table-responsive">
+              <table mat-table [dataSource]="snapshots" class="mat-elevation-z0" style="width: 100%;">
+                
+                <!-- Coluna Data -->
+                <ng-container matColumnDef="data">
+                  <th mat-header-cell *matHeaderCellDef> Data Fechamento </th>
+                  <td mat-cell *matCellDef="let element"> 
+                    <b>{{ element.snapshotDate | date:'dd/MM/yyyy':'UTC' }}</b>
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Entradas -->
+                <ng-container matColumnDef="entradas">
+                  <th mat-header-cell *matHeaderCellDef> Entradas </th>
+                  <td mat-cell *matCellDef="let element" class="text-success">
+                    <b>+ {{ element.totalEntradas | currency:'BRL' }}</b>
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Saídas -->
+                <ng-container matColumnDef="saidas">
+                  <th mat-header-cell *matHeaderCellDef> Saídas </th>
+                  <td mat-cell *matCellDef="let element" class="text-danger">
+                    <b>- {{ element.totalSaidas | currency:'BRL' }}</b>
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Saldo Operacional -->
+                <ng-container matColumnDef="saldo">
+                  <th mat-header-cell *matHeaderCellDef> Saldo Operacional </th>
+                  <td mat-cell *matCellDef="let element" 
+                      [ngClass]="{'text-success': element.saldoOperacional >= 0, 'text-danger': element.saldoOperacional < 0}">
+                    <b>{{ element.saldoOperacional | currency:'BRL' }}</b>
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Receita Plataforma -->
+                <ng-container matColumnDef="receita">
+                  <th mat-header-cell *matHeaderCellDef> Receita Plataforma </th>
+                  <td mat-cell *matCellDef="let element" style="color: #6366f1; font-weight: 600;"> 
+                    {{ element.receitaPlataforma | currency:'BRL' }} 
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Fundo Proteção -->
+                <ng-container matColumnDef="coberto">
+                  <th mat-header-cell *matHeaderCellDef> Coberto Fundo </th>
+                  <td mat-cell *matCellDef="let element" class="text-danger"> 
+                    {{ element.totalCobertoProtectionFund | currency:'BRL' }} 
+                  </td>
+                </ng-container>
+
+                <!-- Coluna Ações -->
+                <ng-container matColumnDef="acoes">
+                  <th mat-header-cell *matHeaderCellDef style="text-align: center;"> Detalhes </th>
+                  <td mat-cell *matCellDef="let element" style="text-align: center;">
+                    <button mat-icon-button color="primary" (click)="openSnapshotDetailDialog(element)">
+                      <mat-icon>info</mat-icon>
+                    </button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedSnapshotColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedSnapshotColumns;"></tr>
+                
+                <tr class="mat-row" *matNoDataRow>
+                  <td class="mat-cell text-center" colspan="7" style="padding: 2rem;">
+                    Nenhum fechamento de caixa registrado anteriormente.
+                  </td>
+                </tr>
+              </table>
+            </div>
+
+            <mat-paginator 
+              [length]="totalSnapshots"
+              [pageSize]="snapshotPageSize"
+              [pageSizeOptions]="[5, 10, 20]"
+              (page)="onSnapshotPageChange($event)">
+            </mat-paginator>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Aba 3: Resgates Reais (Saques) -->
+    <mat-tab>
+      <ng-template matTabLabel>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <mat-icon>outbox</mat-icon>
+          <span>Resgates Reais (Saques)</span>
+        </div>
+      </ng-template>
+
+      <div style="padding-top: 20px;">
+        <mat-card style="border: 1px solid var(--border-color); border-radius: 8px; box-shadow: none; background: var(--bg-card);">
+          <mat-card-header style="padding: 1.25rem 1.25rem 0.5rem 1.25rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+            <div>
+              <mat-card-title style="font-size: 1.1rem; font-weight: 600; color: var(--text-main);">Lista de Resgates (Saques)</mat-card-title>
+              <mat-card-subtitle style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px;">
+                Gerencie as requisições de saques dos investidores, consulte as chaves PIX e realize as transferências bancárias manuais.
+              </mat-card-subtitle>
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 1rem;">
+              <mat-form-field appearance="outline" style="font-size: 0.85rem; width: 200px;">
+                <mat-label>Filtrar por Status</mat-label>
+                <mat-select [(ngModel)]="withdrawalStatusFilter" (selectionChange)="loadWithdrawals()">
+                  <mat-option value="">Todos</mat-option>
+                  <mat-option value="Pending">Pendente</mat-option>
+                  <mat-option value="Approved">Aprovado</mat-option>
+                  <mat-option value="Completed">Concluído</mat-option>
+                  <mat-option value="Rejected">Rejeitado</mat-option>
+                </mat-select>
+              </mat-form-field>
+            </div>
+          </mat-card-header>
+
+          <mat-card-content style="padding: 0 1.25rem 1.25rem 1.25rem;">
+            <div *ngIf="loadingWithdrawals" style="display: flex; justify-content: center; align-items: center; padding: 2rem;">
+              <span style="font-size: 0.9rem; color: var(--text-secondary);">Carregando saques...</span>
+            </div>
+
+            <div *ngIf="!loadingWithdrawals && withdrawals.length === 0" style="text-align: center; padding: 3rem 1.5rem; color: var(--text-secondary);">
+              <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: var(--text-secondary); margin-bottom: 0.5rem;">payments</mat-icon>
+              <p style="margin: 0; font-size: 0.95rem;">Nenhuma solicitação de saque encontrada para os filtros selecionados.</p>
+            </div>
+
+            <div class="table-responsive" *ngIf="!loadingWithdrawals && withdrawals.length > 0" style="overflow-x: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+              <table mat-table [dataSource]="withdrawals" class="mat-elevation-z0" style="width: 100%;">
+                
+                <!-- Data Solicitação -->
+                <ng-container matColumnDef="data">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Data Solicitação </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; color: var(--text-muted); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);">
+                    {{ element.createdAt | date:'dd/MM/yyyy HH:mm' }}
+                  </td>
+                </ng-container>
+
+                <!-- Investidor -->
+                <ng-container matColumnDef="investidor">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Investidor </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; color: var(--text-main); font-size: 0.85rem;">{{ element.investor?.nome }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">CPF: {{ element.investor?.cpf }}</div>
+                  </td>
+                </ng-container>
+
+                <!-- Valor -->
+                <ng-container matColumnDef="valor">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Valor Solicitado </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; font-weight: 700; color: var(--dj-danger); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);">
+                    {{ element.valor | currency:'BRL' }}
+                  </td>
+                </ng-container>
+
+                <!-- Chave PIX -->
+                <ng-container matColumnDef="pix">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Dados de PIX </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                    <div *ngIf="element.chavePix; else noPix">
+                      <div style="font-weight: 600; font-size: 0.8rem; color: var(--text-main);">{{ element.tipoChavePix }}:</div>
+                      <code style="font-size: 0.8rem; background-color: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; color: var(--text-main); font-family: monospace;">{{ element.chavePix }}</code>
+                    </div>
+                    <ng-template #noPix><span style="color: var(--text-secondary); font-size: 0.8rem;">Não informado</span></ng-template>
+                  </td>
+                </ng-container>
+
+                <!-- Status -->
+                <ng-container matColumnDef="status">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Status </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color);">
+                    <span [style.background-color]="element.status === 'Pending' ? '#fef3c7' : (element.status === 'Approved' ? '#dbeafe' : (element.status === 'Completed' ? '#d1fae5' : '#fee2e2'))"
+                          [style.color]="element.status === 'Pending' ? '#92400e' : (element.status === 'Approved' ? '#1e40af' : (element.status === 'Completed' ? '#065f46' : '#991b1b'))"
+                          style="font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 9999px;">
+                      {{ element.status === 'Pending' ? 'Pendente' : (element.status === 'Approved' ? 'Aprovado' : (element.status === 'Completed' ? 'Concluído' : 'Rejeitado')) }}
+                    </span>
+                  </td>
+                </ng-container>
+
+                <!-- Ações -->
+                <ng-container matColumnDef="acoes">
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color); text-align: right;"> Ações </th>
+                  <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); text-align: right;">
+                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                      <!-- Se pendente, aprovar ou rejeitar -->
+                      <ng-container *ngIf="element.status === 'Pending'">
+                        <button mat-flat-button color="primary" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="approveWithdraw(element.id)">
+                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">check</mat-icon> Aprovar
+                        </button>
+                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)">
+                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">close</mat-icon> Rejeitar
+                        </button>
+                      </ng-container>
+
+                      <!-- Se aprovado, dar baixa manual de PIX concluído -->
+                      <ng-container *ngIf="element.status === 'Approved'">
+                        <button mat-flat-button color="accent" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="confirmWithdrawManual(element.id)">
+                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">payments</mat-icon> Baixa Manual (PIX Realizado)
+                        </button>
+                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)">
+                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">close</mat-icon> Rejeitar
+                        </button>
+                      </ng-container>
+
+                      <!-- Se finalizado ou rejeitado, exibir logs -->
+                      <span *ngIf="element.status === 'Completed'" style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic;">
+                        Liquidado em {{ element.processedAt | date:'dd/MM/yy HH:mm' }}
+                      </span>
+                      <span *ngIf="element.status === 'Rejected'" style="color: var(--text-secondary); font-size: 0.75rem; font-style: italic; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" [title]="element.observacao">
+                        Motivo: {{ element.observacao }}
+                      </span>
+                    </div>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="displayedWithdrawalColumns"></tr>
+                <tr mat-row *matRowDef="let row; columns: displayedWithdrawalColumns;"></tr>
+              </table>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>
+
+<!-- Template do Painel de Conferência de Fechamento de Caixa -->
+<ng-template #conferenceDialog>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); background-color: var(--bg-elevated);">
+    <div>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <mat-icon style="color: var(--dj-success);">fact_check</mat-icon> Conferência de Fechamento de Caixa
+      </h2>
+      <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-secondary);">
+        Validação operacional de recebimentos e saldo devedor antes da confirmação definitiva.
+      </p>
+    </div>
+    <span style="font-size: 0.85rem; font-weight: 600; background-color: var(--bg-elevated); color: var(--text-main); padding: 0.35rem 0.75rem; border-radius: 9999px; text-transform: uppercase;">
+      Período: {{ periodoFiltro }}
+    </span>
+  </div>
+
+  <mat-dialog-content style="padding: 1.5rem; max-height: 75vh;">
+    <!-- Loading State -->
+    <div *ngIf="loadingConference" style="text-align: center; padding: 3rem;">
+      <mat-icon class="spin" style="font-size: 36px; width: 36px; height: 36px; color: var(--dj-blue);">sync</mat-icon>
+      <p style="color: var(--text-secondary); margin-top: 1rem; font-weight: 500;">Carregando movimentações do período...</p>
+    </div>
+
+    <div *ngIf="!loadingConference && conferenceData">
+      <!-- Grid de Resumo Financeiro do Fechamento -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem;">
+        <div style="background-color: var(--bg-elevated); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--border-light);">
+          <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Previstas</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ conferenceData.totalParcelasPrevistas }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-success-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-success);">
+          <div style="font-size: 0.75rem; color: var(--dj-success); font-weight: 600; text-transform: uppercase;">Pagas</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--dj-success); margin-top: 2px;">{{ conferenceData.totalParcelasPagas }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-warning-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-warning);">
+          <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Parciais</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--dj-warning); margin-top: 2px;">{{ conferenceData.totalParcelasParciais }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-danger-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-danger);">
+          <div style="font-size: 0.75rem; color: var(--dj-danger); font-weight: 600; text-transform: uppercase;">Em Débito</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--dj-danger); margin-top: 2px;">{{ conferenceData.totalParcelasEmDebito }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-info-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-blue);">
+          <div style="font-size: 0.75rem; color: var(--dj-blue); font-weight: 600; text-transform: uppercase;">Total Recebido</div>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--dj-blue); margin-top: 2px;">{{ conferenceData.valorTotalRecebido | currency:'BRL' }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-danger-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-danger);">
+          <div style="font-size: 0.75rem; color: var(--dj-danger); font-weight: 600; text-transform: uppercase;">Total Pendente</div>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--dj-danger); margin-top: 2px;">{{ conferenceData.valorAindaPendente | currency:'BRL' }}</div>
+        </div>
+
+        <div style="background-color: var(--dj-success-light); padding: 0.88rem; border-radius: 8px; text-align: center; border: 1px solid var(--dj-success);">
+          <div style="font-size: 0.75rem; color: var(--dj-success); font-weight: 600; text-transform: uppercase;">Adimplência</div>
+          <div style="font-size: 1.25rem; font-weight: 700; color: var(--dj-success); margin-top: 2px;">{{ conferenceData.percentualAdimplencia }}%</div>
+        </div>
       </div>
 
-      <div class="table-responsive">
-        <table mat-table [dataSource]="transactions" class="mat-elevation-z0">
-          
-          <ng-container matColumnDef="data">
-            <th mat-header-cell *matHeaderCellDef> Data/Hora </th>
-            <td mat-cell *matCellDef="let element"> {{ element.transactionDate | date:'dd/MM/yyyy HH:mm':'UTC' }} </td>
-          </ng-container>
+      <!-- Barra de Filtros e Busca -->
+      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; padding: 0.75rem 1rem; background-color: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1rem;">
+        <mat-form-field appearance="outline" style="flex: 1; min-width: 180px; margin-bottom: 0;">
+          <mat-label>Buscar Tomador</mat-label>
+          <input matInput [(ngModel)]="confFilters.tomador" (ngModelChange)="loadClosingConference()" placeholder="Nome ou CPF">
+        </mat-form-field>
 
-          <ng-container matColumnDef="tipo">
-            <th mat-header-cell *matHeaderCellDef> Movimentação </th>
-            <td mat-cell *matCellDef="let element"> 
-              <div class="tipo-movimentacao">
-                <mat-icon>{{ getTipoIcon(element.tipoMovimentacao) }}</mat-icon>
-                <span>{{ getTipoDescricao(element.tipoMovimentacao) }}</span>
+        <mat-form-field appearance="outline" style="width: 160px; margin-bottom: 0;">
+          <mat-label>Status</mat-label>
+          <select matNativeControl [(ngModel)]="confFilters.status" (change)="loadClosingConference()">
+            <option value="">Todos Status</option>
+            <option value="Paga">Paga (Verde)</option>
+            <option value="Parcialmente Paga">Parcialmente Paga (Amarelo)</option>
+            <option value="Em Débito">Em Débito (Vermelho)</option>
+          </select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" style="width: 150px; margin-bottom: 0;">
+          <mat-label>Tipo Empréstimo</mat-label>
+          <select matNativeControl [(ngModel)]="confFilters.tipoEmprestimo" (change)="loadClosingConference()">
+            <option value="">Todos Tipos</option>
+            <option value="Master">Master</option>
+            <option value="Plus">Plus</option>
+            <option value="Gold">Gold</option>
+          </select>
+        </mat-form-field>
+      </div>
+
+      <!-- Tabela Responsiva com Ordenação -->
+      <div class="table-responsive" *ngIf="conferenceData.items.length > 0">
+        <table mat-table [dataSource]="conferenceData.items" class="mat-elevation-z1" style="width: 100%;">
+          
+          <!-- Coluna Tomador -->
+          <ng-container matColumnDef="tomador">
+            <th mat-header-cell *matHeaderCellDef (click)="setConfSort('tomador')" style="cursor: pointer;">
+              Tomador <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">unfold_more</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <div style="display: flex; flex-direction: column;">
+                <span style="font-weight: 600; color: var(--text-main);">{{ item.tomadorNome }}</span>
+                <span style="font-size: 0.75rem; color: var(--text-secondary);" *ngIf="item.tomadorCpf">CPF/CNPJ: {{ item.tomadorCpf }}</span>
               </div>
             </td>
           </ng-container>
 
+          <!-- Coluna Tipo -->
+          <ng-container matColumnDef="tipo">
+            <th mat-header-cell *matHeaderCellDef> Tipo </th>
+            <td mat-cell *matCellDef="let item">
+              <span style="font-size: 0.8rem; font-weight: 500; background-color: var(--bg-elevated); padding: 2px 6px; border-radius: 4px; color: var(--text-main);">
+                {{ item.tipoEmprestimo }}
+              </span>
+            </td>
+          </ng-container>
+
+          <!-- Coluna Parcela -->
+          <ng-container matColumnDef="parcela">
+            <th mat-header-cell *matHeaderCellDef (click)="setConfSort('parcela')" style="cursor: pointer;">
+              Nº Parcela <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">unfold_more</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <strong style="color: var(--text-main);">{{ item.numeroParcelaFormatado }}</strong>
+            </td>
+          </ng-container>
+
+          <!-- Coluna Vencimento -->
+          <ng-container matColumnDef="vencimento">
+            <th mat-header-cell *matHeaderCellDef (click)="setConfSort('vencimento')" style="cursor: pointer;">
+              Vencimento <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">unfold_more</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let item"> {{ item.dataVencimento | date:'dd/MM/yyyy':'UTC' }} </td>
+          </ng-container>
+
+          <!-- Coluna Valor Parcela -->
           <ng-container matColumnDef="valor">
-            <th mat-header-cell *matHeaderCellDef> Valor </th>
-            <td mat-cell *matCellDef="let element" 
-                [ngClass]="{'text-success': element.tipoMovimentacao === 1,
-                            'text-danger': element.tipoMovimentacao === 0}">
-              <b>{{ (element.tipoMovimentacao === 0 ? '-' : '+') }} {{ element.valor | currency:'BRL' }}</b>
+            <th mat-header-cell *matHeaderCellDef (click)="setConfSort('valor')" style="cursor: pointer;">
+              Valor Previsto <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">unfold_more</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let item"> {{ item.valorTotalDevido | currency:'BRL' }} </td>
+          </ng-container>
+
+          <!-- Coluna Valor Pago -->
+          <ng-container matColumnDef="valorPago">
+            <th mat-header-cell *matHeaderCellDef> Valor Pago </th>
+            <td mat-cell *matCellDef="let item" style="font-weight: 600; color: var(--dj-success);">
+              {{ item.valorPago | currency:'BRL' }}
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="usuario">
-            <th mat-header-cell *matHeaderCellDef> Tomador </th>
-            <td mat-cell *matCellDef="let element">
-              <b>{{ element.userName || 'Desconhecido' }}</b>
+          <!-- Coluna Valor Restante -->
+          <ng-container matColumnDef="valorRestante">
+            <th mat-header-cell *matHeaderCellDef> Saldo Restante </th>
+            <td mat-cell *matCellDef="let item">
+              <span *ngIf="item.valorRestante > 0" style="font-weight: 600; color: var(--dj-danger);">{{ item.valorRestante | currency:'BRL' }}</span>
+              <span *ngIf="item.valorRestante <= 0" style="color: var(--text-secondary);">-</span>
             </td>
           </ng-container>
 
-          <ng-container matColumnDef="cpf">
-            <th mat-header-cell *matHeaderCellDef> CPF </th>
-            <td mat-cell *matCellDef="let element"> {{ element.cpf || '-' }} </td>
-          </ng-container>
-
-          <ng-container matColumnDef="observacao">
-            <th mat-header-cell *matHeaderCellDef> Observação </th>
-            <td mat-cell *matCellDef="let element" class="text-muted"> 
-              {{ element.observacao || '-' }} 
+          <!-- Coluna Pagamento -->
+          <ng-container matColumnDef="pagamento">
+            <th mat-header-cell *matHeaderCellDef> Data Pagamento </th>
+            <td mat-cell *matCellDef="let item">
+              <span *ngIf="item.dataPagamento">{{ item.dataPagamento | date:'dd/MM/yyyy':'UTC' }}</span>
+              <span *ngIf="!item.dataPagamento" style="color: var(--text-secondary);">Pendente</span>
             </td>
           </ng-container>
 
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          
-          <tr class="mat-row" *matNoDataRow>
-            <td class="mat-cell text-center" colspan="5">
-              Nenhuma transação registrada no dia de hoje.
+          <!-- Coluna Status (Diferenciação Visual) -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef (click)="setConfSort('status')" style="cursor: pointer;">
+              Status <mat-icon style="font-size: 14px; width: 14px; height: 14px; vertical-align: middle;">unfold_more</mat-icon>
+            </th>
+            <td mat-cell *matCellDef="let item">
+              <!-- VERDE: Paga -->
+              <span *ngIf="item.statusCalculado === 'Paga'" style="background-color: var(--dj-success-light); color: var(--dj-success); border: 1px solid var(--dj-success); font-size: 0.78rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--dj-success);"></span> Paga
+              </span>
+
+              <!-- AMARELO: Parcialmente Paga -->
+              <span *ngIf="item.statusCalculado === 'Parcialmente Paga'" style="background-color: var(--dj-warning-light); color: var(--dj-warning); border: 1px solid #fde68a; font-size: 0.78rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--dj-warning);"></span> Parcial ({{ item.percentualPago }}%)
+              </span>
+
+              <!-- VERMELHO: Em Débito -->
+              <span *ngIf="item.statusCalculado === 'Em Débito'" style="background-color: var(--dj-danger-light); color: var(--dj-danger); border: 1px solid var(--dj-danger); font-size: 0.78rem; font-weight: 700; padding: 4px 10px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; border-radius: 50%; background-color: var(--dj-danger);"></span> Em Débito
+              </span>
             </td>
-          </tr>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="conferenceDisplayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: conferenceDisplayedColumns;"></tr>
         </table>
       </div>
 
-      <mat-paginator 
-        [length]="totalCount"
-        [pageSize]="pageSize"
-        [pageSizeOptions]="[10, 15, 30]"
-        (page)="onPageChange($event)">
-      </mat-paginator>
-    </mat-card-content>
-  </mat-card>
-</div>
+      <div style="text-align: center; padding: 2.5rem; background-color: var(--bg-elevated); border-radius: 8px; border: 1px dashed var(--border-color);" *ngIf="conferenceData.items.length === 0">
+        <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: var(--text-secondary); margin-bottom: 0.5rem;">event_busy</mat-icon>
+        <p style="margin: 0; color: var(--text-muted); font-weight: 500;">Nenhuma parcela ou movimentação registrada para este período.</p>
+      </div>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" style="padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); background-color: var(--bg-elevated); gap: 0.75rem;">
+    <button mat-button (click)="conferenceDialogRef?.close()" [disabled]="isSubmittingSnapshot">Cancelar</button>
+    <button mat-raised-button color="primary" [disabled]="isSubmittingSnapshot" (click)="confirmCloseCashFlow()" style="background-color: var(--dj-success); color: white; font-weight: 600;">
+      <mat-icon>verified</mat-icon> Confirmar Fechamento de Caixa
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Dialog de Detalhes do Fechamento de Caixa Histórico -->
+<ng-template #snapshotDetailDialog>
+  <div style="display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border-color); background-color: var(--bg-elevated);">
+    <div>
+      <h2 style="margin: 0; font-size: 1.25rem; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+        <mat-icon style="color: var(--dj-blue);">receipt_long</mat-icon> Detalhes do Fechamento
+      </h2>
+      <p style="margin: 4px 0 0 0; font-size: 0.88rem; color: var(--text-secondary);">
+        Métricas consolidadas registradas na data de consolidação.
+      </p>
+    </div>
+    <span style="font-size: 0.85rem; font-weight: 600; background-color: var(--dj-blue); color: white; padding: 0.35rem 0.75rem; border-radius: 9999px; text-transform: uppercase;" *ngIf="selectedSnapshot">
+      {{ selectedSnapshot.snapshotDate | date:'dd/MM/yyyy':'UTC' }}
+    </span>
+  </div>
+
+  <mat-dialog-content style="padding: 1.5rem;" *ngIf="selectedSnapshot">
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">TOTAL ENTRADAS</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--dj-success); margin-top: 2px;">{{ selectedSnapshot.totalEntradas | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">TOTAL SAÍDAS</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--dj-danger); margin-top: 2px;">{{ selectedSnapshot.totalSaidas | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">SALDO OPERACIONAL</div>
+        <div style="font-size: 1.15rem; font-weight: 700; margin-top: 2px;" [ngClass]="{'text-success': selectedSnapshot.saldoOperacional >= 0, 'text-danger': selectedSnapshot.saldoOperacional < 0}">{{ selectedSnapshot.saldoOperacional | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">RECEITA DA PLATAFORMA</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: #6366f1; margin-top: 2px;">{{ selectedSnapshot.receitaPlataforma | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">RECEBIDO EM PARCELAS</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ selectedSnapshot.totalRecebidoParcelas | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">EMPRESTADO (DESEMBOLSOS)</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ selectedSnapshot.totalEmprestado | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">DEPÓSITOS EXTERNOS</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ selectedSnapshot.totalDepositosExternos | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">SAQUES EXTERNOS</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ selectedSnapshot.totalSaquesExternos | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">DISTRIBUÍDO A INVESTIDORES</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-main); margin-top: 2px;">{{ selectedSnapshot.totalDistribuidoInvestidores | currency:'BRL' }}</div>
+      </div>
+      <div style="border: 1px solid var(--border-color); padding: 10px; border-radius: 6px;">
+        <div style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">COBERTO FUNDO PROTEÇÃO</div>
+        <div style="font-size: 1.15rem; font-weight: 700; color: var(--dj-danger); margin-top: 2px;">{{ selectedSnapshot.totalCobertoProtectionFund | currency:'BRL' }}</div>
+      </div>
+    </div>
+    <div style="margin-top: 1rem; font-size: 0.8rem; color: var(--text-secondary); text-align: right;">
+      Snapshot ID: {{ selectedSnapshot.id }}<br>
+      Criado em: {{ selectedSnapshot.createdAt | date:'dd/MM/yyyy HH:mm':'UTC' }}
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" style="padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); background-color: var(--bg-elevated);">
+    <button mat-raised-button color="primary" (click)="snapshotDetailDialogRef?.close()">Fechar</button>
+  </mat-dialog-actions>
+</ng-template>

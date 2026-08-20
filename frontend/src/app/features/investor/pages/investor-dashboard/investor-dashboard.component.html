@@ -1,198 +1,375 @@
 <div class="investor-container">
-  <!-- Título e Introdução -->
-  <div class="header-section" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
-    <div>
-      <h1 style="font-size: 1.8rem; font-weight: 600; color: #1e293b; margin: 0;">Área do Investidor</h1>
-      <p style="color: #64748b; margin: 0.25rem 0 0 0; font-size: 0.95rem;">Acompanhe seus rendimentos e gerencie seus aportes simulados.</p>
+  <!-- Cabeçalho Principal com Ações Rápidas -->
+  <div class="header-section">
+    <div class="header-actions">
+      <button mat-flat-button class="btn-deposit" (click)="openDepositDialog()">
+        <mat-icon style="font-size: 20px; width: 20px; height: 20px;">add_circle</mat-icon> Depositar
+      </button>
+      <button mat-stroked-button color="warn" class="btn-withdraw" (click)="openWithdrawDialog()" [disabled]="!wallet || wallet.saldoDisponivel <= 0">
+        <mat-icon style="font-size: 20px; width: 20px; height: 20px;">payments</mat-icon> Solicitar Saque
+      </button>
     </div>
-    <div class="user-badge" style="background-color: #f8fafc; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; align-items: flex-end;">
-      <span style="font-weight: 600; color: #334155; font-size: 0.9rem;">{{ authService.currentUser()?.email }}</span>
-      <span style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: #10b981; margin-top: 0.15rem; display: flex; align-items: center; gap: 4px;">
-        <mat-icon style="font-size: 12px; width: 12px; height: 12px;">verified</mat-icon> {{ authService.userStatus() }}
+    <div class="user-badge">
+      <span class="user-cpf">
+        CPF: {{ authService.currentUser()?.cpf || authService.currentUser()?.email }}
+      </span>
+      <div *ngIf="wallet && (wallet.produtoInvestimentoNome || wallet.produtoEscolhido)" 
+           (click)="openCurrentProductDetail()" 
+           class="user-product-pill" 
+           title="Clique para ver a descrição detalhada deste investimento">
+        <mat-icon style="font-size: 14px; width: 14px; height: 14px; color: var(--dj-success);">verified</mat-icon>
+        <span class="product-name">{{ wallet.produtoInvestimentoNome || 'Investimento Ativo' }}</span>
+        <mat-icon style="font-size: 14px; width: 14px; height: 14px; color: var(--text-secondary);">info</mat-icon>
+      </div>
+      <span *ngIf="!wallet || !wallet.produtoEscolhido" class="user-status">
+        <mat-icon style="font-size: 14px; width: 14px; height: 14px;">verified</mat-icon> Conta Ativa & Homologada
       </span>
     </div>
   </div>
 
-  <!-- Cards de Resumo de Saldos -->
-  <div class="summary-cards" *ngIf="wallet" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-    <!-- 1. Saldo Disponível -->
-    <mat-card class="summary-card balance-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; background: #ffffff;">
-      <mat-card-content style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem;">
-        <div class="card-icon" style="background-color: #e6f4ea; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-          <mat-icon style="color: #137333;">account_balance_wallet</mat-icon>
-        </div>
-        <div class="card-details">
-          <span class="card-label" style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Saldo Disponível</span>
-          <h2 class="card-value" style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0.15rem 0 0 0;">{{ wallet.saldoDisponivel | currency:'BRL' }}</h2>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- 2. Saldo Investido -->
-    <mat-card class="summary-card invested-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; background: #ffffff;">
-      <mat-card-content style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem;">
-        <div class="card-icon" style="background-color: #e8f0fe; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-          <mat-icon style="color: #1a73e8;">trending_up</mat-icon>
-        </div>
-        <div class="card-details">
-          <span class="card-label" style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Saldo Investido</span>
-          <h2 class="card-value" style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0.15rem 0 0 0;">{{ wallet.saldoInvestido | currency:'BRL' }}</h2>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- 3. Saldo Comprometido -->
-    <mat-card class="summary-card committed-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; background: #ffffff;">
-      <mat-card-content style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem;">
-        <div class="card-icon" style="background-color: #f1f5f9; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-          <mat-icon style="color: #475569;">lock</mat-icon>
-        </div>
-        <div class="card-details">
-          <span class="card-label" style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Saldo Comprometido</span>
-          <h2 class="card-value" style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0.15rem 0 0 0;">{{ wallet.saldoComprometido | currency:'BRL' }}</h2>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- 4. Lucro Acumulado -->
-    <mat-card class="summary-card earnings-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; background: #ffffff;">
-      <mat-card-content style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem;">
-        <div class="card-icon" style="background-color: #fef7e0; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-          <mat-icon style="color: #b06000;">monetization_on</mat-icon>
-        </div>
-        <div class="card-details">
-          <span class="card-label" style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Lucro Acumulado</span>
-          <h2 class="card-value" style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0.15rem 0 0 0;">{{ wallet.rendimentos | currency:'BRL' }}</h2>
-        </div>
-      </mat-card-content>
-    </mat-card>
-
-    <!-- 5. Rendimento Diário Estimado -->
-    <mat-card class="summary-card daily-yield-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; background: #ffffff;">
-      <mat-card-content style="display: flex; align-items: center; gap: 1rem; padding: 1.25rem;">
-        <div class="card-icon" style="background-color: #f3e8ff; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 50%;">
-          <mat-icon style="color: #9333ea;">auto_graph</mat-icon>
-        </div>
-        <div class="card-details">
-          <span class="card-label" style="font-size: 0.8rem; color: #64748b; font-weight: 600; text-transform: uppercase;">Rendimento Diário Estimado</span>
-          <h2 class="card-value" style="font-size: 1.4rem; font-weight: 700; color: #0f172a; margin: 0.15rem 0 0 0;">{{ rendimentoDiarioEstimado | currency:'BRL' }}</h2>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
-
-  <!-- Ações Rápidas: Aporte e Saque -->
-  <div class="actions-grid" *ngIf="wallet" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem; margin-bottom: 2rem;">
-    <!-- Card Aporte Simulado -->
-    <mat-card class="action-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none;">
-      <mat-card-header style="padding: 1rem 1.25rem 0.5rem 1.25rem;">
-        <mat-card-title style="font-size: 1rem; font-weight: 600; color: #0f172a;">Realizar Aporte Simulado</mat-card-title>
-        <mat-card-subtitle style="font-size: 0.8rem; color: #64748b;">Adicione saldo à sua carteira para simular investimentos.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content style="padding: 0 1.25rem;">
-        <mat-form-field appearance="outline" style="width: 100%; font-size: 0.9rem;">
-          <mat-label>Valor do Aporte (R$)</mat-label>
-          <input matInput type="number" [(ngModel)]="aporteValor" placeholder="Ex: 5000" min="1" [disabled]="isProcessing" />
-          <span matPrefix style="margin-right: 4px; color: #64748b;">R$</span>
-        </mat-form-field>
-      </mat-card-content>
-      <mat-card-actions align="end" style="padding: 0.75rem 1.25rem 1rem 1.25rem;">
-        <button mat-flat-button color="primary" style="border-radius: 6px;" (click)="makeDeposit()" [disabled]="isProcessing || !aporteValor || aporteValor <= 0">
-          Adicionar Saldo
-        </button>
-      </mat-card-actions>
-    </mat-card>
-
-    <!-- Card Saque Simulado -->
-    <mat-card class="action-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none;">
-      <mat-card-header style="padding: 1rem 1.25rem 0.5rem 1.25rem;">
-        <mat-card-title style="font-size: 1rem; font-weight: 600; color: #0f172a;">Solicitar Saque Simulado</mat-card-title>
-        <mat-card-subtitle style="font-size: 0.8rem; color: #64748b;">Retire saldo de sua carteira disponível.</mat-card-subtitle>
-      </mat-card-header>
-      <mat-card-content style="padding: 0 1.25rem;">
-        <mat-form-field appearance="outline" style="width: 100%; font-size: 0.9rem;">
-          <mat-label>Valor do Saque (R$)</mat-label>
-          <input matInput type="number" [(ngModel)]="saqueValor" placeholder="Ex: 1000" min="1" [disabled]="isProcessing" />
-          <span matPrefix style="margin-right: 4px; color: #64748b;">R$</span>
-        </mat-form-field>
-      </mat-card-content>
-      <mat-card-actions align="end" style="padding: 0.75rem 1.25rem 1rem 1.25rem;">
-        <button mat-flat-button color="warn" style="border-radius: 6px;" (click)="makeWithdraw()" [disabled]="isProcessing || !saqueValor || saqueValor <= 0">
-          Solicitar Saque
-        </button>
-      </mat-card-actions>
-    </mat-card>
-  </div>
-
-  <!-- Tabela do Histórico de Transações -->
-  <mat-card class="history-card" style="border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: none; overflow: hidden;">
-    <mat-card-header style="padding: 1rem 1.25rem;">
-      <mat-card-title style="font-size: 1.1rem; font-weight: 600; color: #0f172a;">Histórico de Movimentações</mat-card-title>
-      <mat-card-subtitle style="font-size: 0.8rem; color: #64748b;">Todas as transações e rendimentos da sua carteira.</mat-card-subtitle>
-    </mat-card-header>
+  <!-- 1. Cards de Valores e Indicadores Financeiros (Topo, 2 Colunas, Altura Compacta e Responsiva) -->
+  <div class="summary-cards" *ngIf="wallet">
     
-    <mat-card-content style="padding: 0;">
-      <div *ngIf="isLoadingHistory" style="text-align: center; padding: 2rem; color: #64748b;">
-        <p>Carregando movimentações...</p>
+    <!-- Card 1: Patrimônio Total -->
+    <mat-card class="summary-card card-total">
+      <mat-card-content class="card-content-compact">
+        <div class="card-top-row">
+          <span class="card-label-light">Patrimônio Total</span>
+          <div class="card-icon-badge-light">
+            <mat-icon>account_balance</mat-icon>
+          </div>
+        </div>
+        <div class="card-amount-light">
+          {{ saldoTotal | currency:'BRL' }}
+        </div>
+        <span class="card-footer-light">
+          Custódia total + rendimentos acumulados
+        </span>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card 2: Saldo Disponível -->
+    <mat-card class="summary-card">
+      <mat-card-content class="card-content-compact">
+        <div class="card-top-row">
+          <div class="card-title-group">
+            <div class="card-icon-badge green">
+              <mat-icon>account_balance_wallet</mat-icon>
+            </div>
+            <span class="card-label">Saldo Disponível</span>
+          </div>
+          <span class="rate-badge green">
+            Rende {{ (wallet.rentabilidadeSaldoDisponivel || 1.00) | number:'1.2-2' }}% a.m.
+          </span>
+        </div>
+        <div class="card-amount">
+          {{ wallet.saldoDisponivel | currency:'BRL' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card 3: Saldo Comprometido -->
+    <mat-card class="summary-card">
+      <mat-card-content class="card-content-compact">
+        <div class="card-top-row">
+          <div class="card-title-group">
+            <div class="card-icon-badge blue">
+              <mat-icon>trending_up</mat-icon>
+            </div>
+            <span class="card-label">Saldo Comprometido</span>
+          </div>
+          <span class="rate-badge blue">
+            Rende {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% a.m.
+          </span>
+        </div>
+        <div class="card-amount">
+          {{ wallet.saldoInvestido | currency:'BRL' }}
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card 4: Rendimentos Acumulados & Taxas -->
+    <mat-card class="summary-card">
+      <mat-card-content class="card-content-compact">
+        <div class="card-top-row">
+          <div class="card-title-group">
+            <div class="card-icon-badge amber">
+              <mat-icon>monetization_on</mat-icon>
+            </div>
+            <span class="card-label">Rendimentos</span>
+          </div>
+          <span class="rate-badge purple">
+            +{{ rendimentoDiarioEstimado | currency:'BRL' }}/dia
+          </span>
+        </div>
+        <div class="card-amount text-profit">
+          +{{ wallet.rendimentos | currency:'BRL' }}
+        </div>
+        <span class="card-footer">
+          Comprometido: {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% | Disponível: {{ (wallet.rentabilidadeSaldoDisponivel || 1.00) | number:'1.2-2' }}%
+        </span>
+      </mat-card-content>
+    </mat-card>
+
+  </div>
+
+  <!-- 2. Opções de Investimento (Exibido para definir rentabilidade ou quando liberado pelo Admin) -->
+  <div class="products-section" *ngIf="wallet && (!wallet.produtoEscolhido || wallet.podeAlterarProduto)" style="margin-bottom: 2rem; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.25rem; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; display: flex; align-items: center; gap: 8px;">
+            <mat-icon style="color: var(--dj-success); font-size: 22px; width: 22px; height: 22px;">savings</mat-icon>
+            Escolha sua Opção de Investimento
+          </h2>
+          <span style="font-size: 0.75rem; font-weight: 700; background: #ecfdf5; color: var(--dj-success); border: 1px solid var(--dj-success); padding: 2px 8px; border-radius: 12px;">
+            Define sua Rentabilidade
+          </span>
+        </div>
+        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.3rem 0 0 0;">
+          Selecione a opção desejada para definir automaticamente sua taxa de rentabilidade mensal sobre o saldo comprometido.
+        </p>
       </div>
 
-      <div *ngIf="!isLoadingHistory && transactions.length === 0" class="empty-state" style="text-align: center; padding: 3rem 1.5rem; color: #94a3b8;">
-        <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #cbd5e1; margin-bottom: 0.5rem;">history</mat-icon>
-        <p style="margin: 0; font-size: 0.9rem;">Nenhuma movimentação registrada até o momento.</p>
+      <!-- Controles de Navegação e Indicador de Arraste -->
+      <div *ngIf="products.length > 0" style="display: flex; align-items: center; gap: 8px;">
+        <span style="font-size: 0.75rem; font-weight: 600; color: var(--dj-success); background: #ecfdf5; border: 1px solid var(--dj-success); padding: 4px 10px; border-radius: 20px; display: flex; align-items: center; gap: 4px;">
+          <mat-icon style="font-size: 14px; width: 14px; height: 14px;">swipe</mat-icon>
+          Arraste para ver opções
+          <mat-icon style="font-size: 16px; width: 16px; height: 16px;">trending_flat</mat-icon>
+        </span>
+        <button mat-icon-button (click)="scrollProducts('left')" style="background: var(--bg-card); border: 1px solid var(--border-color); width: 34px; height: 34px; line-height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px;" title="Rolar para esquerda">
+          <mat-icon style="font-size: 20px; width: 20px; height: 20px; color: var(--text-main);">chevron_left</mat-icon>
+        </button>
+        <button mat-icon-button (click)="scrollProducts('right')" style="background: var(--bg-card); border: 1px solid var(--border-color); width: 34px; height: 34px; line-height: 34px; display: flex; align-items: center; justify-content: center; border-radius: 8px;" title="Rolar para direita">
+          <mat-icon style="font-size: 20px; width: 20px; height: 20px; color: var(--text-main);">chevron_right</mat-icon>
+        </button>
       </div>
+    </div>
 
-      <div *ngIf="!isLoadingHistory && transactions.length > 0" style="overflow-x: auto;">
-        <table mat-table [dataSource]="transactions" style="width: 100%; border-collapse: collapse; min-width: 800px;">
-          <!-- Coluna Data -->
-          <ng-container matColumnDef="data">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Data </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; color: #334155; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> {{ tx.dataMovimentacao | date:'dd/MM/yyyy HH:mm' }} </td>
-          </ng-container>
+    <div *ngIf="isLoadingProducts" style="text-align: center; padding: 1.5rem; color: var(--text-secondary);">
+      <p style="font-size: 0.9rem;">Carregando opções de investimento...</p>
+    </div>
 
-          <!-- Coluna Tipo -->
-          <ng-container matColumnDef="tipo">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Tipo </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; border-bottom: 1px solid #edf2f7;">
-              <span class="tx-badge" [ngClass]="tx.tipo.toLowerCase()" style="font-size: 0.7rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; text-transform: uppercase;">{{ tx.tipo }}</span>
-            </td>
-          </ng-container>
+    <div *ngIf="!isLoadingProducts && products.length === 0" style="background: var(--bg-elevated); border: 1px dashed var(--border-color); border-radius: 10px; padding: 1.5rem; text-align: center; color: var(--text-secondary);">
+      <p style="margin: 0; font-size: 0.9rem;">Nenhuma opção de investimento cadastrada no momento pelo administrador.</p>
+    </div>
 
-          <!-- Coluna Descrição -->
-          <ng-container matColumnDef="descricao">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Descrição </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; color: #334155; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> {{ tx.descricao }} </td>
-          </ng-container>
+    <!-- Cards Verticais Lado a Lado com Scroll Suave e Setas -->
+    <div style="position: relative;">
+      <div #productsScrollContainer
+           *ngIf="!isLoadingProducts && products.length > 0"
+           style="display: flex !important; flex-direction: row !important; gap: 1.25rem; width: 100%; overflow-x: auto; scroll-behavior: smooth; padding: 4px 4px 12px 4px; box-sizing: border-box;">
+        <div *ngFor="let prod of products"
+             (click)="openProductDetail(prod)"
+             class="vertical-product-card"
+             style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 14px; padding: 1.5rem 1.1rem 1.2rem 1.1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.25s ease; display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: space-between; flex: 0 0 185px; min-height: 240px; box-sizing: border-box;"
+             onmouseover="this.style.borderColor='#059669'; this.style.boxShadow='0 10px 24px -4px rgba(5,150,105,0.18)'; this.style.transform='translateY(-4px)';"
+             onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 2px 6px rgba(0,0,0,0.04)'; this.style.transform='translateY(0)';"
+             title="Clique para ver os detalhes completos e escolher esta opção">
+          
+          <!-- Ícone Superior -->
+          <div style="background-color: var(--dj-success-light); width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; border: 1px solid var(--dj-success);">
+            <mat-icon style="color: var(--dj-success); font-size: 24px; width: 24px; height: 24px;">trending_up</mat-icon>
+          </div>
 
-          <!-- Coluna Valor -->
-          <ng-container matColumnDef="valor">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Valor </th>
-            <td mat-cell *matCellDef="let tx" [ngClass]="{'text-danger': tx.valor < 0, 'text-success': tx.valor > 0 && tx.tipo !== 'SAQUE'}" style="padding: 0.75rem 1rem; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> 
-              {{ tx.valor | currency:'BRL' }} 
-            </td>
-          </ng-container>
+          <!-- Nome do Produto -->
+          <h3 style="font-size: 0.95rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.75rem 0; line-height: 1.35; max-height: 2.7rem; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
+            {{ prod.nome }}
+          </h3>
 
-          <!-- Coluna Saldo Anterior -->
-          <ng-container matColumnDef="saldoAnterior">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Saldo Anterior </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; color: #64748b; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> {{ tx.saldoAnterior | currency:'BRL' }} </td>
-          </ng-container>
+          <!-- Rentabilidade em Destaque Vertical -->
+          <div style="background: #f0fdf4; border: 1px solid var(--dj-success); border-radius: 10px; padding: 0.5rem 0.75rem; width: 100%; box-sizing: border-box; margin-bottom: 0.75rem;">
+            <div style="font-size: 1.45rem; font-weight: 800; color: var(--dj-success); line-height: 1;">
+              {{ prod.rentabilidadeMensal | number:'1.2-2' }}%
+            </div>
+            <span style="font-size: 0.7rem; font-weight: 700; color: var(--dj-success); text-transform: uppercase; letter-spacing: 0.3px; display: block; margin-top: 2px;">ao mês</span>
+          </div>
 
-          <!-- Coluna Saldo Posterior -->
-          <ng-container matColumnDef="saldoPosterior">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Saldo Posterior </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; color: #334155; font-weight: 500; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> {{ tx.saldoPosterior | currency:'BRL' }} </td>
-          </ng-container>
-
-          <!-- Coluna Responsável -->
-          <ng-container matColumnDef="responsavel">
-            <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: #475569; background: #f8fafc; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> Responsável </th>
-            <td mat-cell *matCellDef="let tx" style="padding: 0.75rem 1rem; color: #64748b; font-size: 0.85rem; border-bottom: 1px solid #edf2f7;"> {{ tx.usuarioResponsavel }} </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
+          <!-- Rodapé do Card -->
+          <span style="font-size: 0.75rem; font-weight: 600; color: var(--dj-success); display: flex; align-items: center; gap: 4px;">
+            Escolher Opção <mat-icon style="font-size: 14px; width: 14px; height: 14px;">arrow_forward</mat-icon>
+          </span>
+        </div>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  </div>
+
+
+
+
 </div>
+
+<!-- Modal Dialog de Detalhes Completos do Produto de Investimento -->
+<ng-template #productDetailDialog>
+  <div *ngIf="selectedDetailProduct">
+    <h2 mat-dialog-title style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; color: var(--text-main); margin: 0; padding-bottom: 0.5rem;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="background-color: var(--dj-success-light); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <mat-icon style="color: var(--dj-success); font-size: 22px; width: 22px; height: 22px;">savings</mat-icon>
+        </div>
+        <span>{{ selectedDetailProduct.nome }}</span>
+      </div>
+      <div style="text-align: right; background: #ecfdf5; border-radius: 8px; padding: 0.3rem 0.65rem; border: 1px solid var(--dj-success);">
+        <span style="font-size: 1.1rem; font-weight: 800; color: var(--dj-success);">{{ selectedDetailProduct.rentabilidadeMensal | number:'1.2-2' }}%</span>
+        <span style="font-size: 0.7rem; font-weight: 600; color: #047857; margin-left: 2px;">a.m.</span>
+      </div>
+    </h2>
+
+    <mat-dialog-content class="mat-typography" style="padding-top: 0.75rem;">
+      <!-- Card com Resumo Financeiro -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; margin-bottom: 1rem;">
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Rentabilidade Prevista</span>
+          <div style="font-size: 1.15rem; font-weight: 800; color: var(--dj-success);">
+            {{ selectedDetailProduct.rentabilidadeMensal | number:'1.2-2' }}% <span style="font-size: 0.8rem; font-weight: 500;">ao mês</span>
+          </div>
+        </div>
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase;">Aporte Mínimo</span>
+          <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">
+            {{ selectedDetailProduct.valorMinimo | currency:'BRL' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Descrição -->
+      <div style="margin-bottom: 1rem;">
+        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); text-transform: uppercase; margin: 0 0 0.4rem 0;">Sobre este Investimento</h4>
+        <p style="font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+          {{ selectedDetailProduct.descricao || 'Investimento estruturado de renda fixa com alocação diversificada em tomadores de crédito validados pela plataforma.' }}
+        </p>
+      </div>
+
+      <!-- Condições & Garantias -->
+      <div *ngIf="selectedDetailProduct.condicoes" style="background: var(--bg-elevated); border-radius: 8px; padding: 0.85rem; margin-bottom: 0.5rem;">
+        <h4 style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); margin: 0 0 0.3rem 0; display: flex; align-items: center; gap: 6px;">
+          <mat-icon style="font-size: 16px; width: 16px; height: 16px; color: var(--dj-success);">verified_user</mat-icon>
+          Condições e Garantias
+        </h4>
+        <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin: 0;">
+          {{ selectedDetailProduct.condicoes }}
+        </p>
+      </div>
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end" style="padding: 1rem 1.25rem; gap: 8px;">
+      <button mat-button (click)="dialogRef?.close()">Fechar</button>
+      <button *ngIf="!wallet?.produtoEscolhido || wallet?.podeAlterarProduto" mat-flat-button style="background-color: var(--dj-success); color: #ffffff; border-radius: 8px; font-weight: 600; padding: 0 1.5rem;" (click)="confirmProductChoice(selectedDetailProduct)" [disabled]="isProcessing">
+        <mat-icon style="margin-right: 4px; font-size: 18px; width: 18px; height: 18px;">check_circle</mat-icon>
+        Confirmar Escolha & Definir Rentabilidade
+      </button>
+    </mat-dialog-actions>
+  </div>
+</ng-template>
+
+<!-- Modal Dialog de Saque PIX -->
+<ng-template #saqueDialog>
+  <h2 mat-dialog-title style="display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--text-main);">
+    <mat-icon style="color: var(--dj-danger);">payments</mat-icon> Solicitar Saque PIX
+  </h2>
+  
+  <mat-dialog-content class="mat-typography" style="padding-top: 0.5rem;">
+    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
+      Saldo disponível para resgate: <strong style="color: var(--text-main);">{{ wallet?.saldoDisponivel | currency:'BRL' }}</strong>
+    </p>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Valor a Sacar (R$)</mat-label>
+        <input matInput type="number" step="0.01" [(ngModel)]="saqueValor" [max]="wallet?.saldoDisponivel ?? 0" min="1" placeholder="Ex: 1000.00" [disabled]="isProcessing" />
+        <span matPrefix style="margin-right: 4px; color: var(--text-secondary);">R$&nbsp;</span>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Tipo de Chave PIX</mat-label>
+        <mat-select [(ngModel)]="tipoChavePix" [disabled]="isProcessing">
+          <mat-option value="CPF">CPF</mat-option>
+          <mat-option value="CNPJ">CNPJ</mat-option>
+          <mat-option value="Email">E-mail</mat-option>
+          <mat-option value="Telefone">Telefone</mat-option>
+          <mat-option value="Aleatoria">Chave Aleatória (EVP)</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Chave PIX</mat-label>
+        <input matInput type="text" [(ngModel)]="chavePix" placeholder="Informe sua chave PIX para recebimento" [disabled]="isProcessing" />
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions align="end" style="padding: 1rem 1.25rem;">
+    <button mat-button (click)="dialogRef?.close()" [disabled]="isProcessing">Cancelar</button>
+    <button mat-flat-button color="warn" (click)="makeWithdraw()" [disabled]="isProcessing || !saqueValor || saqueValor <= 0 || !chavePix">
+      {{ isProcessing ? 'Processando...' : 'Confirmar Saque' }}
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Modal Dialog de Depósito Financeiro (Preparado para Asaas/PIX) -->
+<ng-template #depositoDialog>
+  <h2 mat-dialog-title style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; color: var(--text-main); margin: 0; padding-bottom: 0.5rem;">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <div style="background-color: var(--dj-success-light); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <mat-icon style="color: var(--dj-success); font-size: 22px; width: 22px; height: 22px;">account_balance_wallet</mat-icon>
+      </div>
+      <span>Depositar Saldo</span>
+    </div>
+    <span style="background: #ecfdf5; color: var(--dj-success); font-size: 0.75rem; font-weight: 700; padding: 3px 8px; border-radius: 6px; text-transform: uppercase;">
+      PIX Instantâneo
+    </span>
+  </h2>
+  
+  <mat-dialog-content class="mat-typography" style="padding-top: 0.5rem;">
+    <!-- Alerta de Produto Selecionado -->
+    <div *ngIf="selectedProduct" style="margin-bottom: 1.25rem; background: #eff6ff; border: 1px solid var(--dj-blue); border-radius: 8px; padding: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+      <div>
+        <span style="font-size: 0.75rem; color: var(--dj-blue); font-weight: 600; text-transform: uppercase;">Alocação Pretendida</span>
+        <div style="font-size: 0.95rem; font-weight: 700; color: #1e3a8a;">{{ selectedProduct.nome }}</div>
+        <span style="font-size: 0.75rem; color: var(--dj-blue);">Aporte mínimo sugerido: {{ selectedProduct.valorMinimo | currency:'BRL' }}</span>
+      </div>
+      <button mat-icon-button (click)="selectedProduct = null" title="Remover seleção de produto">
+        <mat-icon style="font-size: 18px; color: var(--text-secondary);">close</mat-icon>
+      </button>
+    </div>
+
+    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1rem;">
+      Informe o valor que deseja adicionar à sua carteira para aplicação em produtos de investimento.
+    </p>
+
+    <!-- Campo de Valor do Depósito -->
+    <mat-form-field appearance="outline" style="width: 100%; font-size: 1.1rem;">
+      <mat-label>Valor a Depositar (R$)</mat-label>
+      <input matInput type="number" step="100" [(ngModel)]="aporteValor" placeholder="0,00" min="1" [disabled]="isProcessing" />
+      <span matPrefix style="margin-right: 6px; font-weight: 700; color: var(--text-main);">R$&nbsp;</span>
+    </mat-form-field>
+
+    <!-- Botões de Valor Rápido -->
+    <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem;">
+      <button mat-stroked-button type="button" style="font-size: 0.8rem; border-radius: 6px;" (click)="setAportePreset(1000)" [disabled]="isProcessing">+ R$ 1.000</button>
+      <button mat-stroked-button type="button" style="font-size: 0.8rem; border-radius: 6px;" (click)="setAportePreset(5000)" [disabled]="isProcessing">+ R$ 5.000</button>
+      <button mat-stroked-button type="button" style="font-size: 0.8rem; border-radius: 6px;" (click)="setAportePreset(10000)" [disabled]="isProcessing">+ R$ 10.000</button>
+      <button mat-stroked-button type="button" style="font-size: 0.8rem; border-radius: 6px;" (click)="setAportePreset(25000)" [disabled]="isProcessing">+ R$ 25.000</button>
+    </div>
+
+    <!-- Informações do Gateway de Pagamento (Asaas / PIX) -->
+    <div style="background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 8px; padding: 0.85rem; display: flex; gap: 10px; align-items: flex-start;">
+      <mat-icon style="color: var(--dj-success); font-size: 20px; width: 20px; height: 20px; margin-top: 2px;">qr_code_2</mat-icon>
+      <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
+        <strong style="color: var(--text-main);">Pagamento Instantâneo via PIX</strong>
+        <p style="margin: 0.2rem 0 0 0;">
+          Ao confirmar, o saldo é creditado em sua conta para distribuição entre as opções de rentabilidade.
+        </p>
+      </div>
+    </div>
+  </mat-dialog-content>
+  
+  <mat-dialog-actions align="end" style="padding: 1rem 1.25rem; gap: 8px;">
+    <button mat-button (click)="dialogRef?.close()" [disabled]="isProcessing">Cancelar</button>
+    <button mat-flat-button style="background-color: var(--dj-success); color: #ffffff; border-radius: 8px; font-weight: 600; padding: 0 1.5rem;" (click)="makeDeposit()" [disabled]="isProcessing || !aporteValor || aporteValor <= 0">
+      <mat-icon style="margin-right: 4px; font-size: 18px; width: 18px; height: 18px;">check_circle</mat-icon>
+      {{ isProcessing ? 'Processando...' : 'Confirmar Depósito' }}
+    </button>
+  </mat-dialog-actions>
+</ng-template>

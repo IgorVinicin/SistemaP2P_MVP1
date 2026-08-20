@@ -1,14 +1,29 @@
+/* ============================================
+   LAYOUT — Shell (Sidebar + Topbar + Content)
+   Dinheiro a Jato Design System
+   ============================================ */
+
 .sidenav-container {
   height: 100vh;
   background-color: var(--bg-main);
 }
 
+/* ============================================
+   SIDEBAR
+   ============================================ */
+
 .sidenav {
-  width: 260px;
-  background-color: var(--primary-color);
+  width: 256px;
+  background-color: var(--bg-elevated);
   color: white;
-  border-right: none;
-  box-shadow: var(--shadow-md);
+  border-right: 1px solid var(--border-color) !important;
+  overflow: hidden !important;
+}
+
+.sidenav-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .sidenav-header {
@@ -16,60 +31,125 @@
   display: flex;
   align-items: center;
   padding: 0 16px;
-  background-color: var(--primary-hover);
+  gap: 10px;
+  background-color: rgba(0, 0, 0, 0.12);
+}
+
+.sidenav-logo {
+  width: 36px;
+  height: 36px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.sidenav-brand {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .sidenav-title {
-  font-size: 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+.sidenav-subtitle {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+/* Nav section labels */
+.nav-section-label {
+  padding: 10px 20px 4px;
+  font-size: 0.625rem;
   font-weight: 700;
-  color: white;
-  letter-spacing: -0.025em;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 .nav-list {
-  padding-top: 16px;
+  padding-top: 4px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  
+  /* Esconde a barra de rolagem visualmente, mas permite rolar se necessário */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+.nav-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* Nav items */
 .nav-list a.mat-mdc-list-item,
 .nav-list a.mat-mdc-list-item .mdc-list-item__primary-text,
 .nav-list a.mat-mdc-list-item .mat-mdc-list-item-title {
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.6) !important;
   font-weight: 500;
-  transition: all 0.2s ease;
+  font-size: 0.8125rem;
+  transition: all 0.15s ease;
 }
 
 .nav-list a.mat-mdc-list-item {
-  margin: 4px 12px;
-  border-radius: 8px;
+  margin: 0px 8px;
+  border-radius: 6px;
+  height: 36px;
 }
 
 .nav-list a.mat-mdc-list-item:hover,
 .nav-list a.mat-mdc-list-item:hover .mdc-list-item__primary-text,
 .nav-list a.mat-mdc-list-item:hover .mat-mdc-list-item-title {
-  background-color: rgba(255, 255, 255, 0.05) !important;
-  color: white !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Active state — Left blue bar accent */
+.nav-list a.mat-mdc-list-item.active-link {
+  background-color: rgba(26, 86, 219, 0.15) !important;
+  border-left: 3px solid var(--dj-blue);
 }
 
 .nav-list a.mat-mdc-list-item.active-link,
 .nav-list a.mat-mdc-list-item.active-link .mdc-list-item__primary-text,
 .nav-list a.mat-mdc-list-item.active-link .mat-mdc-list-item-title {
-  background-color: var(--accent-color) !important;
-  color: white !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
 .nav-list a.mat-mdc-list-item .mat-icon {
   color: inherit !important;
-  margin-right: 8px;
+  margin-right: 6px;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
 }
 
+/* Legacy section title support */
 .nav-section-title {
-  padding: 16px 24px 8px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  padding: 20px 20px 6px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
 }
+
+mat-divider {
+  border-top-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ============================================
+   TOPBAR
+   ============================================ */
 
 .main-content {
   display: flex;
@@ -78,29 +158,55 @@
 }
 
 .topbar {
-  background-color: #ffffff;
-  color: var(--text-main);
-  box-shadow: var(--shadow-sm);
+  background-color: var(--bg-elevated) !important;
+  color: var(--text-main) !important;
+  box-shadow: var(--shadow-xs);
   border-bottom: 1px solid var(--border-color);
-  height: 64px;
+  height: 56px;
   display: flex;
   align-items: center;
-  padding: 0 24px;
+  padding: 0 20px;
   z-index: 2;
 }
 
 .menu-button {
   color: var(--text-secondary);
+  margin-right: 4px;
+}
+
+.menu-button:hover {
+  color: var(--text-main);
+}
+
+/* Topbar brand (for investor view without sidebar) */
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.topbar-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.topbar-title {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  color: var(--text-main);
+  letter-spacing: 0.01em;
 }
 
 .spacer {
   flex: 1 1 auto;
 }
 
+/* User info */
 .user-info {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 
 .user-details {
@@ -109,25 +215,48 @@
   align-items: flex-end;
 }
 
-.user-email {
-  font-size: 0.875rem;
+.user-name {
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-main);
+  line-height: 1.3;
 }
 
-.user-role {
-  font-size: 0.75rem;
+.user-role-label {
+  font-size: 0.6875rem;
   color: var(--text-secondary);
+  line-height: 1.3;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--dj-navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.user-avatar mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
 }
 
 .logout-btn {
-  color: var(--text-secondary);
-  transition: color 0.2s ease;
+  color: var(--text-muted);
+  transition: color 0.15s ease;
 }
 
 .logout-btn:hover {
-  color: var(--danger-color);
+  color: var(--dj-danger);
 }
+
+/* ============================================
+   CONTENT AREA
+   ============================================ */
 
 .content-container {
   padding: 24px;
@@ -135,15 +264,76 @@
   overflow-y: auto;
 }
 
-mat-divider {
-  border-top-color: rgba(255, 255, 255, 0.1) !important;
+/* Sidebar Banner */
+.sidebar-spacer {
+  flex-grow: 1;
+  min-height: 48px; /* Garante um espaçamento mínimo mesmo se a tela for pequena */
 }
+
+.sidebar-banner {
+  flex: 0 0 auto;
+  margin: 0 16px 24px 16px; /* Adicionado margem inferior para desgrudar do fundo */
+  padding: 16px;
+  background: linear-gradient(90deg, #0f2c42 0%, #1648b8 100%);
+  border-radius: var(--radius-md);
+  color: white;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.sidebar-banner strong {
+  font-weight: 800;
+  font-size: 0.85rem;
+  color: var(--dj-gold);
+}
+
+.banner-speed-lines {
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 2px;
+  background: rgba(255,255,255,0.4);
+  box-shadow: 0 8px 0 rgba(255,255,255,0.2), 0 -8px 0 rgba(255,255,255,0.6);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 
 @media (max-width: 768px) {
   .sidenav {
     width: 240px;
   }
+  
   .content-container {
     padding: 16px;
+  }
+
+  .topbar {
+    height: 52px;
+    padding: 0 12px;
+  }
+
+  .user-details {
+    display: none;
+  }
+
+  .user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .user-avatar mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
   }
 }

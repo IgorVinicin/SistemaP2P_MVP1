@@ -12,10 +12,10 @@ namespace backend.Application.Services
         private readonly AppDbContext _context;
         private readonly LedgerService _ledgerService;
 
-        public TreasuryService(AppDbContext context, LedgerService ledgerService)
+        public TreasuryService(AppDbContext context, LedgerService? ledgerService = null)
         {
             _context = context;
-            _ledgerService = ledgerService;
+            _ledgerService = ledgerService ?? new LedgerService(context);
         }
 
         public async Task<DepositRequest> RequestDepositAsync(Guid investorId, decimal amount, string? observacao)
@@ -138,7 +138,7 @@ namespace backend.Application.Services
             return true;
         }
 
-        public async Task<WithdrawalRequest> RequestWithdrawalAsync(Guid investorId, decimal amount, string? observacao)
+        public async Task<WithdrawalRequest> RequestWithdrawalAsync(Guid investorId, decimal amount, string? observacao, string? chavePix = null, string? tipoChavePix = null)
         {
             if (amount <= 0) throw new ArgumentException("O valor do saque deve ser maior que zero.");
 
@@ -153,10 +153,12 @@ namespace backend.Application.Services
 
                     if (wallet.SaldoDisponivel < amount)
                     {
-                        throw new Exception("Saldo insuficiente para solicitar este saque.");
+                        throw new Exception("Saldo disponível insuficiente para solicitar este saque.");
                     }
 
-                    // Move dinheiro de Disponível para Bloqueado
+                    decimal saldoAnt = wallet.SaldoDisponivel;
+
+                    // Reserva/bloqueia o valor imediatamente do saldo disponível
                     wallet.SaldoDisponivel -= amount;
                     wallet.SaldoBloqueado += amount;
                     wallet.DataAtualizacao = DateTime.UtcNow;
@@ -168,10 +170,26 @@ namespace backend.Application.Services
                         Valor = amount,
                         Status = "Pending",
                         CreatedAt = DateTime.UtcNow,
-                        Observacao = observacao
+                        Observacao = observacao,
+                        ChavePix = chavePix,
+                        TipoChavePix = tipoChavePix
                     };
 
                     _context.WithdrawalRequests.Add(request);
+
+                    _context.InvestorTransactions.Add(new InvestorTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        InvestorId = wallet.Id,
+                        Tipo = "SOLICITACAO_SAQUE",
+                        Valor = -amount,
+                        SaldoAnterior = saldoAnt,
+                        SaldoPosterior = wallet.SaldoDisponivel,
+                        DataMovimentacao = DateTime.UtcNow,
+                        Descricao = $"Solicitação de saque PIX no valor de {amount:C2} (Saldo reservado para análise)",
+                        UsuarioResponsavel = "Investidor"
+                    });
+
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
 
@@ -180,9 +198,8 @@ namespace backend.Application.Services
                 catch (DbUpdateConcurrencyException)
                 {
                     await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Concorrência intensa, tente solicitar o saque novamente.");
-                    foreach (var entry in _context.ChangeTracker.Entries().Where(e => e.Entity is InvestorWallet))
-                        await entry.ReloadAsync();
+                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao processar solicitação de saque.");
+                    foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
                     await Task.Delay(100);
                 }
                 catch
@@ -191,14 +208,15 @@ namespace backend.Application.Services
                     throw;
                 }
             }
-            throw new Exception("Falha inesperada ao solicitar saque.");
+
+            throw new Exception("Falha ao registrar solicitação de saque.");
         }
 
         public async Task<bool> ApproveWithdrawalAsync(Guid withdrawalId, string adminUser)
         {
             var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
             if (request == null) throw new Exception("Saque não encontrado.");
-            if (request.Status != "Pending") throw new Exception($"Saque já está em status {request.Status}.");
+            if (request.Status != "Pending") throw new Exception($"Saque não está pendente de análise. Status atual: {request.Status}.");
 
             request.Status = "Approved";
             request.Observacao += $" | Aprovado por {adminUser}. Aguardando gateway/processamento.";
@@ -217,6 +235,15 @@ namespace backend.Application.Services
                 {
                     var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
                     if (request == null) throw new Exception("Saque não encontrado.");
+
+                    if (request.Status == "Completed")
+                    {
+                        throw new Exception("Não é possível recusar um saque já concluído e liquidado.");
+                    }
+                    if (request.Status == "Rejected" || request.Status == "Cancelled")
+                    {
+                        throw new Exception($"Este saque já se encontra com status {request.Status}.");
+                    }
                     if (request.Status != "Pending" && request.Status != "Approved")
                     {
                         throw new Exception($"Não é possível rejeitar um saque no status {request.Status}.");
@@ -225,14 +252,37 @@ namespace backend.Application.Services
                     var wallet = await _context.InvestorWallets.FindAsync(request.InvestorId);
                     if (wallet == null) throw new Exception("Carteira não encontrada.");
 
-                    // Retorna dinheiro do Bloqueado para o Disponível
-                    wallet.SaldoBloqueado -= request.Valor;
+                    decimal saldoAnt = wallet.SaldoDisponivel;
+
+                    // Estorna o valor reservado/bloqueado de volta para o saldo disponível
+                    if (wallet.SaldoBloqueado >= request.Valor)
+                    {
+                        wallet.SaldoBloqueado -= request.Valor;
+                    }
+                    else
+                    {
+                        wallet.SaldoBloqueado = 0;
+                    }
+
                     wallet.SaldoDisponivel += request.Valor;
                     wallet.DataAtualizacao = DateTime.UtcNow;
 
                     request.Status = "Rejected";
                     request.ProcessedAt = DateTime.UtcNow;
                     request.Observacao += $" | Rejeitado por {adminUser}. Motivo: {motivo}";
+
+                    _context.InvestorTransactions.Add(new InvestorTransaction
+                    {
+                        Id = Guid.NewGuid(),
+                        InvestorId = wallet.Id,
+                        Tipo = "ESTORNO_SAQUE",
+                        Valor = request.Valor,
+                        SaldoAnterior = saldoAnt,
+                        SaldoPosterior = wallet.SaldoDisponivel,
+                        DataMovimentacao = DateTime.UtcNow,
+                        Descricao = $"Estorno de saque recusado pelo administrador: {motivo}",
+                        UsuarioResponsavel = adminUser
+                    });
 
                     await _context.SaveChangesAsync();
                     await transaction.CommitAsync();
@@ -241,7 +291,7 @@ namespace backend.Application.Services
                 catch (DbUpdateConcurrencyException)
                 {
                     await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao rejeitar o saque.");
+                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao recusar o saque.");
                     foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
                     await Task.Delay(100);
                 }
@@ -264,59 +314,73 @@ namespace backend.Application.Services
                 {
                     var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
                     if (request == null) throw new Exception("Saque não encontrado.");
-                    if (request.Status != "Approved" && request.Status != "Processing")
+
+                    if (request.Status == "Completed")
                     {
-                        throw new Exception($"O saque precisa estar Aprovado para ser confirmado. Status atual: {request.Status}");
+                        throw new Exception("Este saque já foi concluído anteriormente.");
+                    }
+                    if (request.Status == "Rejected" || request.Status == "Cancelled")
+                    {
+                        throw new Exception($"Não é possível confirmar um saque com status {request.Status}.");
+                    }
+                    if (request.Status != "Pending" && request.Status != "Approved")
+                    {
+                        throw new Exception($"Não é possível confirmar um saque no status {request.Status}.");
                     }
 
                     var wallet = await _context.InvestorWallets.FindAsync(request.InvestorId);
                     if (wallet == null) throw new Exception("Carteira não encontrada.");
 
-                    // Remove do SaldoBloqueado definitivamente
-                    wallet.SaldoBloqueado -= request.Valor;
+                    // Baixa definitiva do Saldo Bloqueado
+                    if (wallet.SaldoBloqueado >= request.Valor)
+                    {
+                        wallet.SaldoBloqueado -= request.Valor;
+                    }
+                    else
+                    {
+                        decimal diff = request.Valor - wallet.SaldoBloqueado;
+                        wallet.SaldoBloqueado = 0;
+                        if (wallet.SaldoDisponivel >= diff)
+                        {
+                            wallet.SaldoDisponivel -= diff;
+                        }
+                        else
+                        {
+                            throw new Exception("Saldo insuficiente na carteira para liquidar o saque.");
+                        }
+                    }
+
                     wallet.TotalSacado += request.Valor;
                     wallet.DataAtualizacao = DateTime.UtcNow;
 
                     request.Status = "Completed";
-                    request.GatewayReference = gatewayReference;
                     request.ProcessedAt = DateTime.UtcNow;
+                    request.GatewayReference = gatewayReference;
+                    request.Observacao += $" | Confirmado e liquidado por {adminUser}. Ref: {gatewayReference}";
 
-                    // Registro no InvestorTransaction
                     _context.InvestorTransactions.Add(new InvestorTransaction
                     {
                         Id = Guid.NewGuid(),
                         InvestorId = wallet.Id,
                         Tipo = "SAQUE",
                         Valor = -request.Valor,
-                        SaldoAnterior = wallet.SaldoDisponivel, // Saldo disp. não altera aqui, já alterou na solicitação
+                        SaldoAnterior = wallet.SaldoDisponivel,
                         SaldoPosterior = wallet.SaldoDisponivel,
                         DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Saque concluído. Gateway ref: {gatewayReference}",
+                        Descricao = $"Saque PIX liquidado e transferido. Gateway ref: {gatewayReference}",
                         UsuarioResponsavel = adminUser
                     });
 
-                    // Ledger: InvestorWallet -> PlatformCash -> ExternalGateway
-                    await _ledgerService.AddTransactionAsync(
+                    var ledgerService = new LedgerService(_context);
+                    await ledgerService.AddTransactionAsync(
                         source: LedgerAccount.InvestorWallet,
-                        destination: LedgerAccount.PlatformCash,
-                        amount: request.Valor,
-                        type: LedgerTransactionType.InvestorWithdrawal,
-                        referenceType: "WithdrawalRequest",
-                        referenceId: request.Id,
-                        userId: request.InvestorId,
-                        observacao: $"Débito do saque na carteira do investidor",
-                        createdBy: adminUser
-                    );
-
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.PlatformCash,
                         destination: LedgerAccount.ExternalGateway,
                         amount: request.Valor,
                         type: LedgerTransactionType.InvestorWithdrawal,
-                        referenceType: "WithdrawalRequest",
+                        referenceType: "Withdrawal",
                         referenceId: request.Id,
                         userId: request.InvestorId,
-                        observacao: $"Saída do dinheiro da plataforma para conta externa via Gateway",
+                        observacao: $"Saque PIX liquidado para investidor - Ref: {gatewayReference}",
                         createdBy: adminUser
                     );
 
@@ -327,7 +391,7 @@ namespace backend.Application.Services
                 catch (DbUpdateConcurrencyException)
                 {
                     await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao tentar confirmar o saque.");
+                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao confirmar o saque.");
                     foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
                     await Task.Delay(100);
                 }

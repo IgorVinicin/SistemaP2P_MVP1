@@ -1,4 +1,5 @@
 using backend.Application.DTOs;
+using backend.Application.Services;
 using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -18,11 +19,13 @@ namespace backend.API.Controllers
     {
         private readonly AppDbContext _context;
         private readonly backend.Application.Services.InvestorYieldService _yieldService;
+        private readonly ITreasuryService _treasuryService;
 
-        public InvestorController(AppDbContext context, backend.Application.Services.InvestorYieldService yieldService)
+        public InvestorController(AppDbContext context, backend.Application.Services.InvestorYieldService yieldService, ITreasuryService treasuryService)
         {
             _context = context;
             _yieldService = yieldService;
+            _treasuryService = treasuryService;
         }
 
         // GET /api/investor/wallet
@@ -125,7 +128,58 @@ namespace backend.API.Controllers
                 PerdasDefinitivas = perdasDefinitivas,
                 CoberturasFundo = coberturasFundo,
                 Rentabilidade = wallet.Rentabilidade,
-                ObservacaoAdministrativa = wallet.ObservacaoAdministrativa
+                RentabilidadeSaldoDisponivel = wallet.RentabilidadeSaldoDisponivel,
+                RentabilidadeSaldoComprometido = wallet.RentabilidadeSaldoComprometido > 0 ? wallet.RentabilidadeSaldoComprometido : wallet.Rentabilidade,
+                ObservacaoAdministrativa = wallet.ObservacaoAdministrativa,
+                ProdutoInvestimentoId = wallet.ProdutoInvestimentoId,
+                ProdutoInvestimentoNome = wallet.ProdutoInvestimentoNome,
+                ProdutoEscolhido = wallet.ProdutoEscolhido,
+                PodeAlterarProduto = wallet.PodeAlterarProduto
+            });
+        }
+
+        // POST /api/investor/select-product
+        [HttpPost("select-product")]
+        public async Task<IActionResult> SelectProduct([FromBody] SelectInvestmentProductDto dto)
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Investidor não autenticado." });
+            }
+
+            var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == userId);
+            if (wallet == null)
+            {
+                return BadRequest(new { message = "Carteira não encontrada." });
+            }
+
+            if (wallet.ProdutoEscolhido && !wallet.PodeAlterarProduto)
+            {
+                return BadRequest(new { message = "A alteração de opção de investimento está bloqueada. Solicite liberação ao administrador caso queira alterar." });
+            }
+
+            var product = await _context.InvestmentProducts.FirstOrDefaultAsync(p => p.Id == dto.ProductId && p.Ativo);
+            if (product == null)
+            {
+                return NotFound(new { message = "Produto de investimento não encontrado ou inativo." });
+            }
+
+            wallet.ProdutoInvestimentoId = product.Id;
+            wallet.ProdutoInvestimentoNome = product.Nome;
+            wallet.Rentabilidade = product.RentabilidadeMensal;
+            wallet.RentabilidadeSaldoComprometido = product.RentabilidadeMensal;
+            wallet.ProdutoEscolhido = true;
+            wallet.PodeAlterarProduto = false;
+            wallet.DataAtualizacao = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new 
+            { 
+                message = $"Opção '{product.Nome}' contratada com sucesso! Sua rentabilidade foi definida para {product.RentabilidadeMensal:N2}% a.m.", 
+                rentabilidade = wallet.Rentabilidade,
+                produto = wallet.ProdutoInvestimentoNome
             });
         }
 
@@ -194,8 +248,13 @@ namespace backend.API.Controllers
 
             try
             {
+                var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == userId);
                 decimal preview = await _yieldService.GetDailyYieldPreviewAsync(userId);
-                return Ok(new { rendimentoDiarioEstimado = preview });
+                return Ok(new 
+                { 
+                    rendimentoDiarioEstimado = preview, 
+                    totalRendimentosPagos = wallet?.Rendimentos ?? 0 
+                });
             }
             catch (Exception ex)
             {
@@ -217,39 +276,15 @@ namespace backend.API.Controllers
                 return Unauthorized(new { message = "Investidor não autenticado." });
             }
 
-            var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == userId);
-            if (wallet == null)
+            try
             {
-                return BadRequest(new { message = "Carteira não encontrada." });
+                var request = await _treasuryService.RequestWithdrawalAsync(userId, dto.Valor, "Saque solicitado via painel do investidor", dto.ChavePix, dto.TipoChavePix);
+                return Ok(new { message = "Solicitação de saque enviada com sucesso e aguardando aprovação.", id = request.Id });
             }
-
-            if (wallet.SaldoDisponivel < dto.Valor)
+            catch (Exception ex)
             {
-                return BadRequest(new { message = "Saldo disponível insuficiente para realizar o saque solicitado." });
+                return BadRequest(new { message = ex.Message });
             }
-
-            decimal saldoAnterior = wallet.SaldoDisponivel;
-            wallet.SaldoDisponivel -= dto.Valor;
-            wallet.TotalSacado += dto.Valor;
-            wallet.DataAtualizacao = DateTime.UtcNow;
-
-            var transaction = new InvestorTransaction
-            {
-                Id = Guid.NewGuid(),
-                InvestorId = userId,
-                Tipo = "SAQUE",
-                Valor = -dto.Valor,
-                SaldoAnterior = saldoAnterior,
-                SaldoPosterior = wallet.SaldoDisponivel,
-                DataMovimentacao = DateTime.UtcNow,
-                Descricao = $"Saque simulado no valor de {dto.Valor:C2}",
-                UsuarioResponsavel = "Investidor"
-            };
-
-            _context.InvestorTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Saque realizado com sucesso.", saldoDisponivel = wallet.SaldoDisponivel });
         }
 
         // GET /api/investor/transactions

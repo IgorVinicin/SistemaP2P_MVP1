@@ -18,7 +18,23 @@ namespace backend.Application.DTOs
         public decimal PerdasDefinitivas { get; set; }
         public decimal CoberturasFundo { get; set; }
         public decimal Rentabilidade { get; set; }
+        public decimal RentabilidadeSaldoDisponivel { get; set; }
+        public decimal RentabilidadeSaldoComprometido { get; set; }
         public string ObservacaoAdministrativa { get; set; } = string.Empty;
+        public Guid? ProdutoInvestimentoId { get; set; }
+        public string? ProdutoInvestimentoNome { get; set; }
+        public bool ProdutoEscolhido { get; set; }
+        public bool PodeAlterarProduto { get; set; }
+    }
+
+    public class UpdateRentabilidadeDisponivelDto
+    {
+        public decimal RentabilidadeSaldoDisponivel { get; set; }
+    }
+
+    public class SelectInvestmentProductDto
+    {
+        public Guid ProductId { get; set; }
     }
 
     public class MakeDepositDto
@@ -29,6 +45,8 @@ namespace backend.Application.DTOs
     public class MakeWithdrawDto
     {
         public decimal Valor { get; set; }
+        public string? ChavePix { get; set; }
+        public string? TipoChavePix { get; set; }
     }
 
     public class AdminWalletAdjustmentDto

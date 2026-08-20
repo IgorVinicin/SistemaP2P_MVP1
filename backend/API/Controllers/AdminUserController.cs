@@ -117,7 +117,8 @@ namespace backend.API.Controllers
                     Nome = u.Profile != null ? u.Profile.Nome : string.Empty,
                     CPF = u.Profile != null ? u.Profile.CPF : string.Empty,
                     ScoreAtual = u.Profile != null ? u.Profile.ScoreAtual : 0,
-                    Rentabilidade = u.Wallet != null ? u.Wallet.Rentabilidade : (decimal?)null
+                    Rentabilidade = u.Wallet != null ? u.Wallet.Rentabilidade : (decimal?)null,
+                    SaldoDisponivel = u.Wallet != null ? u.Wallet.SaldoDisponivel : 0
                 })
                 .ToListAsync();
 
@@ -143,7 +144,7 @@ namespace backend.API.Controllers
             var query = _context.Users
                 .AsNoTracking()
                 .Include(u => u.Profile)
-                .Where(u => u.Status == "EmAnalise")
+                .Where(u => u.Status == "EmAnalise" || u.Status == "Pendente")
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -207,10 +208,6 @@ namespace backend.API.Controllers
             }
 
             var user = await _context.Users.Include(u => u.Wallet).FirstOrDefaultAsync(u => u.Id == id);
-            if (user != null && user.Role == "Investidor" && dto.Rentabilidade.HasValue && user.Wallet != null)
-            {
-                user.Wallet.Rentabilidade = dto.Rentabilidade.Value;
-            }
 
             await _context.SaveChangesAsync();
             return Ok(new { message = "Perfil atualizado com sucesso." });
@@ -229,6 +226,28 @@ namespace backend.API.Controllers
             user.Status = status;
             await _context.SaveChangesAsync();
             return Ok(new { message = "Status atualizado com sucesso." });
+        }
+
+        // PUT /api/admin/users/{id}/password
+        [HttpPut("{id}/password")]
+        public async Task<IActionResult> ResetUserPassword(Guid id, [FromBody] AdminResetPasswordDto dto)
+        {
+            if (dto == null || string.IsNullOrWhiteSpace(dto.NovaSenha) || dto.NovaSenha.Length < 4)
+            {
+                return BadRequest(new { message = "A nova senha deve possuir no mínimo 4 caracteres." });
+            }
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+            if (user == null)
+            {
+                return NotFound(new { message = "Usuário não encontrado." });
+            }
+
+            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<User>();
+            user.PasswordHash = hasher.HashPassword(user, dto.NovaSenha);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Senha do usuário redefinida com sucesso." });
         }
 
         // Visualizar detalhes completos do usuário
@@ -392,27 +411,39 @@ namespace backend.API.Controllers
                 doc.Status = "Aprovado";
             }
 
-            // Se for investidor, configurar rentabilidade e observação
+            // Se for investidor, inicializa a carteira se ainda não existir
             if (user.Role.Equals("Investidor", StringComparison.OrdinalIgnoreCase))
             {
                 if (user.Wallet == null)
                 {
+                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+                    decimal baseRentabilidade = config?.TaxaRendimentoPool ?? 2.00m;
+
+                    var defaultProduct = await _context.InvestmentProducts
+                        .Where(p => p.Ativo)
+                        .OrderBy(p => p.ValorMinimo)
+                        .FirstOrDefaultAsync();
+
+                    if (defaultProduct != null)
+                    {
+                        baseRentabilidade = defaultProduct.RentabilidadeMensal;
+                    }
+
                     user.Wallet = new InvestorWallet
                     {
                         Id = user.Id,
                         SaldoDisponivel = 0,
                         SaldoInvestido = 0,
                         Rendimentos = 0,
+                        Rentabilidade = baseRentabilidade,
                         PerfilInvestimento = "Conservador"
                     };
                     _context.InvestorWallets.Add(user.Wallet);
                 }
 
-                if (dto != null)
+                if (dto != null && !string.IsNullOrWhiteSpace(dto.ObservacaoAdministrativa))
                 {
-                    decimal rentabilidadeDesejada = dto.Rentabilidade ?? 0;
-                    user.Wallet.Rentabilidade = rentabilidadeDesejada;
-                    user.Wallet.ObservacaoAdministrativa = dto.ObservacaoAdministrativa ?? string.Empty;
+                    user.Wallet.ObservacaoAdministrativa = dto.ObservacaoAdministrativa;
                 }
                 user.Wallet.DataAtualizacao = DateTime.UtcNow;
             }
@@ -494,5 +525,52 @@ namespace backend.API.Controllers
                 return BadRequest(new { message = ex.Message });
             }
         }
+
+        // Liberar acesso para o investidor escolher/alterar opção de investimento
+        [HttpPost("{id}/allow-product-change")]
+        public async Task<IActionResult> AllowInvestorProductChange(Guid id)
+        {
+            var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == id);
+            if (wallet == null)
+            {
+                return NotFound(new { message = "Carteira de investidor não encontrada." });
+            }
+
+            wallet.PodeAlterarProduto = true;
+            wallet.DataAtualizacao = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Acesso às opções de investimento liberado com sucesso para este investidor!" });
+        }
+
+        // Definir/Atualizar rentabilidade do saldo disponível (livre) do investidor
+        [HttpPut("{id}/rentabilidade-disponivel")]
+        public async Task<IActionResult> UpdateRentabilidadeDisponivel(Guid id, [FromBody] UpdateRentabilidadeDisponivelDto dto)
+        {
+            if (dto.RentabilidadeSaldoDisponivel < 0)
+            {
+                return BadRequest(new { message = "A rentabilidade do saldo disponível não pode ser negativa." });
+            }
+
+            var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == id);
+            if (wallet == null)
+            {
+                return NotFound(new { message = "Carteira de investidor não encontrada." });
+            }
+
+            wallet.RentabilidadeSaldoDisponivel = dto.RentabilidadeSaldoDisponivel;
+            wallet.DataAtualizacao = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                message = $"Rentabilidade do saldo disponível atualizada para {dto.RentabilidadeSaldoDisponivel:N2}% a.m. com sucesso!", 
+                rentabilidade = wallet.RentabilidadeSaldoDisponivel 
+            });
+        }
+    }
+
+    public class AdminResetPasswordDto
+    {
+        public string NovaSenha { get; set; } = string.Empty;
     }
 }

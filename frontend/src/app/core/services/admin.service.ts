@@ -88,4 +88,16 @@ export class AdminService {
   public updateUserScore(id: string, novoScore: number, motivo: string): Observable<any> {
     return this.http.put<any>(`${this.apiUrl}/${id}/score`, { novoScore, motivo });
   }
+
+  public resetUserPassword(id: string, novaSenha: string): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/password`, { novaSenha });
+  }
+
+  public allowInvestorProductChange(id: string): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/${id}/allow-product-change`, {});
+  }
+
+  public updateRentabilidadeDisponivel(id: string, rentabilidadeSaldoDisponivel: number): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}/${id}/rentabilidade-disponivel`, { rentabilidadeSaldoDisponivel });
+  }
 }

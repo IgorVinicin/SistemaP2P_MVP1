@@ -22,7 +22,9 @@ export interface RegisterDto {
 export interface AuthResponseDto {
   userId: string;
   email: string;
+  nome: string;
   role: string;
   status: string; // 'Pendente' | 'EmAnalise' | 'Aprovado' | 'Reprovado'
+  cpf?: string;
   token: string;
 }

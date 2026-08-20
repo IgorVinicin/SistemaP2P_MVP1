@@ -30,33 +30,41 @@ namespace backend.API.Controllers
             {
                 DateTime? start = startDate;
                 DateTime? end = endDate;
-                var now = DateTime.UtcNow;
+                var brasiliaNow = CashFlowService.ToBrasiliaDate(DateTime.UtcNow);
 
                 if (string.IsNullOrEmpty(startDate?.ToString()) && string.IsNullOrEmpty(endDate?.ToString()))
                 {
+                    DateTime rangeStart = brasiliaNow;
+                    DateTime rangeEnd = brasiliaNow;
+
                     switch (period.ToLower())
                     {
                         case "hoje":
-                            start = now.Date;
-                            end = now.Date;
+                            rangeStart = brasiliaNow;
+                            rangeEnd = brasiliaNow;
                             break;
                         case "ontem":
-                            start = now.Date.AddDays(-1);
-                            end = now.Date.AddDays(-1);
+                            rangeStart = brasiliaNow.AddDays(-1);
+                            rangeEnd = brasiliaNow.AddDays(-1);
                             break;
                         case "7dias":
-                            start = now.Date.AddDays(-7);
-                            end = now.Date;
+                            rangeStart = brasiliaNow.AddDays(-7);
+                            rangeEnd = brasiliaNow;
                             break;
                         case "30dias":
-                            start = now.Date.AddDays(-30);
-                            end = now.Date;
+                            rangeStart = brasiliaNow.AddDays(-30);
+                            rangeEnd = brasiliaNow;
                             break;
                         case "mesatual":
-                            start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                            end = now.Date;
+                            rangeStart = new DateTime(brasiliaNow.Year, brasiliaNow.Month, 1);
+                            rangeEnd = brasiliaNow;
                             break;
                     }
+
+                    var (startUtc, _) = CashFlowService.GetBrasiliaDayRangeUtc(rangeStart);
+                    var (_, endUtc) = CashFlowService.GetBrasiliaDayRangeUtc(rangeEnd);
+                    start = startUtc;
+                    end = endUtc;
                 }
 
                 var summary = await _cashFlowService.GetSummaryAsync(start, end);
@@ -74,7 +82,7 @@ namespace backend.API.Controllers
         {
             try
             {
-                var targetDate = date ?? DateTime.UtcNow.Date;
+                var targetDate = date ?? DateTime.UtcNow;
                 var snapshot = await _cashFlowService.GenerateSnapshotAsync(targetDate);
                 return Ok(new { message = "Fechamento de caixa diário (Snapshot) gerado com sucesso.", data = snapshot });
             }
@@ -134,6 +142,27 @@ namespace backend.API.Controllers
             {
                 var csvBytes = await _cashFlowService.GetTransactionsCsvAsync(period, search, type, startDate, endDate);
                 return File(csvBytes, "text/csv", "relatorio-fluxo-caixa.csv");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // GET /api/admin/cashflow/closing-conference
+        [HttpGet("closing-conference")]
+        public async Task<IActionResult> GetClosingConference(
+            [FromQuery] string period = "hoje",
+            [FromQuery] DateTime? startDate = null,
+            [FromQuery] DateTime? endDate = null,
+            [FromQuery] string? status = null,
+            [FromQuery] string? tipoEmprestimo = null,
+            [FromQuery] string? tomador = null)
+        {
+            try
+            {
+                var conference = await _cashFlowService.GetClosingConferenceAsync(period, startDate, endDate, status, tipoEmprestimo, tomador);
+                return Ok(conference);
             }
             catch (Exception ex)
             {

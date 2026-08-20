@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
@@ -10,9 +10,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { AdminService } from '../../../../core/services/admin.service';
-import { AdminCreditService } from '../../../../core/services/admin-credit.service';
 import { UserDetailDto } from '../../../../core/models/user.models';
-import { forkJoin } from 'rxjs';
 
 export interface UserEditDialogData {
   userId: string;
@@ -141,6 +139,30 @@ export class UserEditDialogComponent implements OnInit {
       error: (err) => {
         this.isProcessing = false;
         this.snackBar.open(err.error?.message || 'Erro ao atualizar score.', 'Fechar', { duration: 4500 });
+      }
+    });
+  }
+
+  // Redefinição de Senha
+  public novaSenha = '';
+  public isPasswordVisible = false;
+
+  public resetPassword(): void {
+    if (!this.novaSenha || this.novaSenha.length < 4) {
+      this.snackBar.open('A nova senha deve ter no mínimo 4 caracteres.', 'Fechar', { duration: 4000 });
+      return;
+    }
+
+    this.isProcessing = true;
+    this.adminService.resetUserPassword(this.data.userId, this.novaSenha).subscribe({
+      next: () => {
+        this.isProcessing = false;
+        this.snackBar.open('Senha redefinida com sucesso!', 'Fechar', { duration: 3500 });
+        this.novaSenha = '';
+      },
+      error: (err) => {
+        this.isProcessing = false;
+        this.snackBar.open(err.error?.message || 'Erro ao redefinir senha.', 'Fechar', { duration: 4500 });
       }
     });
   }

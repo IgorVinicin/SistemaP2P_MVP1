@@ -48,7 +48,7 @@ export class AdminReportPdfService {
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
       doc.setFont('helvetica', 'normal');
-      doc.text('SISTEMA P2P - PLATAFORMA DE CRÉDITO', 14, 10);
+      doc.text('DINHEIRO A JATO - PLATAFORMA DE CRÉDITO', 14, 10);
       doc.text(`Emitido em: ${emitDate}`, 196, 10, { align: 'right' });
       
       // Linha separadora do cabeçalho

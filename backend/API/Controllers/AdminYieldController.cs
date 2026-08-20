@@ -18,6 +18,22 @@ namespace backend.API.Controllers
             _yieldService = yieldService;
         }
 
+        // GET /api/admin/yield/preview
+        [HttpGet("preview")]
+        public async Task<IActionResult> GetMonthlyYieldPreview([FromQuery] DateTime? targetDate = null)
+        {
+            try
+            {
+                var date = targetDate ?? DateTime.UtcNow;
+                var preview = await _yieldService.GetMonthlyYieldPreviewAsync(date);
+                return Ok(preview);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
         // POST /api/admin/yield/process
         [HttpPost("process")]
         public async Task<IActionResult> ProcessMonthlyYield()
@@ -30,6 +46,28 @@ namespace backend.API.Controllers
                 return Ok(new 
                 { 
                     message = "Fechamento de rendimentos processado com sucesso.", 
+                    investidoresProcessados = processed, 
+                    totalRendimentoDistribuido = totalYield 
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        // POST /api/admin/yield/process-daily
+        [HttpPost("process-daily")]
+        public async Task<IActionResult> ProcessDailyYield([FromQuery] DateTime? targetDate = null)
+        {
+            try
+            {
+                var usuario = User.Identity?.Name ?? "Admin";
+                var (processed, totalYield) = await _yieldService.ProcessDailyYieldAsync(usuario, targetDate);
+
+                return Ok(new 
+                { 
+                    message = "Rendimento diário processado com sucesso.", 
                     investidoresProcessados = processed, 
                     totalRendimentoDistribuido = totalYield 
                 });

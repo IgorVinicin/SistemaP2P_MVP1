@@ -10,6 +10,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 
 import { LoanService } from '../../../../core/services/loan.service';
 import { LoanEligibility } from '../../../../core/models/loan.models';
@@ -28,7 +29,8 @@ import { LoanEligibility } from '../../../../core/models/loan.models';
     MatInputModule,
     MatSelectModule,
     MatSnackBarModule,
-    MatDividerModule
+    MatDividerModule,
+    MatCheckboxModule
   ],
   templateUrl: './loan-request.component.html',
   styleUrls: ['./loan-request.component.css']

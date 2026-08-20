@@ -17,7 +17,15 @@ namespace backend.Domain.Entities
         public DateTime DataCriacao { get; set; } = DateTime.UtcNow;
         public DateTime DataAtualizacao { get; set; } = DateTime.UtcNow;
         public decimal Rentabilidade { get; set; } = 0;
+        public decimal RentabilidadeSaldoDisponivel { get; set; } = 1.00m; // Definida pelo Admin
+        public decimal RentabilidadeSaldoComprometido { get; set; } = 0; // Baseada na opção de investimento escolhida pelo usuário
         public string ObservacaoAdministrativa { get; set; } = string.Empty;
+        
+        // Controle de Escolha de Produto de Investimento
+        public Guid? ProdutoInvestimentoId { get; set; }
+        public string? ProdutoInvestimentoNome { get; set; }
+        public bool ProdutoEscolhido { get; set; } = false;
+        public bool PodeAlterarProduto { get; set; } = true;
         
         [ConcurrencyCheck]
         public uint Version { get; set; } // Otimistic Concurrency Token

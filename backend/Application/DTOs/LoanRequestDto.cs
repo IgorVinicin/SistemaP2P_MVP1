@@ -6,6 +6,7 @@ namespace backend.Application.DTOs
         public int QuantidadeParcelas { get; set; }
         public string Finalidade { get; set; } = string.Empty;
         public string Observacoes { get; set; } = string.Empty;
+        public bool SolicitaAumentoLimite { get; set; }
     }
 
     public class LoanEligibilityDto
@@ -33,5 +34,6 @@ namespace backend.Application.DTOs
         public string? PeriodicidadeGold { get; set; } // Semanal, Quinzenal, Mensal
         public decimal? ValorAprovado { get; set; }
         public Guid? InvestorGroupId { get; set; }
+        public DateTime? DataPrimeiraParcela { get; set; }
     }
 }

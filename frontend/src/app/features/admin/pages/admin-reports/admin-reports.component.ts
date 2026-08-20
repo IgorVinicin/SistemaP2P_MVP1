@@ -103,7 +103,7 @@ export class AdminReportsComponent implements OnInit {
     periodoInicio: '',
     periodoFim: ''
   };
-  public loanColumns = ['tomador', 'tipoEmprestimo', 'valor', 'juros', 'parcelas', 'status', 'dataCriacao'];
+  public loanColumns = ['tomador', 'tipoEmprestimo', 'valor', 'juros', 'status', 'dataCriacao'];
 
   // 4. Financeiro Consolidated State
   public financialReport: FinancialConsolidatedReport | null = null;

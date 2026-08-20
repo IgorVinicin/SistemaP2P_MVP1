@@ -1,216 +1,125 @@
+/* ============================================
+   SCORE CONFIG — Dinheiro a Jato Design System
+   ============================================ */
+
 .score-config-container {
   max-width: 1000px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
+  margin: 0 auto;
 }
 
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-6);
 }
 
-.title-section h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.title-section p {
-  color: #64748b;
-  margin: 0.25rem 0 0 0;
-  font-size: 0.95rem;
-}
+.title-section h1 { font-size: 1.375rem; font-weight: 700; color: var(--text-main); margin: 0; }
+.title-section p { color: var(--text-secondary); margin: var(--space-1) 0 0; font-size: 0.8125rem; }
 
 .add-btn {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   padding: 0.5rem 1.25rem;
-  font-weight: 500;
-  letter-spacing: 0.3px;
-  box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
-  transition: all 0.2s ease;
+  font-weight: 600;
 }
 
-.add-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 12px -2px rgba(79, 70, 229, 0.3);
-}
-
-.questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
+.questions-list { display: flex; flex-direction: column; gap: var(--space-4); }
 
 .question-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  transition: box-shadow 0.15s ease;
   overflow: hidden;
 }
 
-.question-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.05);
-}
+.question-card:hover { box-shadow: var(--shadow-sm); }
 
-.inactive-card {
-  opacity: 0.75;
-  background-color: #f8fafc;
-}
+.inactive-card { opacity: 0.7; background-color: var(--bg-elevated); }
 
 .question-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.5rem;
-  background-color: #ffffff;
-  border-bottom: 1px solid #f1f5f9;
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--bg-card);
+  border-bottom: 1px solid var(--border-light);
 }
 
-.question-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
+.question-info { display: flex; align-items: center; gap: var(--space-3); }
 
-.question-title {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
-}
+.question-title { font-size: 1rem; font-weight: 600; color: var(--text-main); margin: 0; }
 
 .status-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
   font-weight: 600;
 }
+.status-badge.active { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.inactive { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
 
-.status-badge.active {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.inactive {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.action-buttons {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
+.action-buttons { display: flex; align-items: center; gap: var(--space-2); }
 
 .options-section {
-  padding: 1.25rem 1.5rem;
-  background-color: #fafbfd;
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--bg-elevated);
 }
 
 .options-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-3);
 }
 
 .options-header h4 {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #475569;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
   margin: 0;
 }
 
-.options-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
+.options-list { display: flex; flex-direction: column; gap: var(--space-2); }
 
 .option-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.75rem 1rem;
-  background-color: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  padding: var(--space-3) var(--space-4);
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
-.option-text-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
+.option-text-wrapper { display: flex; align-items: center; gap: var(--space-3); }
+.option-bullet { width: 6px; height: 6px; border-radius: 50%; background-color: var(--dj-blue); }
+.option-text { font-size: 0.8125rem; color: var(--text-main); font-weight: 500; }
 
-.option-bullet {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background-color: #6366f1;
-}
-
-.option-text {
-  font-size: 0.95rem;
-  color: #334155;
-  font-weight: 500;
-}
-
-.option-details {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
+.option-details { display: flex; align-items: center; gap: var(--space-5); }
 
 .points-pill {
-  background-color: #e0e7ff;
-  color: #4338ca;
-  font-weight: 600;
-  font-size: 0.85rem;
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
+  background-color: var(--dj-blue-light);
+  color: var(--dj-blue);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
 }
 
 .empty-options {
-  padding: 1.5rem;
+  padding: var(--space-5);
   text-align: center;
-  color: #94a3b8;
-  font-size: 0.9rem;
-  border: 1px dashed #cbd5e1;
-  border-radius: 8px;
-  background-color: #ffffff;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-card);
 }
 
-/* Dialog Form Styles */
-.form-field-full {
-  width: 100%;
-  margin-bottom: 1rem;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-}
-
-.inline-form {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  width: 100%;
-}
-
-.inline-form-field {
-  flex: 1;
-}
-
-.points-field {
-  width: 100px;
-}
+.form-field-full { width: 100%; margin-bottom: var(--space-4); }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); }
+.inline-form { display: flex; align-items: center; gap: var(--space-4); width: 100%; }
+.inline-form-field { flex: 1; }
+.points-field { width: 100px; }

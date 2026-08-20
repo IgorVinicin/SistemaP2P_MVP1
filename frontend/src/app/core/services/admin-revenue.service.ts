@@ -31,6 +31,28 @@ export interface PagedRevenueResultDto {
   totalPages: number;
 }
 
+export interface YieldPreviewItemDto {
+  investorId: string;
+  nome: string;
+  cpf: string;
+  saldoDisponivel: number;
+  saldoInvestido: number;
+  saldoTotal: number;
+  rendimentoEstimado: number;
+}
+
+export interface YieldPreviewDto {
+  taxaRendimento: number;
+  taxaEfetiva: number;
+  taxaNaoConfigurada: boolean;
+  totalInvestidores: number;
+  totalRendimentoEstimado: number;
+  jaDistribuidoEsteMes: boolean;
+  dataDistribuicao?: string;
+  usuarioResponsavel?: string;
+  itens: YieldPreviewItemDto[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -41,6 +63,10 @@ export class AdminRevenueService {
 
   getDashboardMetrics(): Observable<RevenueDashboardMetricsDto> {
     return this.http.get<RevenueDashboardMetricsDto>(`${this.apiUrl}/dashboard`);
+  }
+
+  getYieldPreview(): Observable<YieldPreviewDto> {
+    return this.http.get<YieldPreviewDto>(`${environment.apiUrl}/admin/yield/preview`);
   }
 
   processYield(): Observable<any> {

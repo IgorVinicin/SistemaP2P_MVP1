@@ -1,26 +1,220 @@
-.login-wrapper {
+/* ============================================
+   LOGIN PAGE — Dinheiro a Jato
+   ============================================ */
+
+.login-page {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: calc(100vh - 120px);
+  min-height: 100vh;
+  background-color: var(--bg-main);
 }
 
-.login-card {
+/* ============================================
+   LEFT PANEL — Institutional Branding
+   ============================================ */
+
+.login-brand-panel {
+  flex: 0 0 420px;
+  background: linear-gradient(165deg, var(--dj-navy) 0%, #0d1f3c 50%, #0a1628 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Subtle pattern overlay */
+.login-brand-panel::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 30% 70%, rgba(26, 86, 219, 0.08) 0%, transparent 60%),
+              radial-gradient(circle at 70% 20%, rgba(212, 160, 23, 0.05) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.brand-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.brand-logo {
+  width: 100px;
+  height: 100px;
+  object-fit: contain;
+  margin-bottom: 24px;
+}
+
+.brand-name {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  margin: 0 0 8px 0;
+  line-height: 1.2;
+}
+
+.brand-tagline {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0 0 24px 0;
+  font-weight: 400;
+}
+
+.brand-separator {
+  width: 40px;
+  height: 2px;
+  background-color: var(--dj-gold);
+  margin: 0 auto 16px;
+}
+
+.brand-institution {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   RIGHT PANEL — Login Form
+   ============================================ */
+
+.login-form-panel {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+}
+
+.login-form-wrapper {
   width: 100%;
-  max-width: 400px;
-  padding: 10px;
+  max-width: 380px;
+}
+
+.form-logo-mobile {
+  display: none;
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  margin-bottom: 16px;
+}
+
+.login-form-header {
+  margin-bottom: 32px;
+}
+
+.login-form-header h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 6px 0;
+}
+
+.login-form-header p {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin: 0;
 }
 
 .login-form {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 15px;
+  gap: 4px;
 }
 
-.register-link {
+.login-form mat-form-field {
   width: 100%;
+}
+
+.login-form .mat-icon[matPrefix] {
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+.login-submit-btn {
+  height: 44px;
+  font-size: 0.875rem !important;
+  font-weight: 600 !important;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.login-submit-btn mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.login-footer {
   text-align: center;
-  font-size: 14px;
-  margin-top: 10px;
+  margin-top: 40px;
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 900px) {
+  .login-page {
+    flex-direction: column;
+  }
+
+  .login-brand-panel {
+    flex: 0 0 auto;
+    padding: 40px 24px 32px 24px;
+  }
+
+  .brand-logo {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 12px;
+  }
+
+  .brand-name {
+    font-size: 1.35rem;
+    margin-bottom: 4px;
+  }
+
+  .brand-tagline {
+    font-size: 0.8rem;
+    margin-bottom: 0;
+  }
+
+  .brand-separator {
+    display: none;
+  }
+
+  .form-logo-mobile {
+    display: none; /* Não precisamos mais, pois o logo principal está visível no topo */
+  }
+
+  .login-form-panel {
+    padding: 32px 24px;
+    align-items: flex-start; /* Eleva o formulário na tela mobile */
+  }
+  
+  .login-form-header h2 {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .login-form-panel {
+    padding: 24px 16px;
+  }
+
+  .login-form-wrapper {
+    max-width: 100%;
+  }
 }

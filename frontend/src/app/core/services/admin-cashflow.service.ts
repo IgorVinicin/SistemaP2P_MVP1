@@ -37,6 +37,40 @@ export interface PagedResult<T> {
   totalPages: number;
 }
 
+export interface CashFlowClosingItemDto {
+  installmentId: string;
+  loanRequestId: string;
+  tomadorNome: string;
+  tomadorCpf: string;
+  tipoEmprestimo: string;
+  valorParcela: number;
+  multa: number;
+  jurosMora: number;
+  valorTotalDevido: number;
+  valorPago: number;
+  valorRestante: number;
+  percentualPago: number;
+  numeroParcela: number;
+  quantidadeTotalParcelas: number;
+  numeroParcelaFormatado: string;
+  dataVencimento: string;
+  dataPagamento?: string;
+  statusOriginal: string;
+  statusCalculado: string; // "Paga", "Parcialmente Paga", "Em Débito"
+  diasAtraso: number;
+}
+
+export interface CashFlowClosingConferenceDto {
+  totalParcelasPrevistas: number;
+  totalParcelasPagas: number;
+  totalParcelasParciais: number;
+  totalParcelasEmDebito: number;
+  valorTotalRecebido: number;
+  valorAindaPendente: number;
+  percentualAdimplencia: number;
+  items: CashFlowClosingItemDto[];
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -92,4 +126,57 @@ export class AdminCashFlowService {
     if (date) params = params.set('date', date);
     return this.http.post<any>(`${this.apiUrl}/snapshot`, {}, { params });
   }
+
+  getClosingConference(
+    period: string = 'hoje',
+    startDate?: Date | null,
+    endDate?: Date | null,
+    status?: string,
+    tipoEmprestimo?: string,
+    tomador?: string
+  ): Observable<CashFlowClosingConferenceDto> {
+    let params = new HttpParams().set('period', period);
+    if (startDate) params = params.set('startDate', startDate.toISOString());
+    if (endDate) params = params.set('endDate', endDate.toISOString());
+    if (status) params = params.set('status', status);
+    if (tipoEmprestimo) params = params.set('tipoEmprestimo', tipoEmprestimo);
+    if (tomador) params = params.set('tomador', tomador);
+
+    return this.http.get<CashFlowClosingConferenceDto>(`${this.apiUrl}/closing-conference`, { params });
+  }
+
+  getWithdrawals(status?: string): Observable<AdminWithdrawalRequestDto[]> {
+    let params = new HttpParams();
+    if (status) params = params.set('status', status);
+    return this.http.get<AdminWithdrawalRequestDto[]>(`${environment.apiUrl}/admin/treasury/withdrawals`, { params });
+  }
+
+  approveWithdrawal(id: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/approve`, {});
+  }
+
+  rejectWithdrawal(id: string, motivo: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/reject`, { motivo });
+  }
+
+  confirmWithdrawal(id: string, gatewayReference: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/confirm`, { gatewayReference });
+  }
+}
+
+export interface AdminWithdrawalRequestDto {
+  id: string;
+  investorId: string;
+  investor?: {
+    nome?: string;
+    cpf?: string;
+    email?: string;
+  };
+  valor: number;
+  status: string;
+  chavePix?: string;
+  tipoChavePix?: string;
+  observacao?: string;
+  createdAt: string;
+  processedAt?: string;
 }

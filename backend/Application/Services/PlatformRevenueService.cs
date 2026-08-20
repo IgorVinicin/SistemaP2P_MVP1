@@ -17,7 +17,7 @@ namespace backend.Application.Services
             _context = context;
         }
 
-        public async Task<PlatformRevenue> RegisterRevenueAsync(
+        public async Task<PlatformRevenue?> RegisterRevenueAsync(
             PlatformRevenueType tipo, 
             decimal valor, 
             Guid? loanId = null, 

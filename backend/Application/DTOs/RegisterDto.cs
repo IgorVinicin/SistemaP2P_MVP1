@@ -19,5 +19,7 @@ namespace backend.Application.DTOs
         public string? CNPJ { get; set; }
         public int? TempoEmpresa { get; set; } // Em meses
         public decimal? FaturamentoMensal { get; set; }
+        // Campo de aporte inicial pretendido pelo investidor
+        public decimal? ValorInicialInvestimento { get; set; }
     }
 }

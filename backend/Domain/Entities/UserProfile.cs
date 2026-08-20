@@ -12,6 +12,7 @@ namespace backend.Domain.Entities
         public int ScoreAtual { get; set; } = 0;
         public bool QuestionnaireCompleted { get; set; } = false;
         public bool PossuiEmpresa { get; set; } = false;
+        public decimal? LimitePersonalizado { get; set; }
 
         // Propriedade de navegação
         public User? User { get; set; }

@@ -10,6 +10,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthService } from '../../../core/services/auth.service';
+import { BrazilianValidators } from '../../../core/validators/brazilian-validators';
 
 @Component({
   selector: 'app-register',
@@ -43,18 +44,33 @@ export class RegisterComponent implements OnInit {
   public ngOnInit(): void {
     this.registerForm = this.fb.group({
       nome: ['', Validators.required],
-      cpf: ['', [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)]], // Máscara de CPF
-      telefone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{4,5}-\d{4}$/)]], // Máscara de Telefone
-      dataNascimento: ['', Validators.required],
+      cpf: ['', [Validators.required, BrazilianValidators.cpf()]],
+      telefone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{4,5}-\d{4}$/)]],
+      dataNascimento: ['', [Validators.required, BrazilianValidators.maioridade()]],
       email: ['', [Validators.required, Validators.email]],
       senha: ['', [Validators.required, Validators.minLength(4)]],
       role: ['Cliente', Validators.required], // Cliente ou Investidor
+      valorInicialInvestimento: [null],
       possuiEmpresa: [false],
       razaoSocial: [''],
       nomeFantasia: [''],
       cnpj: [''],
       tempoEmpresa: [null],
       faturamentoMensal: [null]
+    });
+
+    // Validadores condicionais baseados na role (Investidor usa CPF e não exige e-mail ou dados de empresa)
+    this.registerForm.get('role')?.valueChanges.subscribe(role => {
+      const emailControl = this.registerForm.get('email');
+      const empresaControl = this.registerForm.get('possuiEmpresa');
+      if (role === 'Investidor') {
+        emailControl?.clearValidators();
+        emailControl?.setValue('');
+        empresaControl?.setValue(false);
+      } else {
+        emailControl?.setValidators([Validators.required, Validators.email]);
+      }
+      emailControl?.updateValueAndValidity();
     });
 
     // Validadores condicionais baseados no toggle possuiEmpresa
@@ -66,7 +82,7 @@ export class RegisterComponent implements OnInit {
           if (field === 'tempoEmpresa' || field === 'faturamentoMensal') {
             control?.setValidators([Validators.required, Validators.min(0)]);
           } else if (field === 'cnpj') {
-            control?.setValidators([Validators.required, Validators.pattern(/^\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}$/)]); // Máscara de CNPJ
+            control?.setValidators([Validators.required, BrazilianValidators.cnpj()]);
           } else {
             control?.setValidators([Validators.required]);
           }
@@ -82,6 +98,11 @@ export class RegisterComponent implements OnInit {
     if (routeRole) {
       this.isRolePredefined = true;
       this.registerForm.patchValue({ role: routeRole });
+      if (routeRole === 'Investidor') {
+        this.registerForm.get('email')?.clearValidators();
+        this.registerForm.get('email')?.updateValueAndValidity();
+        this.registerForm.get('possuiEmpresa')?.setValue(false);
+      }
     }
   }
 
@@ -96,6 +117,21 @@ export class RegisterComponent implements OnInit {
     formValue.telefone = formValue.telefone.replace(/\D/g, '');
     if (formValue.cnpj) {
       formValue.cnpj = formValue.cnpj.replace(/\D/g, '');
+    }
+
+    if (formValue.role === 'Investidor' && !formValue.email) {
+      formValue.email = formValue.cpf;
+    }
+
+    // Se investidor informou valor inicial, validar formato
+    if (formValue.role === 'Investidor' && formValue.valorInicialInvestimento !== null && formValue.valorInicialInvestimento !== undefined && formValue.valorInicialInvestimento !== '') {
+      const valor = Number(formValue.valorInicialInvestimento);
+      if (isNaN(valor) || valor <= 0) {
+        this.snackBar.open('O valor a investir deve ser um número positivo e maior que zero.', 'Fechar', { duration: 4000 });
+        this.isLoading = false;
+        return;
+      }
+      formValue.valorInicialInvestimento = Math.round(valor * 100) / 100;
     }
 
     // Garantir que a data esteja formatada no padrão que o backend C# espera (ISO string)

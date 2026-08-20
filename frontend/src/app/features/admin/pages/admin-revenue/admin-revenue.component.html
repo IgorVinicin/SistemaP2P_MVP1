@@ -1,9 +1,6 @@
 <div class="revenue-container" style="padding: 20px;">
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-    <h1 style="color: #1e293b; margin: 0; font-weight: 700;">Motor de Receita da Plataforma</h1>
-    <button mat-flat-button color="accent" (click)="processYield()" [disabled]="isProcessingYield">
-      <mat-icon>monetization_on</mat-icon> Processar Rendimento Pool
-    </button>
+    <h1 style="color: var(--text-main); margin: 0; font-weight: 700;">Motor de Receita da Plataforma</h1>
   </div>
 
   <!-- Métricas de Dashboard -->
@@ -12,10 +9,10 @@
     <mat-card style="border-left: 4px solid #10b981; border-radius: 8px;">
       <mat-card-header>
         <div mat-card-avatar>
-          <mat-icon style="color: #10b981; transform: scale(1.5);">today</mat-icon>
+          <mat-icon style="color: var(--dj-success); transform: scale(1.5);">today</mat-icon>
         </div>
-        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Hoje</mat-card-title>
-        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+        <mat-card-title style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">Receita Hoje</mat-card-title>
+        <mat-card-subtitle style="color: var(--text-main); font-size: 24px; font-weight: bold; margin-top: 8px;">
           {{ metrics.receitaHoje | currency:'BRL' }}
         </mat-card-subtitle>
       </mat-card-header>
@@ -24,10 +21,10 @@
     <mat-card style="border-left: 4px solid #3b82f6; border-radius: 8px;">
       <mat-card-header>
         <div mat-card-avatar>
-          <mat-icon style="color: #3b82f6; transform: scale(1.5);">date_range</mat-icon>
+          <mat-icon style="color: var(--dj-blue); transform: scale(1.5);">date_range</mat-icon>
         </div>
-        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Semana</mat-card-title>
-        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+        <mat-card-title style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">Receita Semana</mat-card-title>
+        <mat-card-subtitle style="color: var(--text-main); font-size: 24px; font-weight: bold; margin-top: 8px;">
           {{ metrics.receitaSemana | currency:'BRL' }}
         </mat-card-subtitle>
       </mat-card-header>
@@ -36,10 +33,10 @@
     <mat-card style="border-left: 4px solid #f59e0b; border-radius: 8px;">
       <mat-card-header>
         <div mat-card-avatar>
-          <mat-icon style="color: #f59e0b; transform: scale(1.5);">calendar_month</mat-icon>
+          <mat-icon style="color: var(--dj-warning); transform: scale(1.5);">calendar_month</mat-icon>
         </div>
-        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Mês</mat-card-title>
-        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+        <mat-card-title style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">Receita Mês</mat-card-title>
+        <mat-card-subtitle style="color: var(--text-main); font-size: 24px; font-weight: bold; margin-top: 8px;">
           {{ metrics.receitaMes | currency:'BRL' }}
         </mat-card-subtitle>
       </mat-card-header>
@@ -50,8 +47,8 @@
         <div mat-card-avatar>
           <mat-icon style="color: #6366f1; transform: scale(1.5);">account_balance</mat-icon>
         </div>
-        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Receita Total</mat-card-title>
-        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+        <mat-card-title style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">Receita Total</mat-card-title>
+        <mat-card-subtitle style="color: var(--text-main); font-size: 24px; font-weight: bold; margin-top: 8px;">
           {{ metrics.receitaTotal | currency:'BRL' }}
         </mat-card-subtitle>
       </mat-card-header>
@@ -62,15 +59,15 @@
         <div mat-card-avatar>
           <mat-icon style="color: #8b5cf6; transform: scale(1.5);">receipt_long</mat-icon>
         </div>
-        <mat-card-title style="color: #64748b; font-size: 14px; text-transform: uppercase;">Eventos de Receita</mat-card-title>
-        <mat-card-subtitle style="color: #1e293b; font-size: 24px; font-weight: bold; margin-top: 8px;">
+        <mat-card-title style="color: var(--text-secondary); font-size: 14px; text-transform: uppercase;">Eventos de Receita</mat-card-title>
+        <mat-card-subtitle style="color: var(--text-main); font-size: 24px; font-weight: bold; margin-top: 8px;">
           {{ metrics.quantidadeEventos }}
         </mat-card-subtitle>
       </mat-card-header>
     </mat-card>
   </div>
 
-  <div *ngIf="isLoadingMetrics" style="text-align: center; padding: 20px; color: #64748b;">
+  <div *ngIf="isLoadingMetrics" style="text-align: center; padding: 20px; color: var(--text-secondary);">
     Carregando métricas...
   </div>
 
@@ -83,7 +80,7 @@
     
     <mat-card-content style="padding-top: 20px;">
       
-      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; background: #f8fafc; padding: 16px; border-radius: 8px;">
+      <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; background: var(--bg-elevated); padding: 16px; border-radius: 8px;">
         <mat-form-field appearance="outline" style="min-width: 200px; margin-bottom: -1.25em;">
           <mat-label>Período</mat-label>
           <mat-select [(ngModel)]="period" (selectionChange)="onPeriodChange()">
@@ -115,11 +112,11 @@
         </ng-container>
       </div>
 
-      <div *ngIf="isLoadingRevenues" style="text-align: center; padding: 20px; color: #64748b;">
+      <div *ngIf="isLoadingRevenues" style="text-align: center; padding: 20px; color: var(--text-secondary);">
         Carregando receitas...
       </div>
 
-      <div *ngIf="!isLoadingRevenues && revenues.length === 0" style="text-align: center; padding: 40px; color: #94a3b8;">
+      <div *ngIf="!isLoadingRevenues && revenues.length === 0" style="text-align: center; padding: 40px; color: var(--text-secondary);">
         <mat-icon style="font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px;">money_off</mat-icon>
         <h3>Nenhuma receita encontrada para os filtros selecionados.</h3>
       </div>
@@ -149,7 +146,7 @@
 
         <ng-container matColumnDef="observacao">
           <th mat-header-cell *matHeaderCellDef> Origem / Observação </th>
-          <td mat-cell *matCellDef="let element" style="color: #64748b;"> {{ element.observacao }} </td>
+          <td mat-cell *matCellDef="let element" style="color: var(--text-secondary);"> {{ element.observacao }} </td>
         </ng-container>
 
         <ng-container matColumnDef="createdBy">

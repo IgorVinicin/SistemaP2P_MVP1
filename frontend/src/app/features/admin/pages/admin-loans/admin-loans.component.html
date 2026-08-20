@@ -1,118 +1,8 @@
 <div class="admin-loans-container">
   <div class="title-section">
-    <h1>Análise de Solicitações de Empréstimos</h1>
-    <p>Avalie e processe os pedidos de empréstimos pendentes enviados pelos clientes.</p>
+    <h1>Acompanhamento de Empréstimos e Parcelas</h1>
+    <p>Gerencie os empréstimos em andamento, quitações e o acompanhamento global de parcelas.</p>
   </div>
-
-  <mat-card class="loans-card">
-    <div style="padding: 1.5rem 1.5rem 0 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
-      <mat-form-field appearance="outline" style="flex: 2; min-width: 250px; margin-bottom: 0;">
-        <mat-label>Pesquisar Cliente (Nome, CPF ou E-mail)</mat-label>
-        <input matInput [(ngModel)]="pendingSearch" (keyup.enter)="searchPending()" placeholder="Digite a busca e aperte Enter">
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" style="width: 150px; margin-bottom: 0;">
-        <mat-label>Risco</mat-label>
-        <mat-select [(ngModel)]="pendingRisco" (selectionChange)="searchPending()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="Baixo">Baixo</mat-option>
-          <mat-option value="Médio">Médio</mat-option>
-          <mat-option value="Alto">Alto</mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" style="width: 180px; margin-bottom: 0;">
-        <mat-label>Tipo Empréstimo</mat-label>
-        <mat-select [(ngModel)]="pendingTipo" (selectionChange)="searchPending()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="Master">Master</mat-option>
-          <mat-option value="Plus">Plus</mat-option>
-          <mat-option value="Gold">Gold</mat-option>
-        </mat-select>
-      </mat-form-field>
-      
-      <button mat-flat-button color="primary" (click)="searchPending()">Buscar</button>
-    </div>
-
-    <div *ngIf="isLoading" style="text-align: center; padding: 3rem;">
-      <p>Carregando solicitações pendentes...</p>
-    </div>
-
-    <div *ngIf="!isLoading && loans.length === 0" class="empty-loans">
-      <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">assignment_turned_in</mat-icon>
-      <h3 style="margin: 0; color: #334155;">Tudo limpo por aqui!</h3>
-      <p style="color: #64748b; margin-top: 0.5rem;">Nenhuma solicitação de empréstimo pendente de análise no momento.</p>
-    </div>
-
-    <table mat-table [dataSource]="loans" class="loans-table" *ngIf="!isLoading && loans.length > 0">
-      <!-- Coluna Nome -->
-      <ng-container matColumnDef="nome">
-        <th mat-header-cell *matHeaderCellDef> Cliente </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.nome || 'Sem Nome' }} </td>
-      </ng-container>
-
-      <!-- Coluna CPF -->
-      <ng-container matColumnDef="cpf">
-        <th mat-header-cell *matHeaderCellDef> CPF </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.cpf }} </td>
-      </ng-container>
-
-      <!-- Coluna Score -->
-      <ng-container matColumnDef="score">
-        <th mat-header-cell *matHeaderCellDef> Score </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.score }} </td>
-      </ng-container>
-
-      <!-- Coluna Valor -->
-      <ng-container matColumnDef="valor">
-        <th mat-header-cell *matHeaderCellDef> Valor Solicitado </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.valorSolicitado | currency:'BRL' }} </td>
-      </ng-container>
-
-      <!-- Coluna Parcelas -->
-      <ng-container matColumnDef="parcelas">
-        <th mat-header-cell *matHeaderCellDef> Parcelas </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.quantidadeParcelas }}x </td>
-      </ng-container>
-
-      <!-- Coluna Risco -->
-      <ng-container matColumnDef="risco">
-        <th mat-header-cell *matHeaderCellDef> Risco </th>
-        <td mat-cell *matCellDef="let loan">
-          <span class="risk-badge" [class.alto]="loan.risco.toLowerCase() === 'alto'" [class.medio]="loan.risco.toLowerCase() === 'médio' || loan.risco.toLowerCase() === 'medio'" [class.baixo]="loan.risco.toLowerCase() === 'baixo'">
-            {{ loan.risco }}
-          </span>
-        </td>
-      </ng-container>
-
-      <!-- Coluna Data -->
-      <ng-container matColumnDef="data">
-        <th mat-header-cell *matHeaderCellDef> Data </th>
-        <td mat-cell *matCellDef="let loan"> {{ loan.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }} </td>
-      </ng-container>
-
-      <ng-container matColumnDef="acoes" stickyEnd>
-        <th mat-header-cell *matHeaderCellDef> Ações </th>
-        <td mat-cell *matCellDef="let loan">
-          <button mat-flat-button color="primary" size="small" (click)="openDetailDialog(loan.id!); $event.stopPropagation()">
-            Analisar
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;" (click)="openDetailDialog(row.id!)" class="clickable-row"></tr>
-    </table>
-
-    <mat-paginator *ngIf="pendingTotal > 0"
-                   [length]="pendingTotal"
-                   [pageSize]="pendingPageSize"
-                   [pageSizeOptions]="[5, 10, 20]"
-                   (page)="onPendingPageChange($event)"
-                   style="margin-top: 15px;">
-    </mat-paginator>
-  </mat-card>
-</div>
 
 <!-- Template de Dialog para Visualização Completa de Detalhes -->
 <ng-template #detailDialog>
@@ -144,22 +34,22 @@
       </div>
 
       <!-- Histórico de Empréstimos -->
-      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
-        <h4 style="margin-bottom: 0.75rem; color: #1e293b; font-weight: 600;">Histórico de Empréstimos do Cliente</h4>
-        <div *ngIf="!selectedLoan.outrosEmprestimos || selectedLoan.outrosEmprestimos.length === 0" style="color: #64748b; font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">
+      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <h4 style="margin-bottom: 0.75rem; color: var(--text-main); font-weight: 600;">Histórico de Empréstimos do Cliente</h4>
+        <div *ngIf="!selectedLoan.outrosEmprestimos || selectedLoan.outrosEmprestimos.length === 0" style="color: var(--text-secondary); font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">
           Nenhum outro empréstimo registrado para este cliente.
         </div>
-        <div *ngIf="selectedLoan.outrosEmprestimos && selectedLoan.outrosEmprestimos.length > 0" style="max-height: 200px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 4px;">
+        <div *ngIf="selectedLoan.outrosEmprestimos && selectedLoan.outrosEmprestimos.length > 0" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
           <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse; text-align: left;">
             <thead>
-              <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; color: #475569;">
+              <tr style="background-color: var(--bg-elevated); border-bottom: 2px solid #e2e8f0; color: var(--text-muted);">
                 <th style="padding: 0.5rem;">Data Solicitação</th>
                 <th style="padding: 0.5rem;">Valor</th>
                 <th style="padding: 0.5rem;">Status / Situação</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let outro of selectedLoan.outrosEmprestimos" style="border-bottom: 1px solid #f1f5f9; color: #334155;">
+              <tr *ngFor="let outro of selectedLoan.outrosEmprestimos" style="border-bottom: 1px solid #f1f5f9; color: var(--text-main);">
                 <td style="padding: 0.5rem;">{{ outro.dataSolicitacao | date:'dd/MM/yyyy HH:mm' }}</td>
                 <td style="padding: 0.5rem;">{{ outro.valorSolicitado | currency:'BRL' }}</td>
                 <td style="padding: 0.5rem;">
@@ -174,28 +64,32 @@
       </div>
 
       <!-- Dados do Empréstimo -->
-      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
         <h4>Detalhes da Proposta</h4>
         <div class="detail-grid">
           <div class="detail-item">
             <span class="detail-label">Valor Solicitado</span>
-            <span class="detail-val" style="font-size: 1.1rem; color: #10b981;">
+            <span class="detail-val" style="font-size: 1.1rem; color: var(--dj-success);">
               {{ selectedLoan.valorSolicitado | currency:'BRL' }}
             </span>
           </div>
-          <div class="detail-item">
+          <div class="detail-item" *ngIf="selectedLoan.status !== 'Pendente'">
             <span class="detail-label">Parcelas</span>
             <span class="detail-val">{{ selectedLoan.quantidadeParcelas }} parcelas</span>
           </div>
-          <div class="detail-item">
+          <div class="detail-item" *ngIf="selectedLoan.status !== 'Pendente'">
             <span class="detail-label">Taxa de Juros</span>
             <span class="detail-val">{{ selectedLoan.taxaJuros }}% a.m.</span>
+          </div>
+          <div class="detail-item" *ngIf="selectedLoan.status === 'Pendente'">
+            <span class="detail-label">Condições de Pagamento</span>
+            <span class="detail-val" style="color: var(--text-secondary); font-style: italic;">A definir na aprovação</span>
           </div>
           <div class="detail-item">
             <span class="detail-label">Nível de Risco</span>
             <div style="margin-top: 0.15rem;">
               <span class="risk-badge" [class.alto]="selectedLoan.risco.toLowerCase() === 'alto'" [class.medio]="selectedLoan.risco.toLowerCase() === 'médio' || selectedLoan.risco.toLowerCase() === 'medio'" [class.baixo]="selectedLoan.risco.toLowerCase() === 'baixo'">
-                {{ selectedLoan.risco }}
+                {{ selectedLoan.risco || 'Médio' }}
               </span>
             </div>
           </div>
@@ -212,16 +106,74 @@
         <div style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
           <div>
             <span class="detail-label">Finalidade</span>
-            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; font-weight: 500; color: #334155;">
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; font-weight: 500; color: var(--text-main);">
               {{ selectedLoan.finalidade }}
             </p>
           </div>
           <div *ngIf="selectedLoan.observacoes">
             <span class="detail-label">Observações do Cliente</span>
-            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; color: #64748b; font-style: italic; white-space: pre-line;">
+            <p style="margin: 0.15rem 0 0 0; font-size: 0.9rem; color: var(--text-secondary); font-style: italic; white-space: pre-line;">
               "{{ selectedLoan.observacoes }}"
             </p>
           </div>
+        </div>
+      </div>
+
+      <!-- Solicitação de Aumento de Limite -->
+      <div class="detail-section" *ngIf="selectedLoan.solicitaAumentoLimite" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem; background-color: var(--dj-danger-light); border: 1px solid var(--dj-danger); padding: 1rem; border-radius: 6px;">
+        <h4 style="margin: 0 0 0.5rem 0; color: var(--dj-danger); display: flex; align-items: center; gap: 0.5rem;">
+          <mat-icon style="color: var(--dj-danger);">warning</mat-icon> Solicitação de Aumento de Limite
+        </h4>
+        <p style="margin: 0; font-size: 0.9rem; color: #7f1d1d;">
+          O cliente solicitou um valor acima do seu limite disponível.
+        </p>
+        <div class="detail-grid" style="margin-top: 0.75rem;">
+          <div class="detail-item">
+            <span class="detail-label">Limite no Momento</span>
+            <span class="detail-val" style="font-weight: 600;">{{ (selectedLoan.limiteNoMomentoSolicitacao || 0) | currency:'BRL' }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">Valor Excedente</span>
+            <span class="detail-val" style="font-weight: 600; color: var(--dj-danger);">{{ (selectedLoan.valorSolicitado - (selectedLoan.limiteNoMomentoSolicitacao || 0)) | currency:'BRL' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Histórico de Pagamentos de Parcelas -->
+      <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <h4 style="margin-bottom: 0.75rem; color: var(--text-main); font-weight: 600;">Histórico Detalhado de Pagamento de Parcelas</h4>
+        <div *ngIf="!selectedLoan.historicoPagamentos || selectedLoan.historicoPagamentos.length === 0" style="color: var(--text-secondary); font-size: 0.9rem; font-style: italic; padding: 0.5rem 0;">
+          Nenhuma parcela paga anteriormente por este cliente.
+        </div>
+        <div *ngIf="selectedLoan.historicoPagamentos && selectedLoan.historicoPagamentos.length > 0" style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+          <table style="width: 100%; font-size: 0.85rem; border-collapse: collapse; text-align: left;">
+            <thead>
+              <tr style="background-color: var(--bg-elevated); border-bottom: 2px solid #e2e8f0; color: var(--text-muted);">
+                <th style="padding: 0.5rem;">Nº Parcela</th>
+                <th style="padding: 0.5rem;">Vencimento</th>
+                <th style="padding: 0.5rem;">Pagamento (Data/Hora)</th>
+                <th style="padding: 0.5rem;">Valor</th>
+                <th style="padding: 0.5rem;">Valor Pago</th>
+                <th style="padding: 0.5rem;">Atraso</th>
+                <th style="padding: 0.5rem;">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let pag of selectedLoan.historicoPagamentos" style="border-bottom: 1px solid #f1f5f9; color: var(--text-main);">
+                <td style="padding: 0.5rem; font-weight: 600;">{{ pag.numeroParcela }}</td>
+                <td style="padding: 0.5rem;">{{ pag.dataVencimento | date:'dd/MM/yyyy':'UTC' }}</td>
+                <td style="padding: 0.5rem;">{{ pag.dataPagamento ? (pag.dataPagamento | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
+                <td style="padding: 0.5rem;">{{ pag.valorParcela | currency:'BRL' }}</td>
+                <td style="padding: 0.5rem;">{{ pag.valorPago ? (pag.valorPago | currency:'BRL') : '-' }}</td>
+                <td style="padding: 0.5rem; color: var(--dj-danger);">{{ pag.diasAtraso > 0 ? (pag.diasAtraso + ' dias') : 'Sem atraso' }}</td>
+                <td style="padding: 0.5rem;">
+                  <span class="status-badge" [class]="pag.status.toLowerCase()" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px; display: inline-block;">
+                    {{ pag.status }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -249,8 +201,8 @@
 <!-- Tabela de Empréstimos Ativos / Em Andamento -->
 <mat-card class="loans-card" style="margin-top: 2rem;">
   <div style="padding: 1.5rem 1.5rem 0 1.5rem;">
-    <h2 style="margin: 0; color: #1e293b; font-weight: 600;">Acompanhamento de Empréstimos em Andamento</h2>
-    <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.9rem;">Gerencie e finalize os empréstimos ativos ou aprovados dos clientes.</p>
+    <h2 style="margin: 0; color: var(--text-main); font-weight: 600;">Acompanhamento de Empréstimos em Andamento</h2>
+    <p style="margin: 0.25rem 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">Gerencie e finalize os empréstimos ativos ou aprovados dos clientes.</p>
   </div>
 
   <div style="padding: 1rem 1.5rem 0 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center;">
@@ -287,8 +239,8 @@
   <mat-card-content style="padding: 1.5rem 0 0 0;">
     <div *ngIf="activeLoans.length === 0" class="empty-loans" style="text-align: center; padding: 3rem;">
       <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">info</mat-icon>
-      <h3 style="margin: 0; color: #334155;">Nenhum empréstimo ativo</h3>
-      <p style="color: #64748b; margin-top: 0.5rem;">Nenhum empréstimo em andamento no momento.</p>
+      <h3 style="margin: 0; color: var(--text-main);">Nenhum empréstimo ativo</h3>
+      <p style="color: var(--text-secondary); margin-top: 0.5rem;">Nenhum empréstimo em andamento no momento.</p>
     </div>
 
     <mat-accordion multi="true" *ngIf="activeLoans.length > 0" class="grouped-loans-accordion" style="margin-bottom: 1rem; display: block;">
@@ -313,7 +265,13 @@
                 Empréstimo {{ loan.valorSolicitado | currency:'BRL' }} ({{ loan.tipoEmprestimo }})
               </mat-panel-title>
               <mat-panel-description style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <span>Status: <strong>{{ loan.status }}</strong> | Parcelas: {{ loan.quantidadeParcelas }}x</span>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <span>Status: <strong>{{ loan.status }}</strong> | Parcelas: {{ loan.quantidadeParcelas }}x</span>
+                  <span *ngIf="loan.temParcelaAtrasada" style="background-color: var(--dj-danger-light); color: var(--dj-danger); border: 1px solid var(--dj-danger); font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 9999px; display: inline-flex; align-items: center; gap: 4px;">
+                    <mat-icon style="font-size: 14px; width: 14px; height: 14px; color: var(--dj-danger);">warning</mat-icon>
+                    Atraso Parcela {{ loan.parcelaAtrasadaFormatada }} ({{ loan.diasAtrasoMax }} dias)
+                  </span>
+                </div>
                 <div class="actions" style="margin-left: auto;">
                   <button mat-button color="primary" size="small" (click)="openDetailDialog(loan.id); $event.stopPropagation()">Analisar</button>
                   <button mat-button color="accent" size="small" (click)="finishLoan(loan.id); $event.stopPropagation()">Quitar</button>
@@ -323,10 +281,10 @@
 
             <!-- Nível 3: Parcelas do Empréstimo -->
             <div style="padding: 1rem 0;">
-              <div *ngIf="loan.isLoadingInstallments" style="text-align: center; padding: 1rem; color: #64748b;">
+              <div *ngIf="loan.isLoadingInstallments" style="text-align: center; padding: 1rem; color: var(--text-secondary);">
                 <mat-icon class="spin" style="vertical-align: middle; margin-right: 4px;">sync</mat-icon> Buscando parcelas...
               </div>
-              <div *ngIf="!loan.isLoadingInstallments && loan.installments?.length === 0" style="text-align: center; padding: 1rem; color: #64748b;">
+              <div *ngIf="!loan.isLoadingInstallments && loan.installments?.length === 0" style="text-align: center; padding: 1rem; color: var(--text-secondary);">
                 Nenhuma parcela encontrada para este empréstimo.
               </div>
               
@@ -338,7 +296,7 @@
 
                 <ng-container matColumnDef="vencimento">
                   <th mat-header-cell *matHeaderCellDef> Vencimento </th>
-                  <td mat-cell *matCellDef="let inst"> {{ inst.dataVencimento | date:'dd/MM/yyyy' }} </td>
+                  <td mat-cell *matCellDef="let inst"> {{ inst.dataVencimento | date:'dd/MM/yyyy':'UTC' }} </td>
                 </ng-container>
 
                 <ng-container matColumnDef="valor">
@@ -355,8 +313,17 @@
                   </td>
                 </ng-container>
 
-                <tr mat-header-row *matHeaderRowDef="['numero', 'vencimento', 'valor', 'status']"></tr>
-                <tr mat-row *matRowDef="let row; columns: ['numero', 'vencimento', 'valor', 'status'];"></tr>
+                <ng-container matColumnDef="acoes">
+                  <th mat-header-cell *matHeaderCellDef> Ações </th>
+                  <td mat-cell *matCellDef="let inst">
+                    <button mat-flat-button color="accent" size="small" *ngIf="inst.status !== 'Paga'" (click)="openSettleInstallmentDialog(inst, tomador.nome); $event.stopPropagation()">
+                      Quitar Parcela
+                    </button>
+                  </td>
+                </ng-container>
+
+                <tr mat-header-row *matHeaderRowDef="['numero', 'vencimento', 'valor', 'status', 'acoes']"></tr>
+                <tr mat-row *matRowDef="let row; columns: ['numero', 'vencimento', 'valor', 'status', 'acoes'];"></tr>
               </table>
             </div>
           </mat-expansion-panel>
@@ -374,156 +341,12 @@
   </mat-card-content>
 </mat-card>
 
-<!-- Seção de Gestão Global de Parcelas -->
-<mat-card class="loans-card" style="margin-top: 2rem;">
-  <div style="padding: 1.5rem 1.5rem 0 1.5rem;">
-    <h2 style="margin: 0; color: #1e293b; font-weight: 600;">Gestão Global de Parcelas</h2>
-    <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.9rem;">Acompanhe o pagamento e o status das parcelas de todos os empréstimos ativos.</p>
-  </div>
-
-  <!-- Filtros -->
-  <div class="filters-container" style="padding: 1rem 1.5rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; border-bottom: 1px solid #e2e8f0; background-color: #f8fafc; margin-top: 1rem;">
-    <mat-form-field appearance="outline" style="flex: 1; min-width: 200px; margin-bottom: 0;">
-      <mat-label>Buscar Cliente (Nome/Email)</mat-label>
-      <input matInput [(ngModel)]="filters.cliente" (ngModelChange)="onFilterChange()" placeholder="Ex: João">
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" style="width: 150px; margin-bottom: 0;">
-      <mat-label>Status</mat-label>
-      <select matNativeControl [(ngModel)]="filters.status" (change)="onFilterChange()">
-        <option value="">Todos</option>
-        <option value="Pendente">Pendente</option>
-        <option value="Paga">Paga</option>
-        <option value="Atrasada">Atrasada</option>
-      </select>
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" style="width: 155px; margin-bottom: 0;">
-      <mat-label>Vencimento Início</mat-label>
-      <input matInput type="date" [(ngModel)]="filters.periodoInicio" (ngModelChange)="onFilterChange()">
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" style="width: 155px; margin-bottom: 0;">
-      <mat-label>Vencimento Fim</mat-label>
-      <input matInput type="date" [(ngModel)]="filters.periodoFim" (ngModelChange)="onFilterChange()">
-    </mat-form-field>
-
-    <div style="display: flex; align-items: center; gap: 0.5rem;">
-      <input type="checkbox" id="somenteAtrasadasCheck" [(ngModel)]="filters.somenteAtrasadas" (change)="onFilterChange()" style="width: 18px; height: 18px;">
-      <label for="somenteAtrasadasCheck" style="font-size: 0.9rem; color: #475569; font-weight: 500; cursor: pointer;">Somente Atrasadas</label>
-    </div>
-
-    <button mat-stroked-button (click)="clearFilters()">
-      Limpar Filtros
-    </button>
-  </div>
-
-  <mat-card-content style="padding: 0;">
-    <div *ngIf="isLoadingInstallments" style="text-align: center; padding: 3rem;">
-      <p>Carregando parcelas...</p>
-    </div>
-
-    <div *ngIf="!isLoadingInstallments && globalInstallments.length === 0" class="empty-loans" style="text-align: center; padding: 3rem;">
-      <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">receipt</mat-icon>
-      <h3 style="margin: 0; color: #334155;">Nenhuma parcela encontrada</h3>
-      <p style="color: #64748b; margin-top: 0.5rem;">Nenhuma parcela corresponde aos filtros informados.</p>
-    </div>
-
-    <div class="table-responsive" *ngIf="!isLoadingInstallments && globalInstallments.length > 0">
-      <table mat-table [dataSource]="globalInstallments" class="loans-table">
-        <ng-container matColumnDef="cliente">
-          <th mat-header-cell *matHeaderCellDef> Cliente </th>
-          <td mat-cell *matCellDef="let inst">
-            <div style="display: flex; flex-direction: column;">
-              <span style="font-weight: 500; color: #1e293b;">{{ inst.clienteNome }}</span>
-              <span style="font-size: 0.75rem; color: #64748b;">{{ inst.clienteEmail }}</span>
-            </div>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="numero">
-          <th mat-header-cell *matHeaderCellDef> Nº Parc. </th>
-          <td mat-cell *matCellDef="let inst"> {{ inst.numeroParcela }} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="vencimento">
-          <th mat-header-cell *matHeaderCellDef> Vencimento </th>
-          <td mat-cell *matCellDef="let inst"> {{ inst.dataVencimento | date:'dd/MM/yyyy' }} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="valor">
-          <th mat-header-cell *matHeaderCellDef> Valor Parcela </th>
-          <td mat-cell *matCellDef="let inst"> {{ inst.valorParcela | currency:'BRL' }} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="multa">
-          <th mat-header-cell *matHeaderCellDef> Multa </th>
-          <td mat-cell *matCellDef="let inst"> {{ inst.multa | currency:'BRL' }} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="jurosMora">
-          <th mat-header-cell *matHeaderCellDef> Juros Mora </th>
-          <td mat-cell *matCellDef="let inst"> {{ inst.jurosMora | currency:'BRL' }} </td>
-        </ng-container>
-
-        <ng-container matColumnDef="valorPago">
-          <th mat-header-cell *matHeaderCellDef> Valor Pago </th>
-          <td mat-cell *matCellDef="let inst">
-            <span *ngIf="inst.status === 'Paga'">{{ inst.valorPago | currency:'BRL' }}</span>
-            <span *ngIf="inst.status !== 'Paga'">-</span>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="pagamento">
-          <th mat-header-cell *matHeaderCellDef> Pagamento </th>
-          <td mat-cell *matCellDef="let inst">
-            <span *ngIf="inst.dataPagamento">{{ inst.dataPagamento | date:'dd/MM/yyyy HH:mm' }}</span>
-            <span *ngIf="!inst.dataPagamento">-</span>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef> Status </th>
-          <td mat-cell *matCellDef="let inst">
-            <span class="status-badge" [class]="inst.status.toLowerCase()" style="font-size: 0.75rem; padding: 0.15rem 0.4rem; border-radius: 4px;">
-              {{ inst.status }}
-            </span>
-            <span *ngIf="inst.status === 'Atrasada'" style="font-size: 0.75rem; color: #b91c1c; display: block; margin-top: 2px;">
-              ({{ inst.diasAtraso }} dias)
-            </span>
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="acoes" stickyEnd>
-          <th mat-header-cell *matHeaderCellDef> Ações </th>
-          <td mat-cell *matCellDef="let inst">
-            <button mat-flat-button color="accent" size="small" *ngIf="inst.status !== 'Paga'" (click)="payInstallment(inst.id); $event.stopPropagation()">
-              Quitar Parcela
-            </button>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="installmentDisplayedColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: installmentDisplayedColumns;" (click)="row.status !== 'Paga' ? payInstallment(row.id) : null" [class.clickable-row]="row.status !== 'Paga'"></tr>
-      </table>
-    </div>
-
-    <mat-paginator *ngIf="installmentsTotal > 0"
-                   [length]="installmentsTotal"
-                   [pageSize]="installmentsPageSize"
-                   [pageSizeOptions]="[5, 10, 25, 50]"
-                   (page)="onInstallmentsPageChange($event)"
-                   style="margin-top: 15px;">
-    </mat-paginator>
-  </mat-card-content>
-</mat-card>
-
 <!-- Template de Dialog de Reprovação (Justificativa) -->
 <ng-template #reproveDialog>
   <h2 mat-dialog-title>Reprovar Solicitação de Empréstimo</h2>
   <mat-dialog-content>
     <div style="padding-top: 10px;">
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 1rem;">
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
         Por favor, justifique o motivo da reprovação deste empréstimo. O cliente poderá visualizar este comentário.
       </p>
       
@@ -546,7 +369,7 @@
   <h2 mat-dialog-title>Configurar e Aprovar Empréstimo</h2>
   <mat-dialog-content>
     <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 1rem;">
-      <p style="color: #64748b; font-size: 0.9rem; margin-bottom: 0.5rem;">
+      <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 0.5rem;">
         Defina os parâmetros finais para a aprovação desta solicitação de empréstimo.
       </p>
 
@@ -566,34 +389,34 @@
       </mat-form-field>
 
       <!-- Resumo do Empréstimo -->
-      <div *ngIf="approveForm.tipoEmprestimo" style="margin-bottom: 1rem; padding: 1rem; background-color: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 1rem;">
-        <div style="font-weight: 500; color: #475569; margin-bottom: 0.5rem;">Resumo ({{ approveForm.tipoEmprestimo }})</div>
+      <div *ngIf="approveForm.tipoEmprestimo" style="margin-bottom: 1rem; padding: 1rem; background-color: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1rem;">
+        <div style="font-weight: 500; color: var(--text-muted); margin-bottom: 0.5rem;">Resumo ({{ approveForm.tipoEmprestimo }})</div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-          <span style="color: #64748b;">Valor Aprovado:</span>
-          <span style="font-weight: 600; color: #1e293b;">{{ (approveForm.valorAprovado > 0 ? approveForm.valorAprovado : selectedLoan?.valorSolicitado) | currency:'BRL' }}</span>
+          <span style="color: var(--text-secondary);">Valor Aprovado:</span>
+          <span style="font-weight: 600; color: var(--text-main);">{{ (approveForm.valorAprovado > 0 ? approveForm.valorAprovado : selectedLoan?.valorSolicitado) | currency:'BRL' }}</span>
         </div>
         <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
-          <span style="color: #64748b;">Juros Total:</span>
-          <span style="font-weight: 600; color: #ef4444;">{{ jurosTotal | currency:'BRL' }}</span>
+          <span style="color: var(--text-secondary);">Juros Total:</span>
+          <span style="font-weight: 600; color: var(--dj-danger);">{{ jurosTotal | currency:'BRL' }}</span>
         </div>
         <div style="display: flex; justify-content: space-between;">
-          <span style="color: #64748b;">Total a Pagar:</span>
-          <span style="font-weight: 600; color: #1e293b;">{{ (approveForm.valorAprovado > 0 ? approveForm.valorAprovado : (selectedLoan?.valorSolicitado || 0)) + jurosTotal | currency:'BRL' }}</span>
+          <span style="color: var(--text-secondary);">Total a Pagar:</span>
+          <span style="font-weight: 600; color: var(--text-main);">{{ (approveForm.valorAprovado > 0 ? approveForm.valorAprovado : (selectedLoan?.valorSolicitado || 0)) + jurosTotal | currency:'BRL' }}</span>
         </div>
         
         <!-- Preview Master (mostra Qtd Parcelas calculadas) -->
         <div *ngIf="approveForm.tipoEmprestimo === 'Master' && approveForm.valorPagoPorDia > 0 && isMasterValorValido" style="display: flex; justify-content: space-between; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #cbd5e1;">
-          <span style="color: #64748b;">Qtd. de Parcelas Estimadas:</span>
-          <span style="font-weight: 600; color: #3b82f6;">{{ approveForm.quantidadeParcelas }} parcelas</span>
+          <span style="color: var(--text-secondary);">Qtd. de Parcelas Estimadas:</span>
+          <span style="font-weight: 600; color: var(--dj-blue);">{{ approveForm.quantidadeParcelas }} parcelas</span>
         </div>
-        <div *ngIf="approveForm.tipoEmprestimo === 'Master' && !isMasterValorValido" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem;">
+        <div *ngIf="approveForm.tipoEmprestimo === 'Master' && !isMasterValorValido" style="color: var(--dj-danger); font-size: 0.8rem; margin-top: 0.5rem;">
           Por favor, insira um valor válido maior que zero.
         </div>
 
         <!-- Preview Plus e Gold (mostra Valor da Parcela calculado) -->
         <div *ngIf="approveForm.tipoEmprestimo !== 'Master' && (approveForm.tipoEmprestimo === 'Gold' || approveForm.quantidadeParcelas > 0)" style="display: flex; justify-content: space-between; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed #cbd5e1;">
-          <span style="color: #64748b;">Valor Estimado da Parcela:</span>
-          <span style="font-weight: 600; color: #3b82f6;">{{ valorParcelaEstimada | currency:'BRL' }}</span>
+          <span style="color: var(--text-secondary);">Valor Estimado da Parcela:</span>
+          <span style="font-weight: 600; color: var(--dj-blue);">{{ valorParcelaEstimada | currency:'BRL' }}</span>
         </div>
       </div>
 
@@ -627,8 +450,15 @@
           <input matInput type="number" [(ngModel)]="approveForm.taxaJuros" (ngModelChange)="onMasterCalculationChange()" name="taxaJuros" step="0.01" min="0" required>
         </mat-form-field>
       </div>
+      <!-- Seleção de Data Inicial do Pagamento -->
+      <mat-form-field class="form-field-full" appearance="outline" style="margin-top: 0.5rem;">
+        <mat-label>Data Inicial do Pagamento (Primeira Parcela)</mat-label>
+        <input matInput type="date" [(ngModel)]="approveForm.dataPrimeiraParcela" name="dataPrimeiraParcela">
+        <mat-hint>O sistema calculará as datas dos próximos vencimentos automaticamente a partir desta data.</mat-hint>
+      </mat-form-field>
+
       <!-- Investor Group Selection -->
-      <mat-form-field class="form-field-full" appearance="outline" style="margin-top: 1rem;">
+      <mat-form-field class="form-field-full" appearance="outline" style="margin-top: 0.5rem;">
         <mat-label>Grupo de Investidores (Opcional)</mat-label>
         <mat-select [(ngModel)]="approveForm.investorGroupId" name="investorGroupId">
           <mat-option [value]="null">Todos (Alocação Automática na Plataforma)</mat-option>
@@ -642,6 +472,57 @@
     <button mat-button (click)="closeApproveDialog()" [disabled]="isActionProcessing">Cancelar</button>
     <button mat-flat-button color="primary" [disabled]="isActionProcessing || !approveForm.tipoEmprestimo || (approveForm.tipoEmprestimo !== 'Gold' && approveForm.quantidadeParcelas <= 0) || approveForm.taxaJuros < 0 || !isMasterValorValido || (approveForm.tipoEmprestimo === 'Gold' && !approveForm.periodicidadeGold)" (click)="confirmApproveLoan()">
       Confirmar Aprovação
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Template de Dialog para Quitação Manual de Parcela pelo Administrador -->
+<ng-template #settleInstallmentDialog>
+  <h2 mat-dialog-title style="color: var(--text-main); display: flex; align-items: center; gap: 8px;">
+    <mat-icon style="color: var(--dj-success);">check_circle</mat-icon> Quitar Parcela Administrativamente
+  </h2>
+  
+  <mat-dialog-content>
+    <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 1rem;">
+      <div style="padding: 1rem; background-color: var(--bg-elevated); border-radius: 8px; border: 1px solid var(--border-color);">
+        <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">{{ settleForm.clienteNome }}</div>
+        <div style="font-size: 0.88rem; color: var(--text-secondary);">
+          Parcela nº <strong>{{ settleForm.numeroParcela }}</strong> | Valor Original: <strong>{{ settleForm.valorParcela | currency:'BRL' }}</strong>
+        </div>
+        <div style="font-size: 0.88rem; color: var(--text-main); font-weight: 600; margin-top: 4px;" *ngIf="settleForm.valorTotalDevido > settleForm.valorParcela">
+          Total Devido com Encargos/Multa: <span style="color: var(--dj-danger);">{{ settleForm.valorTotalDevido | currency:'BRL' }}</span>
+        </div>
+      </div>
+
+      <mat-form-field appearance="outline" class="form-field-full">
+        <mat-label>Valor Efetivamente Pago (R$)</mat-label>
+        <input matInput type="number" step="0.01" min="0.01" [(ngModel)]="settleForm.valorPago" required>
+        <mat-hint>Informe o valor pago pelo cliente a ser baixado.</mat-hint>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field-full">
+        <mat-label>Forma de Pagamento</mat-label>
+        <select matNativeControl [(ngModel)]="settleForm.formaPagamento" required>
+          <option value="PIX">PIX</option>
+          <option value="Transferência Bancária">Transferência Bancária / TED / DOC</option>
+          <option value="Boleto">Boleto Bancário</option>
+          <option value="Dinheiro">Dinheiro em Espécie</option>
+          <option value="Outros">Outros</option>
+        </select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="form-field-full">
+        <mat-label>Observação / Anotação Administrativa</mat-label>
+        <textarea matInput rows="3" [(ngModel)]="settleForm.observacao" placeholder="Ex: Pagamento recebido via PIX direto na conta da empresa. Comprovante anexado."></textarea>
+        <mat-hint>Registra um histórico explicativo sobre a quitação desta parcela.</mat-hint>
+      </mat-form-field>
+    </div>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end" style="padding: 1rem 1.5rem;">
+    <button mat-button (click)="subDialogRef?.close()" [disabled]="isActionProcessing">Cancelar</button>
+    <button mat-raised-button color="primary" [disabled]="isActionProcessing || !settleForm.valorPago || settleForm.valorPago <= 0" (click)="confirmSettleInstallment()">
+      Confirmar Quitação
     </button>
   </mat-dialog-actions>
 </ng-template>

@@ -1,198 +1,97 @@
+/* ============================================
+   CREDIT CONFIG — Dinheiro a Jato Design System
+   ============================================ */
+
 .credit-config-container {
   max-width: 1000px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
+  margin: 0 auto;
 }
 
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-6);
 }
 
-.title-section h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
-
-.title-section p {
-  color: #64748b;
-  margin: 0.25rem 0 0 0;
-  font-size: 0.95rem;
-}
+.title-section h1 { font-size: 1.375rem; font-weight: 700; color: var(--text-main); margin: 0; }
+.title-section p { color: var(--text-secondary); margin: var(--space-1) 0 0; font-size: 0.8125rem; }
 
 .config-section-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
-  margin-bottom: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
+  margin-bottom: var(--space-6);
   overflow: hidden;
 }
 
 .card-header {
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #f1f5f9;
-  background-color: #ffffff;
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--border-light);
 }
 
-.card-header-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
+.card-header-content { display: flex; justify-content: space-between; align-items: center; }
+.card-title { font-size: 1rem; font-weight: 600; color: var(--text-main); margin: 0; }
+.card-subtitle { font-size: 0.8125rem; color: var(--text-secondary); margin: 2px 0 0; }
 
-.card-title {
-  font-size: 1.15rem;
-  font-weight: 600;
-  color: #0f172a;
-  margin: 0;
-}
+.config-body { padding: var(--space-5); }
 
-.card-subtitle {
-  font-size: 0.85rem;
-  color: #64748b;
-  margin: 0.2rem 0 0 0;
-}
+.config-inline-form { display: flex; align-items: center; gap: var(--space-5); }
+.config-input { width: 260px; }
 
-.config-body {
-  padding: 1.5rem;
-  background-color: #ffffff;
-}
+.action-btn { border-radius: var(--radius-md); padding: 0.5rem 1.25rem; }
 
-.config-inline-form {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.config-input {
-  width: 260px;
-}
-
-.action-btn {
-  border-radius: 8px;
-  padding: 0.5rem 1.25rem;
-}
-
-.rules-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+.rules-table { width: 100%; border-collapse: collapse; }
 
 .status-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
   font-weight: 600;
 }
-
-.status-badge.active {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.inactive {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
+.status-badge.active { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.inactive { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
 
 .risk-badge {
-  padding: 0.25rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  font-weight: 700;
   text-transform: uppercase;
 }
+.risk-badge.alto { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
+.risk-badge.medio { background-color: var(--dj-orange-light); color: var(--dj-orange); }
+.risk-badge.baixo { background-color: var(--dj-success-light); color: var(--dj-success-text); }
 
-.risk-badge.alto {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
+.empty-state { text-align: center; padding: var(--space-8); color: var(--text-muted); }
 
-.risk-badge.medio {
-  background-color: #ffedd5;
-  color: #ea580c;
-}
+.form-field-full { width: 100%; margin-bottom: var(--space-4); }
+.form-row { display: flex; gap: var(--space-4); }
+.form-row .form-field-full { flex: 1; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: var(--space-3); padding-top: var(--space-4); }
 
-.risk-badge.baixo {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 3rem;
-  color: #94a3b8;
-}
-
-/* Dialog Form Styles */
-.form-field-full {
-  width: 100%;
-  margin-bottom: 1rem;
-}
-
-.form-row {
-  display: flex;
-  gap: 1rem;
-}
-
-.form-row .form-field-full {
-  flex: 1;
-}
-
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding-top: 1rem;
-}
-
-/* Explanation Card and Business Rules Grid */
-.explanation-card {
-  border: 1px solid #bfdbfe;
-  background-color: #f8fafc;
-}
-
-.explanation-header {
-  background: linear-gradient(135deg, #eff6ff, #dbeafe);
-}
+/* Explanation Card */
+.explanation-card { border: 1px solid var(--dj-blue-light); background-color: var(--bg-elevated); }
+.explanation-header { background: var(--dj-blue-light); }
 
 .rules-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
+  gap: var(--space-5);
 }
 
 .rule-explain-item {
-  background-color: #ffffff;
-  border-left: 4px solid #3b82f6;
-  border-radius: 4px 8px 8px 4px;
-  padding: 1.25rem;
-  border-top: 1px solid #e2e8f0;
-  border-right: 1px solid #e2e8f0;
-  border-bottom: 1px solid #e2e8f0;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: var(--bg-card);
+  border-left: 3px solid var(--dj-blue);
+  border-radius: 2px var(--radius-lg) var(--radius-lg) 2px;
+  padding: var(--space-5);
+  border-top: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+  transition: box-shadow 0.15s ease;
 }
 
-.rule-explain-item:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.1), 0 4px 6px -4px rgba(59, 130, 246, 0.1);
-  border-color: #93c5fd;
-}
+.rule-explain-item:hover { box-shadow: var(--shadow-md); }
 
-.rule-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.rule-description {
-  margin: 0;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: #475569;
-}
+.rule-title { margin: 0 0 var(--space-2); font-size: 0.875rem; font-weight: 600; color: var(--text-main); }
+.rule-description { margin: 0; font-size: 0.8125rem; line-height: 1.5; color: var(--text-secondary); }

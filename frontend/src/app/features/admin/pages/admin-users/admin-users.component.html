@@ -6,84 +6,6 @@
 
 <mat-card class="content-card">
   <mat-tab-group animationDuration="0ms">
-    
-    <!-- ABA: Aprovação de Cadastros -->
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <mat-icon class="tab-icon">how_to_reg</mat-icon> Aprovação Pendente
-        <span class="badge" *ngIf="pendingTotal > 0">{{ pendingTotal }}</span>
-      </ng-template>
-
-      <div class="tab-content">
-        <div class="filter-bar">
-          <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Pesquisar por Nome, CPF ou E-mail</mat-label>
-            <input matInput [(ngModel)]="pendingSearch" (keyup.enter)="searchPending()" placeholder="Ex: joao@email.com">
-            <button mat-icon-button matSuffix (click)="searchPending()"><mat-icon>search</mat-icon></button>
-          </mat-form-field>
-        </div>
-
-        <div *ngIf="isLoadingPending" class="loading-state">
-          <mat-icon>autorenew</mat-icon>
-          <p>Carregando solicitações...</p>
-        </div>
-
-        <div *ngIf="!isLoadingPending && pendingUsers.length === 0" class="empty-state">
-          <mat-icon>done_all</mat-icon>
-          <h3>Excelente trabalho!</h3>
-          <p>Nenhuma solicitação pendente de análise no momento.</p>
-        </div>
-
-        <div class="table-responsive" *ngIf="!isLoadingPending && pendingUsers.length > 0">
-          <table mat-table [dataSource]="pendingUsers">
-            <!-- Columns omitted for brevity, same as original -->
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef> Nome </th>
-              <td mat-cell *matCellDef="let user"> {{ user.nome || 'Sem Nome' }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef> E-mail </th>
-              <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="role">
-              <th mat-header-cell *matHeaderCellDef> Perfil </th>
-              <td mat-cell *matCellDef="let user"> <span class="role-badge">{{ user.role }}</span> </td>
-            </ng-container>
-
-            <ng-container matColumnDef="scoreAtual">
-              <th mat-header-cell *matHeaderCellDef> Score </th>
-              <td mat-cell *matCellDef="let user"> {{ user.scoreAtual }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="createdAt">
-              <th mat-header-cell *matHeaderCellDef> Data Envio </th>
-              <td mat-cell *matCellDef="let user"> {{ user.createdAt | date:'dd/MM/yyyy HH:mm' }} </td>
-            </ng-container>
-
-            <ng-container matColumnDef="acoes">
-              <th mat-header-cell *matHeaderCellDef> Ações </th>
-              <td mat-cell *matCellDef="let user">
-                <button mat-flat-button color="primary" (click)="openAnalysis(user.id)" class="action-btn">
-                  Analisar
-                </button>
-              </td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          </table>
-
-          <mat-paginator *ngIf="pendingTotal > 0"
-                         [length]="pendingTotal"
-                         [pageSize]="pendingPageSize"
-                         [pageSizeOptions]="[5, 10, 20]"
-                         (page)="onPendingPageChange($event)">
-          </mat-paginator>
-        </div>
-      </div>
-    </mat-tab>
 
     <!-- ABA: Todos os Usuários -->
     <mat-tab>
@@ -155,8 +77,15 @@
             </ng-container>
 
             <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef> E-mail </th>
-              <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
+              <th mat-header-cell *matHeaderCellDef> Identificação / CPF </th>
+              <td mat-cell *matCellDef="let user">
+                <div *ngIf="user.cpf" style="font-weight: 600; color: var(--text-main);">
+                  CPF: {{ user.cpf }}
+                </div>
+                <div *ngIf="user.email && user.email !== user.cpf && !user.email.includes('@investor.local')" style="font-size: 0.8rem; color: var(--text-secondary);">
+                  {{ user.email }}
+                </div>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="role">
@@ -187,7 +116,7 @@
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef> Ações </th>
               <td mat-cell *matCellDef="let user" class="action-cell">
-                <button mat-icon-button color="primary" title="Editar" (click)="openEdit(user.id)">
+                <button mat-icon-button color="primary" title="Editar / Redefinir Senha" (click)="openEdit(user.id)">
                   <mat-icon>edit</mat-icon>
                 </button>
                 <button mat-icon-button color="accent" title="Relatório" *ngIf="user.role === 'Cliente'" (click)="generateUserReport(user.id, user.role)">
@@ -220,7 +149,7 @@
         <div class="filter-bar">
           <mat-form-field appearance="outline" class="search-field">
             <mat-label>Pesquisar Investidor</mat-label>
-            <input matInput [(ngModel)]="walletsSearch" (keyup.enter)="searchWallets()" placeholder="Nome ou E-mail">
+            <input matInput [(ngModel)]="walletsSearch" (keyup.enter)="searchWallets()" placeholder="Nome, CPF ou E-mail">
             <button mat-icon-button matSuffix (click)="searchWallets()"><mat-icon>search</mat-icon></button>
           </mat-form-field>
         </div>
@@ -244,8 +173,15 @@
             </ng-container>
 
             <ng-container matColumnDef="email">
-              <th mat-header-cell *matHeaderCellDef> E-mail </th>
-              <td mat-cell *matCellDef="let wallet"> {{ wallet.email }} </td>
+              <th mat-header-cell *matHeaderCellDef> Identificação / CPF </th>
+              <td mat-cell *matCellDef="let wallet">
+                <div *ngIf="wallet.cpf" style="font-weight: 600; color: var(--text-main);">
+                  CPF: {{ wallet.cpf }}
+                </div>
+                <div *ngIf="wallet.email && wallet.email !== wallet.cpf && !wallet.email.includes('@investor.local')" style="font-size: 0.8rem; color: var(--text-secondary);">
+                  {{ wallet.email }}
+                </div>
+              </td>
             </ng-container>
 
             <ng-container matColumnDef="saldoDisponivel">
@@ -276,6 +212,12 @@
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef> Ações </th>
               <td mat-cell *matCellDef="let wallet" class="action-cell">
+                <button mat-icon-button style="color: var(--dj-blue);" title="Definir Rentabilidade do Saldo Disponível (% a.m.)" (click)="updateRentabilidadeDisponivelPrompt(wallet)">
+                  <mat-icon>percent</mat-icon>
+                </button>
+                <button mat-icon-button style="color: var(--dj-success);" title="Liberar Escolha de Opções de Investimento" (click)="allowProductChange(wallet)">
+                  <mat-icon>lock_open</mat-icon>
+                </button>
                 <button mat-icon-button color="primary" title="Ajuste Manual" (click)="openWalletAdjustment(wallet)">
                   <mat-icon>build</mat-icon>
                 </button>

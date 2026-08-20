@@ -10,9 +10,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { AdminService } from '../../../../core/services/admin.service';
-import { AdminCreditService } from '../../../../core/services/admin-credit.service';
 import { UserDetailDto } from '../../../../core/models/user.models';
-import { forkJoin } from 'rxjs';
 import { DocumentPreviewDialogComponent } from '../document-preview-dialog/document-preview-dialog.component';
 import { AdminReportService } from '../../../../core/services/admin-report.service';
 import { AdminReportPdfService } from '../../../../core/services/admin-report-pdf.service';
@@ -41,7 +39,6 @@ export interface UserDetailDialogData {
 })
 export class UserDetailDialogComponent implements OnInit {
   private adminService = inject(AdminService);
-  private adminCreditService = inject(AdminCreditService);
   private reportService = inject(AdminReportService);
   private reportPdfService = inject(AdminReportPdfService);
   private dialog = inject(MatDialog);
@@ -54,7 +51,7 @@ export class UserDetailDialogComponent implements OnInit {
   public novoScore: number = 0;
   public motivoAlteracao: string = '';
 
-  public rentabilidade: number = 3.0; // Rentabilidade padrão sugerida
+  public rentabilidade: number = 5.0; // Rentabilidade padrão sugerida (5.0% a.m.)
   public observacaoAdministrativa: string = '';
 
   constructor(
@@ -75,8 +72,10 @@ export class UserDetailDialogComponent implements OnInit {
         if (detail.profile) {
           this.novoScore = detail.profile.scoreAtual;
         }
-        if (detail.rentabilidade !== undefined && detail.rentabilidade !== null) {
+        if (detail.rentabilidade !== undefined && detail.rentabilidade !== null && detail.rentabilidade > 0) {
           this.rentabilidade = detail.rentabilidade;
+        } else {
+          this.rentabilidade = 5.0;
         }
         if (detail.observacaoAdministrativa) {
           this.observacaoAdministrativa = detail.observacaoAdministrativa;
@@ -109,21 +108,20 @@ export class UserDetailDialogComponent implements OnInit {
 
   public approve(): void {
     this.isProcessing = true;
-    const rent = this.userDetail?.role?.toLowerCase() === 'investidor' ? this.rentabilidade : undefined;
     const obs = this.userDetail?.role === 'Investidor' ? this.observacaoAdministrativa : undefined;
 
-    this.adminService.approveUser(this.data.userId, rent, obs).subscribe({
+    this.adminService.approveUser(this.data.userId, undefined, obs).subscribe({
       next: () => {
         this.isProcessing = false;
         const msg = this.userDetail?.status === 'Aprovado'
-          ? 'Parâmetros do investidor atualizados com sucesso!'
+          ? 'Observação atualizada com sucesso!'
           : 'Usuário aprovado com sucesso!';
         this.snackBar.open(msg, 'Fechar', { duration: 3000 });
         this.dialogRef.close(true); // retorna true para indicar que houve alteração
       },
       error: (err) => {
         this.isProcessing = false;
-        const msg = err.error?.message || (this.userDetail?.status === 'Aprovado' ? 'Erro ao atualizar parâmetros.' : 'Erro ao aprovar usuário.');
+        const msg = err.error?.message || (this.userDetail?.status === 'Aprovado' ? 'Erro ao atualizar dados.' : 'Erro ao aprovar usuário.');
         this.snackBar.open(msg, 'Fechar', { duration: 5000 });
       }
     });

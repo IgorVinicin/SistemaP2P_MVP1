@@ -1,51 +1,38 @@
+/* ============================================
+   USER EDIT DIALOG — Dinheiro a Jato Design System
+   ============================================ */
+
 .dialog-content {
   min-width: 700px;
   max-width: 95vw;
   max-height: 80vh;
-  padding-bottom: 20px;
+  padding-bottom: var(--space-5);
 }
 
-.detail-container {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.detail-section {
-  padding: 8px 0;
-}
+.detail-container { display: flex; flex-direction: column; gap: var(--space-6); }
+.detail-section { padding: var(--space-2) 0; }
 
 .section-title {
-  margin: 0 0 16px 0;
-  font-size: 16px;
+  margin: 0 0 var(--space-4) 0;
+  font-size: 0.75rem;
   font-weight: 700;
-  color: #1a73e8;
+  color: var(--dj-blue);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
-.edit-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-.form-actions-row {
-  grid-column: span 2;
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
+.edit-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.form-actions-row { grid-column: span 2; display: flex; justify-content: flex-end; margin-top: var(--space-2); }
 
 .score-control-panel {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  gap: 20px;
+  grid-template-columns: 160px 1fr;
+  gap: var(--space-5);
   align-items: start;
-  background-color: #fcfcfc;
-  border: 1px solid #e0e0e0;
-  padding: 16px;
-  border-radius: 8px;
+  background-color: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
 }
 
 .current-score-card {
@@ -53,136 +40,54 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1a73e8, #1557b0);
+  background: linear-gradient(135deg, var(--dj-blue), var(--dj-blue-hover));
   color: white;
-  padding: 20px;
-  border-radius: 8px;
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
   text-align: center;
-  box-shadow: 0 4px 10px rgba(26, 115, 232, 0.2);
 }
 
-.card-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.9;
-  margin-bottom: 8px;
-}
+.card-label { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; margin-bottom: var(--space-2); }
+.card-value { font-size: 2rem; font-weight: 800; }
 
-.card-value {
-  font-size: 36px;
-  font-weight: 800;
-}
-
-.score-form-fields {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.full-width {
-  width: 100%;
-}
+.score-form-fields { display: flex; flex-direction: column; gap: var(--space-3); }
+.full-width { width: 100%; }
 
 .table-container {
   overflow-x: auto;
-  border: 1px solid #dadce0;
-  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-  text-align: left;
-}
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; text-align: left; }
+.data-table th, .data-table td { padding: 10px 12px; border-bottom: 1px solid var(--border-color); }
+.data-table th { background-color: var(--bg-elevated); font-weight: 600; color: var(--text-secondary); font-size: 0.6875rem; text-transform: uppercase; }
 
-.data-table th, .data-table td {
-  padding: 12px;
-  border-bottom: 1px solid #dadce0;
-}
+.status-badge { font-weight: 600; padding: 3px 8px; border-radius: var(--radius-sm); font-size: 0.6875rem; text-transform: uppercase; }
+.status-badge.pendente { background-color: var(--dj-warning-light); color: var(--dj-warning-text); }
+.status-badge.emanalise { background-color: var(--dj-info-light); color: var(--dj-info-text); }
+.status-badge.aprovado, .status-badge.ativo, .status-badge.quitado, .status-badge.concluido { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.reprovado, .status-badge.cancelado { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
 
-.data-table th {
-  background-color: #f8f9fa;
-  font-weight: 600;
-  color: #3c4043;
-}
-
-.status-badge {
-  font-weight: 600;
-  padding: 4px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  text-transform: uppercase;
-}
-
-.status-badge.pendente {
-  background-color: #fff3e0;
-  color: #ef6c00;
-}
-
-.status-badge.emanalise {
-  background-color: #e8f0fe;
-  color: #1a73e8;
-}
-
-.status-badge.aprovado, .status-badge.ativo, .status-badge.quitado, .status-badge.concluido {
-  background-color: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-badge.reprovado, .status-badge.cancelado {
-  background-color: #fce8e6;
-  color: #c5221f;
-}
-
-.old-score {
-  color: #c5221f;
-  font-weight: 600;
-}
-
-.new-score {
-  color: #2e7d32;
-  font-weight: 600;
-}
-
-.admin-email {
-  font-family: monospace;
-  color: #5f6368;
-}
+.old-score { color: var(--dj-danger); font-weight: 600; }
+.new-score { color: var(--dj-success); font-weight: 600; }
+.admin-email { font-family: monospace; color: var(--text-secondary); font-size: 0.75rem; }
 
 .no-data-message {
-  padding: 16px;
-  background-color: #f8f9fa;
-  border-radius: 6px;
-  color: #70757a;
+  padding: var(--space-4);
+  background-color: var(--bg-elevated);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
   text-align: center;
   font-style: italic;
-  font-size: 14px;
+  font-size: 0.8125rem;
 }
 
-.loading-state {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 200px;
-}
+.loading-state { display: flex; justify-content: center; align-items: center; min-height: 200px; }
 
 @media (max-width: 650px) {
-  .dialog-content {
-    min-width: unset;
-    width: 100%;
-  }
-
-  .edit-form-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .form-actions-row {
-    grid-column: span 1;
-  }
-
-  .score-control-panel {
-    grid-template-columns: 1fr;
-  }
+  .dialog-content { min-width: unset; width: 100%; }
+  .edit-form-grid { grid-template-columns: 1fr; }
+  .form-actions-row { grid-column: span 1; }
+  .score-control-panel { grid-template-columns: 1fr; }
 }

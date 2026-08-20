@@ -13,7 +13,7 @@ namespace backend.Application.Services
         private readonly PlatformRevenueService _revenueService;
         private readonly LedgerService _ledgerService;
 
-        public WalletDistributionService(AppDbContext context, PlatformRevenueService revenueService = null, LedgerService ledgerService = null)
+        public WalletDistributionService(AppDbContext context, PlatformRevenueService? revenueService = null, LedgerService? ledgerService = null)
         {
             _context = context;
             _revenueService = revenueService ?? new PlatformRevenueService(context);
@@ -27,6 +27,7 @@ namespace backend.Application.Services
                 .FirstOrDefaultAsync(i => i.Id == loanInstallmentId);
 
             if (installment == null || installment.LoanRequest == null) return;
+            if (installment.ValorPago <= 0) return; // Evita distribuição zerada ou indevida se a parcela não possuir pagamento efetuado.
 
             var loan = installment.LoanRequest;
 
@@ -34,8 +35,6 @@ namespace backend.Application.Services
             var investments = await _context.Investments
                 .Where(inv => inv.LoanId == loan.Id)
                 .ToListAsync();
-
-            if (!investments.Any()) return;
 
             // Registrar entrada principal da parcela no Ledger: BorrowerAccount -> PlatformCash
             if (_ledgerService != null && installment.ValorPago > 0)
@@ -53,6 +52,43 @@ namespace backend.Application.Services
                     observacao: $"Pagamento da parcela {installment.NumeroParcela} pelo tomador",
                     createdBy: usuarioResponsavel
                 );
+            }
+
+            if (!investments.Any())
+            {
+                // Empréstimo financiado com recursos próprios da administração:
+                // Toda a parcela (principal + juros + multas) pertence integralmente à plataforma
+                decimal totalJurosEMultas = installment.ValorJuros + installment.Multa + installment.JurosMora;
+                if (totalJurosEMultas > 0 && _revenueService != null)
+                {
+                    await _revenueService.RegisterRevenueAsync(
+                        PlatformRevenueType.TarifaOperacional,
+                        totalJurosEMultas,
+                        loan.Id,
+                        installment.Id,
+                        loan.UserId,
+                        $"Receita de juros/multas de empréstimo próprio - parcela {installment.NumeroParcela}",
+                        usuarioResponsavel);
+
+                    if (_ledgerService != null)
+                    {
+                        await _ledgerService.AddTransactionAsync(
+                            source: LedgerAccount.PlatformCash,
+                            destination: LedgerAccount.PlatformRevenue,
+                            amount: totalJurosEMultas,
+                            type: LedgerTransactionType.RevenueDistribution,
+                            referenceType: "Installment",
+                            referenceId: installment.Id,
+                            loanId: loan.Id,
+                            installmentId: installment.Id,
+                            userId: loan.UserId,
+                            observacao: $"Receita própria retida da parcela {installment.NumeroParcela}",
+                            createdBy: usuarioResponsavel
+                        );
+                    }
+                }
+                await _context.SaveChangesAsync();
+                return;
             }
 
             int maxRetries = 3;
@@ -85,8 +121,6 @@ namespace backend.Application.Services
 
                         // No novo modelo de Pool de Liquidez, o investidor não recebe o juros da parcela do tomador.
                         // O juros do investidor será calculado globalmente por um serviço separado.
-                        decimal valorJurosRecebido = 0; 
-
                         decimal valorRecebido = valorPrincipalRecebido; // Apenas principal retorna
 
                         decimal saldoAnterior = wallet.SaldoDisponivel;

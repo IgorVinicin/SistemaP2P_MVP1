@@ -1,35 +1,56 @@
 using System;
 using System.Collections.Generic;
 using backend.Domain.Entities;
+using backend.Application.Services.Interest;
 
 namespace backend.Application.Services
 {
     public class PriceCalculationService
     {
+        private readonly IInterestCalculationStrategy _interestStrategy;
+
+        public PriceCalculationService(IInterestCalculationStrategy? interestStrategy = null)
+        {
+            // Padrão do sistema: Juros Simples para todos os empréstimos ativos
+            _interestStrategy = interestStrategy ?? new SimpleInterestStrategy();
+        }
+
         /// <summary>
-        /// Calcula as parcelas de um empréstimo usando JUROS SIMPLES.
-        /// Fórmula: Juros = ValorSolicitado × (Taxa / 100)
-        ///          Total = ValorSolicitado + Juros
-        ///          Parcela = Total / NúmeroParcelas
-        /// A taxa é aplicada UMA VEZ sobre o valor total solicitado, independente da periodicidade.
+        /// Calcula as parcelas de um empréstimo usando a Estratégia de Juros configurada (Juros Simples por padrão).
+        /// Fórmula: Juros = C × i × t
+        ///          Montante Total = C + J
+        ///          Parcela = Montante / NúmeroParcelas
+        /// Garante zero discrepância de centavos ajustando a diferença de arredondamento na última parcela.
         /// </summary>
-        public List<LoanInstallment> CalculateInstallments(Guid loanRequestId, decimal valorSolicitado, int quantidadeParcelas, decimal taxaJuros, string? periodicidade = "Mensal")
+        public List<LoanInstallment> CalculateInstallments(
+            Guid loanRequestId, 
+            decimal valorSolicitado, 
+            int quantidadeParcelas, 
+            decimal taxaJuros, 
+            string? periodicidade = "Mensal",
+            decimal timePeriod = 1m,
+            DateTime? dataPrimeiraParcela = null)
         {
             var installments = new List<LoanInstallment>();
-
             int n = quantidadeParcelas;
 
-            // === JUROS SIMPLES ===
-            // A taxa é aplicada sobre o valor total solicitado, sobre o período total
-            decimal jurosTotal = Math.Round(valorSolicitado * (taxaJuros / 100m), 2);
+            if (n <= 0 || valorSolicitado <= 0)
+            {
+                return installments;
+            }
+
+            // === CÁLCULO VIA STRATEGY (JUROS SIMPLES: J = C * i * t) ===
+            decimal jurosTotal = _interestStrategy.CalculateInterest(valorSolicitado, taxaJuros, timePeriod);
             decimal valorTotal = valorSolicitado + jurosTotal;
 
-            // Cada parcela tem valor igual (principal + juros distribuídos igualmente)
-            decimal valorParcelaPadrao = Math.Round(valorTotal / n, 2);
-            decimal principalPorParcela = Math.Round(valorSolicitado / n, 2);
-            decimal jurosPorParcela = Math.Round(jurosTotal / n, 2);
+            // Cada parcela tem valor padrão aproximado (distribuído igualmente)
+            decimal valorParcelaPadrao = Math.Round(valorTotal / n, 2, MidpointRounding.AwayFromZero);
+            decimal principalPorParcela = Math.Round(valorSolicitado / n, 2, MidpointRounding.AwayFromZero);
+            decimal jurosPorParcela = Math.Round(jurosTotal / n, 2, MidpointRounding.AwayFromZero);
 
-            DateTime baseDate = DateTime.UtcNow;
+            DateTime baseDate = dataPrimeiraParcela.HasValue 
+                ? new DateTime(dataPrimeiraParcela.Value.Year, dataPrimeiraParcela.Value.Month, dataPrimeiraParcela.Value.Day, 0, 0, 0, DateTimeKind.Utc) 
+                : DateTime.UtcNow.Date;
             DateTime currentDueDate = baseDate;
 
             decimal somaParcelasAnteriores = 0;
@@ -44,7 +65,7 @@ namespace backend.Application.Services
 
                 if (k == n)
                 {
-                    // Na última parcela, absorve qualquer diferença de arredondamento
+                    // Na última parcela, absorve exatamente qualquer diferença de arredondamento
                     principal = valorSolicitado - somaPrincipalAnterior;
                     juros = jurosTotal - somaJurosAnterior;
                     parcela = valorTotal - somaParcelasAnteriores;
@@ -60,27 +81,61 @@ namespace backend.Application.Services
                     somaParcelasAnteriores += parcela;
                 }
 
-                // Cálculo do vencimento com base na periodicidade
+                // Cálculo do vencimento com base na periodicidade e data inicial
                 string p = (periodicidade ?? "Mensal").Trim().ToLower();
-                if (p == "diario")
+
+                if (dataPrimeiraParcela.HasValue)
                 {
-                    currentDueDate = baseDate.AddDays(k);
+                    if (k == 1)
+                    {
+                        currentDueDate = baseDate;
+                    }
+                    else
+                    {
+                        if (p == "diario")
+                        {
+                            currentDueDate = baseDate.AddDays(k - 1);
+                        }
+                        else if (p == "diarioutil")
+                        {
+                            currentDueDate = GetNextBusinessDay(currentDueDate);
+                        }
+                        else if (p == "semanal")
+                        {
+                            currentDueDate = baseDate.AddDays((k - 1) * 7);
+                        }
+                        else if (p == "quinzenal")
+                        {
+                            currentDueDate = baseDate.AddDays((k - 1) * 15);
+                        }
+                        else // Mensal (padrão)
+                        {
+                            currentDueDate = baseDate.AddMonths(k - 1);
+                        }
+                    }
                 }
-                else if (p == "diarioutil")
+                else
                 {
-                    currentDueDate = GetNextBusinessDay(currentDueDate);
-                }
-                else if (p == "semanal")
-                {
-                    currentDueDate = baseDate.AddDays(k * 7);
-                }
-                else if (p == "quinzenal")
-                {
-                    currentDueDate = baseDate.AddDays(k * 15);
-                }
-                else // Mensal (padrão)
-                {
-                    currentDueDate = baseDate.AddMonths(k);
+                    if (p == "diario")
+                    {
+                        currentDueDate = baseDate.AddDays(k);
+                    }
+                    else if (p == "diarioutil")
+                    {
+                        currentDueDate = GetNextBusinessDay(currentDueDate);
+                    }
+                    else if (p == "semanal")
+                    {
+                        currentDueDate = baseDate.AddDays(k * 7);
+                    }
+                    else if (p == "quinzenal")
+                    {
+                        currentDueDate = baseDate.AddDays(k * 15);
+                    }
+                    else // Mensal (padrão)
+                    {
+                        currentDueDate = baseDate.AddMonths(k);
+                    }
                 }
 
                 installments.Add(new LoanInstallment
@@ -115,4 +170,3 @@ namespace backend.Application.Services
         }
     }
 }
-

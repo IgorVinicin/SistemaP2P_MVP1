@@ -1,0 +1,134 @@
+/* ============================================
+   PROFILE PAGE — Dinheiro a Jato Design System
+   ============================================ */
+
+.profile-container {
+  padding: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header-row {
+  margin-bottom: var(--space-6);
+}
+
+.title-section h1 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: var(--space-1);
+}
+
+.title-section p {
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.8fr;
+  gap: var(--space-6);
+}
+
+.info-card, .edit-card {
+  border-radius: var(--radius-lg) !important;
+  border: 1px solid var(--border-color) !important;
+  box-shadow: var(--shadow-xs) !important;
+  background-color: var(--bg-card);
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.info-item:last-child { border-bottom: none; }
+
+.info-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.info-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-main);
+}
+
+.info-value.highlight {
+  font-weight: 700;
+  color: var(--text-main);
+  font-size: 1rem;
+}
+
+.status-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge.aprovado { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.emanalise { background-color: var(--dj-warning-light); color: var(--dj-warning-text); }
+.status-badge.pendente { background-color: var(--bg-elevated); color: var(--text-secondary); }
+.status-badge.reprovado { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
+
+.form-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+
+.form-row {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.flex-1 { flex: 1; min-width: 220px; }
+.flex-2 { flex: 2; min-width: 280px; }
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-10);
+  gap: var(--space-3);
+  color: var(--text-secondary);
+}
+
+.spinning { animation: spin 1.2s linear infinite; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .profile-grid { grid-template-columns: 1fr; }
+}

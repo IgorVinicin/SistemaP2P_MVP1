@@ -1,142 +1,76 @@
+/* ============================================
+   MY LOANS — Dinheiro a Jato Design System
+   ============================================ */
+
 .my-loans-container {
-  max-width: 1000px;
-  margin: 2rem auto;
-  padding: 0 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .header-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: var(--space-6);
 }
 
-.title-section h1 {
-  font-size: 2rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin: 0;
-}
+.title-section h1 { font-size: 1.375rem; font-weight: 700; color: var(--text-main); margin: 0; }
+.title-section p { color: var(--text-secondary); margin: var(--space-1) 0 0; font-size: 0.8125rem; }
 
-.title-section p {
-  color: #64748b;
-  margin: 0.25rem 0 0 0;
-  font-size: 0.95rem;
-}
-
-.action-btn {
-  border-radius: 8px;
-  padding: 0.5rem 1.25rem;
-}
+.action-btn { border-radius: var(--radius-md); padding: 0.5rem 1.25rem; }
 
 .loans-card {
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background-color: #ffffff;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-card);
   overflow: hidden;
 }
 
-.loans-table {
-  width: 100%;
+.loans-table { width: 100%; }
+
+th.mat-mdc-header-cell {
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  background-color: var(--bg-elevated) !important;
+  font-size: 0.6875rem !important;
+  text-transform: uppercase;
 }
 
 .status-badge {
-  padding: 0.2rem 0.6rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
   font-weight: 600;
   text-transform: uppercase;
 }
 
-.status-badge.pendente {
-  background-color: #fef3c7;
-  color: #d97706;
-}
-
-.status-badge.aprovado {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.reprovado {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.status-badge.emcaptacao {
-  background-color: #e0f2fe;
-  color: #0369a1;
-}
-
-.status-badge.financiado {
-  background-color: #f0fdf4;
-  color: #166534;
-}
-
-.status-badge.empagamento {
-  background-color: #e0e7ff;
-  color: #4338ca;
-}
-
-.status-badge.finalizado {
-  background-color: #f3f4f6;
-  color: #374151;
-}
-
-.status-badge.inadimplente {
-  background-color: #fecdd3;
-  color: #9f1239;
-}
+.status-badge.pendente { background-color: var(--dj-warning-light); color: var(--dj-warning-text); }
+.status-badge.aprovado, .status-badge.paga { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.reprovado, .status-badge.atrasada { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
+.status-badge.emcaptacao { background-color: var(--dj-info-light); color: var(--dj-info-text); }
+.status-badge.financiado { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.empagamento { background-color: var(--dj-blue-light); color: var(--dj-blue); }
+.status-badge.finalizado { background-color: var(--bg-elevated); color: var(--text-secondary); }
+.status-badge.inadimplente { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
 
 .risk-badge {
-  padding: 0.2rem 0.5rem;
-  border-radius: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
 }
 
-.risk-badge.alto {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.risk-badge.medio {
-  background-color: #ffedd5;
-  color: #ea580c;
-}
-
-.risk-badge.baixo {
-  background-color: #dcfce7;
-  color: #15803d;
-}
+.risk-badge.alto { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
+.risk-badge.medio { background-color: var(--dj-orange-light); color: var(--dj-orange); }
+.risk-badge.baixo { background-color: var(--dj-success-light); color: var(--dj-success-text); }
 
 .empty-loans {
   text-align: center;
-  padding: 4rem 2rem;
-  color: #94a3b8;
+  padding: var(--space-10) var(--space-6);
+  color: var(--text-muted);
 }
 
-.status-badge.paga {
-  background-color: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.atrasada {
-  background-color: #fee2e2;
-  color: #b91c1c;
-}
-
-.selected-row {
-  background-color: #f8fafc;
-  font-weight: 500;
-}
-
-.clickable-row {
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.clickable-row:hover {
-  background-color: #f1f5f9 !important;
-}
+.selected-row { background-color: var(--bg-elevated); font-weight: 500; }
+.clickable-row { cursor: pointer; transition: background-color 0.12s ease; }
+.clickable-row:hover { background-color: var(--bg-elevated) !important; }

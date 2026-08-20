@@ -1,22 +1,98 @@
 <div class="credit-config-container">
   <div class="header-row">
     <div class="title-section">
-      <h1>Configuração de Crédito por Score</h1>
-      <p>Configure limites de empréstimo, taxas de juros e faixas de risco por faixa de score.</p>
+      <h1>Configurações de Crédito & Investimentos</h1>
+      <p>Gerencie regras de crédito por score, produtos de investimento para investidores e parâmetros operacionais.</p>
     </div>
-    <button mat-flat-button color="primary" class="action-btn" (click)="openRuleDialog()">
-      <mat-icon>add</mat-icon> Nova Regra
-    </button>
   </div>
+
+  <!-- Bloco de Produtos de Investimento (Prateleira de Investimentos) -->
+  <mat-card class="config-section-card" style="margin-bottom: 2rem;">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+          <mat-icon style="color: #4f46e5;">inventory_2</mat-icon> Prateleira de Produtos de Investimento
+        </h3>
+        <p class="card-subtitle">Cadastre e configure as opções de investimento, taxas de rentabilidade mensal e condições para os investidores.</p>
+      </div>
+      <button mat-flat-button color="primary" class="action-btn" (click)="openProductDialog()">
+        <mat-icon>add</mat-icon> Novo Produto de Investimento
+      </button>
+    </div>
+
+    <div *ngIf="isLoadingProducts" style="text-align: center; padding: 2rem;">
+      <p>Carregando produtos de investimento...</p>
+    </div>
+
+    <div *ngIf="!isLoadingProducts && products.length === 0" class="empty-state" style="text-align: center; padding: 2.5rem; color: var(--text-secondary);">
+      <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #cbd5e1; margin-bottom: 0.5rem;">inventory_2</mat-icon>
+      <p style="margin: 0;">Nenhum produto de investimento cadastrado.</p>
+    </div>
+
+    <div class="table-responsive" *ngIf="!isLoadingProducts && products.length > 0">
+      <table mat-table [dataSource]="products" class="rules-table" style="width: 100%;">
+        <!-- Nome -->
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef> Nome do Investimento </th>
+          <td mat-cell *matCellDef="let prod">
+            <strong>{{ prod.nome }}</strong>
+            <div style="font-size: 0.8rem; color: var(--text-secondary);">{{ prod.descricao | slice:0:60 }}{{ prod.descricao?.length > 60 ? '...' : '' }}</div>
+          </td>
+        </ng-container>
+
+        <!-- Rentabilidade -->
+        <ng-container matColumnDef="rentabilidade">
+          <th mat-header-cell *matHeaderCellDef> Rentabilidade </th>
+          <td mat-cell *matCellDef="let prod" style="font-weight: 700; color: var(--dj-success);">
+            {{ prod.rentabilidadeMensal | number:'1.2-2' }}% a.m.
+          </td>
+        </ng-container>
+
+        <!-- Valor Mínimo -->
+        <ng-container matColumnDef="valorMinimo">
+          <th mat-header-cell *matHeaderCellDef> Aporte Mínimo </th>
+          <td mat-cell *matCellDef="let prod">
+            {{ prod.valorMinimo | currency:'BRL' }}
+          </td>
+        </ng-container>
+
+        <!-- Status -->
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <td mat-cell *matCellDef="let prod">
+            <span class="status-badge" [class.active]="prod.ativo" [class.inactive]="!prod.ativo">
+              {{ prod.ativo ? 'Ativo' : 'Inativo' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Ações -->
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let prod">
+            <button mat-icon-button color="primary" (click)="openProductDialog(prod)" title="Editar">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteProduct(prod.id)" title="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="productColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: productColumns;"></tr>
+      </table>
+    </div>
+  </mat-card>
 
   <!-- Bloco de Configuração Global -->
   <mat-card class="config-section-card" style="margin-bottom: 2rem;">
     <div class="card-header">
-      <h3 class="card-title">Configuração Geral de Crédito</h3>
-      <p class="card-subtitle">Parâmetros globais para validação de crédito de clientes.</p>
+      <h3 class="card-title">Configuração Geral de Crédito & Plataforma</h3>
+      <p class="card-subtitle">Parâmetros globais para validação de crédito e regras de negócio.</p>
     </div>
     <div class="config-body">
-      <div class="config-inline-form" style="flex-wrap: wrap; gap: 1rem;">
+      <div class="config-inline-form" style="display: flex; flex-wrap: wrap; gap: 1rem;">
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Score Mínimo para Solicitação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.scoreMinimoParaSolicitacao" placeholder="Ex: 150">
@@ -42,14 +118,13 @@
           <input matInput type="number" [(ngModel)]="globalConfig.diasParaInadimplencia" placeholder="Ex: 61">
         </mat-form-field>
         <mat-form-field class="config-input" appearance="outline">
-          <mat-label>Investimento Mínimo (R$)</mat-label>
+          <mat-label>Investimento Mínimo Global (R$)</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.valorMinimoInvestimento" placeholder="Ex: 5000.00">
         </mat-form-field>
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Parcelas Pagas Mínimas para Renovação</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.minimoParcelasPagasNovaSolicitacao" placeholder="Ex: 4">
         </mat-form-field>
-
         <mat-form-field class="config-input" appearance="outline">
           <mat-label>Limite Máx. de Investidores</mat-label>
           <input matInput type="number" [(ngModel)]="globalConfig.maxInvestidoresPorEmprestimo" placeholder="Ex: 10">
@@ -58,83 +133,25 @@
           <mat-label>Taxa Rendimento Pool (% ao Mês)</mat-label>
           <input matInput type="number" step="0.01" [(ngModel)]="globalConfig.taxaRendimentoPool" placeholder="Ex: 2.00">
         </mat-form-field>
-        <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
-          Salvar Configuração Geral
-        </button>
-      </div>
-    </div>
-  </mat-card>
-
-  <!-- Dicionário Explicativo das Regras de Negócio -->
-  <mat-card class="config-section-card explanation-card" style="margin-bottom: 2rem;">
-    <div class="card-header explanation-header">
-      <div style="display: flex; align-items: center; gap: 0.75rem;">
-        <mat-icon style="color: #3b82f6; font-size: 28px; width: 28px; height: 28px;">info</mat-icon>
-        <div>
-          <h3 class="card-title">Dicionário de Regras de Negócio</h3>
-          <p class="card-subtitle">Entenda o funcionamento dos parâmetros financeiros e de crédito do sistema.</p>
-        </div>
-      </div>
-    </div>
-    <div class="config-body">
-      <div class="rules-grid">
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Limite de Investidores</h4>
-          <p class="rule-description">
-            Define o número máximo de investidores associados a um único empréstimo. O motor seleciona automaticamente os investidores elegíveis com maior saldo disponível primeiro.
-          </p>
-        </div>
-
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Multa por Atraso</h4>
-          <p class="rule-description">
-            Taxa percentual fixa cobrada sobre o valor original da parcela assim que ela entra em atraso (logo no 1º dia útil após o vencimento).
-          </p>
-        </div>
-
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Juros Diários de Mora</h4>
-          <p class="rule-description">
-            Taxa diária de juros acumulativa cobrada sobre o valor da parcela por cada dia de atraso, calculada proporcionalmente ao tempo de inadimplemento.
-          </p>
-        </div>
-
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Fases da Régua de Cobrança</h4>
-          <p class="rule-description">
-            Determina os prazos para ações de cobrança e classificação:
-            <br>• <strong>Dias para Cobrança:</strong> Início das notificações normais.
-            <br>• <strong>Cobrança Intensiva:</strong> Alerta administrativo para tentativas diretas.
-            <br>• <strong>Inadimplência:</strong> Registro de inadimplência e suspensão de novas ações.
-          </p>
-        </div>
-
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Investimento Mínimo</h4>
-          <p class="rule-description">
-            Valor mínimo em reais (R$) exigido para que um investidor consiga efetuar um novo aporte de saldo na plataforma.
-          </p>
-        </div>
-
-        <div class="rule-explain-item">
-          <h4 class="rule-title">Mínimo para Renovação</h4>
-          <p class="rule-description">
-            Quantidade mínima de parcelas que o tomador precisa pagar de forma pontual no empréstimo ativo antes de poder solicitar um novo crédito.
-          </p>
+        <div style="width: 100%; display: flex; justify-content: flex-end;">
+          <button mat-flat-button color="accent" class="action-btn" (click)="saveGlobalConfig()">
+            Salvar Configuração Geral
+          </button>
         </div>
       </div>
     </div>
   </mat-card>
 
-  <!-- Lista de Regras de Crédito -->
+  <!-- Lista de Regras de Crédito por Score -->
   <mat-card class="config-section-card">
-    <div class="card-header">
-      <div class="card-header-content">
-        <div>
-          <h3 class="card-title">Regras de Crédito Ativas</h3>
-          <p class="card-subtitle">Lista de regras por faixas de score.</p>
-        </div>
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div>
+        <h3 class="card-title">Regras de Crédito por Faixa de Score</h3>
+        <p class="card-subtitle">Limites de crédito e faixas de risco calculadas na anamnese.</p>
       </div>
+      <button mat-flat-button color="primary" class="action-btn" (click)="openRuleDialog()">
+        <mat-icon>add</mat-icon> Nova Regra de Score
+      </button>
     </div>
     
     <div *ngIf="isLoading" style="text-align: center; padding: 2rem;">
@@ -158,8 +175,6 @@
         <th mat-header-cell *matHeaderCellDef> Limite Máximo </th>
         <td mat-cell *matCellDef="let rule"> {{ rule.limiteEmprestimo | currency:'BRL':'symbol':'1.2-2' }} </td>
       </ng-container>
-
-
 
       <!-- Coluna Risco -->
       <ng-container matColumnDef="risco">
@@ -200,30 +215,79 @@
   </mat-card>
 </div>
 
-<!-- Template de Dialog para Criar/Editar Regra -->
+<!-- Template de Dialog para Criar/Editar Produto de Investimento -->
+<ng-template #productDialog>
+  <h2 mat-dialog-title>{{ editingProduct ? 'Editar Produto de Investimento' : 'Novo Produto de Investimento' }}</h2>
+  <mat-dialog-content>
+    <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 12px;">
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Nome do Investimento</mat-label>
+        <input matInput [(ngModel)]="productForm.nome" placeholder="Ex: Pool de Liquidez Conservador" required />
+      </mat-form-field>
+
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+        <mat-form-field appearance="outline" style="flex: 1; min-width: 180px;">
+          <mat-label>Rentabilidade (% a.m.)</mat-label>
+          <input matInput type="number" step="0.1" [(ngModel)]="productForm.rentabilidadeMensal" required placeholder="Ex: 2.50" />
+          <span matSuffix>% a.m.</span>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" style="flex: 1; min-width: 180px;">
+          <mat-label>Aporte Mínimo (R$)</mat-label>
+          <input matInput type="number" step="100" [(ngModel)]="productForm.valorMinimo" required placeholder="Ex: 5000.00" />
+          <span matPrefix>R$&nbsp;</span>
+        </mat-form-field>
+      </div>
+
+
+
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Descrição do Produto</mat-label>
+        <textarea matInput [(ngModel)]="productForm.descricao" rows="2" placeholder="Descreva os objetivos e características deste investimento..."></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" style="width: 100%;">
+        <mat-label>Condições e Garantias</mat-label>
+        <textarea matInput [(ngModel)]="productForm.condicoes" rows="2" placeholder="Ex: Cobertura pelo Fundo de Proteção, Liquidez D+30..."></textarea>
+      </mat-form-field>
+
+      <div>
+        <mat-checkbox [(ngModel)]="productForm.ativo">Produto Ativo na Vitrine do Investidor</mat-checkbox>
+      </div>
+    </div>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end" style="padding: 1rem 1.25rem;">
+    <button mat-button mat-dialog-close>Cancelar</button>
+    <button mat-flat-button color="primary" (click)="saveProduct()" [disabled]="!productForm.nome || productForm.rentabilidadeMensal < 0 || productForm.valorMinimo <= 0">
+      Salvar Produto
+    </button>
+  </mat-dialog-actions>
+</ng-template>
+
+<!-- Template de Dialog para Criar/Editar Regra de Score -->
 <ng-template #ruleDialog>
   <h2 mat-dialog-title>{{ editingRule ? 'Editar Regra de Crédito' : 'Nova Regra de Crédito' }}</h2>
   <mat-dialog-content>
     <div style="padding-top: 10px; display: flex; flex-direction: column; gap: 10px;">
-      <div class="form-row">
-        <mat-form-field class="form-field-full" appearance="outline">
+      <div class="form-row" style="display: flex; gap: 1rem;">
+        <mat-form-field class="form-field-full" appearance="outline" style="flex: 1;">
           <mat-label>Score Mínimo</mat-label>
           <input matInput type="number" [(ngModel)]="ruleForm.scoreMin">
         </mat-form-field>
-        <mat-form-field class="form-field-full" appearance="outline">
+        <mat-form-field class="form-field-full" appearance="outline" style="flex: 1;">
           <mat-label>Score Máximo</mat-label>
           <input matInput type="number" [(ngModel)]="ruleForm.scoreMax">
         </mat-form-field>
       </div>
 
       <div class="form-row">
-        <mat-form-field class="form-field-full" appearance="outline">
+        <mat-form-field class="form-field-full" appearance="outline" style="width: 100%;">
           <mat-label>Limite de Empréstimo (R$)</mat-label>
           <input matInput type="number" [(ngModel)]="ruleForm.limiteEmprestimo">
         </mat-form-field>
       </div>
 
-      <mat-form-field class="form-field-full" appearance="outline">
+      <mat-form-field class="form-field-full" appearance="outline" style="width: 100%;">
         <mat-label>Nível de Risco</mat-label>
         <mat-select [(ngModel)]="ruleForm.nivelRisco">
           <mat-option value="Alto">Alto</mat-option>
@@ -237,9 +301,9 @@
       </div>
     </div>
   </mat-dialog-content>
-  <mat-dialog-actions class="dialog-actions">
+  <mat-dialog-actions class="dialog-actions" align="end" style="padding: 1rem 1.25rem;">
     <button mat-button mat-dialog-close>Cancelar</button>
-    <button mat-flat-button color="primary" (click)="saveRule()" [disabled]="ruleForm.scoreMin === null || ruleForm.scoreMax === null || !ruleForm.limiteEmprestimo || !ruleForm.taxaJuros || !ruleForm.nivelRisco">
+    <button mat-flat-button color="primary" (click)="saveRule()" [disabled]="ruleForm.scoreMin === null || ruleForm.scoreMax === null || !ruleForm.limiteEmprestimo || !ruleForm.nivelRisco">
       Salvar
     </button>
   </mat-dialog-actions>

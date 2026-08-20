@@ -298,4 +298,40 @@ export class AdminUsersComponent implements OnInit {
       });
     }
   }
+
+  public allowProductChange(wallet: AdminInvestorWalletSummaryDto): void {
+    if (confirm(`Deseja liberar o acesso para que o investidor ${wallet.nome} escolha/altere sua opção de investimento e rentabilidade?`)) {
+      this.adminService.allowInvestorProductChange(wallet.investorId).subscribe({
+        next: (res) => {
+          this.snackBar.open(res.message || 'Acesso liberado com sucesso!', 'OK', { duration: 4000 });
+          this.loadInvestorWallets();
+        },
+        error: (err) => {
+          const msg = err.error?.message || 'Erro ao liberar acesso ao investidor.';
+          this.snackBar.open(msg, 'Fechar', { duration: 4000 });
+        }
+      });
+    }
+  }
+
+  public updateRentabilidadeDisponivelPrompt(wallet: AdminInvestorWalletSummaryDto): void {
+    const input = prompt(`Definir Rentabilidade do Saldo Disponível (% a.m.) para ${wallet.nome}:`, '1.00');
+    if (input !== null) {
+      const val = parseFloat(input.replace(',', '.'));
+      if (isNaN(val) || val < 0) {
+        alert('Valor de rentabilidade inválido. Informe um número maior ou igual a zero.');
+        return;
+      }
+      this.adminService.updateRentabilidadeDisponivel(wallet.investorId, val).subscribe({
+        next: (res) => {
+          this.snackBar.open(res.message || 'Rentabilidade do saldo disponível atualizada com sucesso!', 'OK', { duration: 4000 });
+          this.loadInvestorWallets();
+        },
+        error: (err) => {
+          const msg = err.error?.message || 'Erro ao atualizar rentabilidade.';
+          this.snackBar.open(msg, 'Fechar', { duration: 4000 });
+        }
+      });
+    }
+  }
 }

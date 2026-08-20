@@ -52,7 +52,6 @@ export class AdminRevenueComponent implements OnInit {
 
   public isLoadingMetrics = false;
   public isLoadingRevenues = false;
-  public isProcessingYield = false;
 
   public displayedColumns: string[] = ['dataCriacao', 'tipoReceita', 'valor', 'observacao', 'createdBy'];
 
@@ -98,24 +97,6 @@ export class AdminRevenueComponent implements OnInit {
     this.page = event.pageIndex + 1;
     this.pageSize = event.pageSize;
     this.loadRevenues();
-  }
-
-  processYield(): void {
-    if (confirm('Deseja realmente processar os rendimentos do pool de liquidez? Esta ação calculará os rendimentos de todos os investidores ativos e distribuirá o saldo.')) {
-      this.isProcessingYield = true;
-      this.revenueService.processYield().subscribe({
-        next: (response) => {
-          this.isProcessingYield = false;
-          this.snackBar.open(`Sucesso: ${response.investidoresProcessados} investidores processados. Total distribuído: R$ ${response.totalRendimentoDistribuido}`, 'Fechar', { duration: 6000 });
-          this.loadMetrics();
-          this.loadRevenues();
-        },
-        error: (err) => {
-          this.isProcessingYield = false;
-          this.snackBar.open(`Erro: ${err.error?.message || 'Falha ao processar rendimentos.'}`, 'Fechar', { duration: 6000 });
-        }
-      });
-    }
   }
 
   onPeriodChange(): void {

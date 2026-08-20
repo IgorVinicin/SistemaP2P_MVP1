@@ -30,6 +30,7 @@ export class AuthService {
     const status = localStorage.getItem('status');
     const email = localStorage.getItem('email');
     const userId = localStorage.getItem('userId');
+    const nome = localStorage.getItem('nome') ?? '';
     const possuiEmpresa = localStorage.getItem('possuiEmpresa') === 'true';
 
     if (token && role && status && email && userId) {
@@ -38,7 +39,8 @@ export class AuthService {
         role,
         status,
         email,
-        userId
+        userId,
+        nome
       });
       this._possuiEmpresa.set(possuiEmpresa);
     }
@@ -67,6 +69,7 @@ export class AuthService {
     localStorage.removeItem('status');
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
+    localStorage.removeItem('nome');
     localStorage.removeItem('possuiEmpresa');
     this._currentUser.set(null);
     this._possuiEmpresa.set(false);
@@ -83,6 +86,7 @@ export class AuthService {
     localStorage.setItem('status', response.status);
     localStorage.setItem('email', response.email);
     localStorage.setItem('userId', response.userId);
+    localStorage.setItem('nome', response.nome ?? '');
     this._currentUser.set(response);
   }
 
@@ -93,5 +97,16 @@ export class AuthService {
       const updated = { ...current, status: newStatus };
       this.saveSession(updated);
     }
+  }
+
+  // Consulta o status real do usuário no backend (para detectar aprovações do admin em tempo real)
+  public getMyStatus(): Observable<{ status: string; role: string; nome: string }> {
+    return this.http.get<{ status: string; role: string; nome: string }>(`${this.apiUrl}/me`).pipe(
+      tap(res => {
+        if (res && res.status) {
+          this.updateStatus(res.status);
+        }
+      })
+    );
   }
 }

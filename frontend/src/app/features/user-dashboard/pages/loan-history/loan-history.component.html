@@ -16,8 +16,8 @@
 
     <div *ngIf="!isLoading && loans.length === 0" class="empty-history">
       <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #cbd5e1; margin-bottom: 1rem;">history</mat-icon>
-      <h3 style="margin: 0; color: #334155;">Nenhum histórico encontrado</h3>
-      <p style="color: #64748b; margin: 0.5rem 0 1.5rem 0;">Você ainda não possui nenhuma solicitação ou empréstimo em seu histórico.</p>
+      <h3 style="margin: 0; color: var(--text-main);">Nenhum histórico encontrado</h3>
+      <p style="color: var(--text-secondary); margin: 0.5rem 0 1.5rem 0;">Você ainda não possui nenhuma solicitação ou empréstimo em seu histórico.</p>
     </div>
 
     <table mat-table [dataSource]="loans" class="history-table" *ngIf="!isLoading && loans.length > 0">
@@ -58,7 +58,7 @@
           <span class="status-badge" [class]="loan.status.toLowerCase()">
             {{ loan.status }}
           </span>
-          <p *ngIf="loan.status === 'Reprovado' && loan.observacaoAdmin" style="font-size: 0.75rem; color: #ef4444; margin: 0.25rem 0 0 0;">
+          <p *ngIf="loan.status === 'Reprovado' && loan.observacaoAdmin" style="font-size: 0.75rem; color: var(--dj-danger); margin: 0.25rem 0 0 0;">
             Motivo: {{ loan.observacaoAdmin }}
           </p>
         </td>

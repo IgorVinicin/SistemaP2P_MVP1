@@ -1,7 +1,7 @@
 <div class="register-wrapper">
   <mat-card class="register-card">
     <mat-card-header>
-      <mat-card-title>Cadastro {{ registerForm.get('role')?.value === 'Investidor' ? 'Investidor' : 'Tomador' }} - Sistema P2P</mat-card-title>
+      <mat-card-title>Cadastro {{ registerForm.get('role')?.value === 'Investidor' ? 'Investidor' : 'Tomador' }}</mat-card-title>
       <mat-card-subtitle>Crie sua conta para começar</mat-card-subtitle>
     </mat-card-header>
     
@@ -19,7 +19,7 @@
             <mat-label>CPF</mat-label>
             <input matInput formControlName="cpf" placeholder="123.456.789-01" (input)="onCpfInput($event)">
             <mat-error *ngIf="registerForm.get('cpf')?.hasError('required')">CPF é obrigatório</mat-error>
-            <mat-error *ngIf="registerForm.get('cpf')?.hasError('pattern')">CPF deve estar formatado corretamente</mat-error>
+            <mat-error *ngIf="registerForm.get('cpf')?.hasError('cpfInvalido')">CPF inválido (verifique os dígitos)</mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -33,13 +33,21 @@
             <mat-label>Data de Nascimento</mat-label>
             <input matInput type="date" formControlName="dataNascimento">
             <mat-error *ngIf="registerForm.get('dataNascimento')?.hasError('required')">Data de nascimento é obrigatória</mat-error>
+            <mat-error *ngIf="registerForm.get('dataNascimento')?.hasError('menorDeIdade')">É necessário ser maior de 18 anos</mat-error>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="registerForm.get('role')?.value !== 'Investidor'">
             <mat-label>E-mail</mat-label>
             <input matInput type="email" formControlName="email" placeholder="exemplo@email.com">
             <mat-error *ngIf="registerForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
             <mat-error *ngIf="registerForm.get('email')?.hasError('email')">E-mail inválido</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="registerForm.get('role')?.value === 'Investidor'">
+            <mat-label>Quanto deseja investir? (R$)</mat-label>
+            <input matInput type="number" step="0.01" min="0" formControlName="valorInicialInvestimento" placeholder="Ex: 5000.00">
+            <span matPrefix style="margin-right: 4px; color: var(--text-secondary);">R$&nbsp;</span>
+            <mat-hint>Valor inicial a ser alocado após aprovação do cadastro</mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline">
@@ -57,13 +65,17 @@
             </mat-select>
           </mat-form-field>
 
-          <div class="toggle-container">
-            <mat-slide-toggle formControlName="possuiEmpresa">Possui empresa?</mat-slide-toggle>
-          </div>
+          <mat-form-field appearance="outline" *ngIf="registerForm.get('role')?.value !== 'Investidor'">
+            <mat-label>Possui Empresa?</mat-label>
+            <mat-select formControlName="possuiEmpresa">
+              <mat-option [value]="false">Não</mat-option>
+              <mat-option [value]="true">Sim</mat-option>
+            </mat-select>
+          </mat-form-field>
         </div>
 
-        <!-- Seção de Dados da Empresa (Condicional) -->
-        <div *ngIf="registerForm.get('possuiEmpresa')?.value" class="company-section">
+        <!-- Seção de Dados da Empresa (Condicional para Tomador) -->
+        <div *ngIf="registerForm.get('role')?.value !== 'Investidor' && registerForm.get('possuiEmpresa')?.value" class="company-section">
           <h3>Dados da Empresa</h3>
           <div class="form-grid">
             <mat-form-field appearance="outline">
@@ -81,7 +93,7 @@
               <mat-label>CNPJ</mat-label>
               <input matInput formControlName="cnpj" placeholder="12.345.678/0001-90" (input)="onCnpjInput($event)">
               <mat-error *ngIf="registerForm.get('cnpj')?.hasError('required')">CNPJ é obrigatório</mat-error>
-              <mat-error *ngIf="registerForm.get('cnpj')?.hasError('pattern')">CNPJ deve estar formatado corretamente</mat-error>
+              <mat-error *ngIf="registerForm.get('cnpj')?.hasError('cnpjInvalido')">CNPJ inválido (verifique os dígitos)</mat-error>
             </mat-form-field>
 
             <mat-form-field appearance="outline">

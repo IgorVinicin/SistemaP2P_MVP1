@@ -13,7 +13,7 @@ namespace backend.Application.Services
         private readonly AppDbContext _context;
         private readonly LedgerService _ledgerService;
 
-        public AllocationEngineService(AppDbContext context, LedgerService ledgerService = null)
+        public AllocationEngineService(AppDbContext context, LedgerService? ledgerService = null)
         {
             _context = context;
             _ledgerService = ledgerService ?? new LedgerService(context);
@@ -166,11 +166,11 @@ namespace backend.Application.Services
                     var groupMembers = await _context.InvestorGroupMembers
                         .Where(m => m.GroupId == investorGroupId.Value)
                         .Include(m => m.Investor)
-                        .ThenInclude(u => u.Profile)
+                        .ThenInclude(u => u!.Profile)
                         .Join(_context.InvestorWallets, m => m.InvestorId, w => w.Id, (m, w) => new { m, w })
                         .ToListAsync();
                     
-                    var details = groupMembers.Select(x => $"{x.m.Investor.Profile?.Nome ?? x.m.Investor.Email}: {x.w.SaldoDisponivel:C2}");
+                    var details = groupMembers.Select(x => $"{x.m.Investor!.Profile?.Nome ?? x.m.Investor.Email}: {x.w.SaldoDisponivel:C2}");
                     string detailsStr = string.Join(" | ", details);
                     return (false, $"O grupo selecionado não possui saldo suficiente para cobrir {loanAmount:C2}. Saldos atuais: {detailsStr}");
                 }

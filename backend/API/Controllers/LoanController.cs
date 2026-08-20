@@ -55,7 +55,10 @@ namespace backend.API.Controllers
                     l.DataAprovacao,
                     l.ObservacaoAdmin,
                     l.TipoEmprestimo,
-                    l.Periodicidade
+                    l.Periodicidade,
+                    TemParcelaAtrasada = _context.LoanInstallments.Any(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date),
+                    DiasAtrasoMax = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).Select(i => (int?)(DateTime.UtcNow.Date - i.DataVencimento.Date).TotalDays).Max() ?? 0,
+                    ParcelaAtrasadaFormatada = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).OrderBy(i => i.NumeroParcela).Select(i => i.NumeroParcela + "/" + (l.QuantidadeParcelas > 0 ? l.QuantidadeParcelas : l.Parcelas)).FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -158,7 +161,7 @@ namespace backend.API.Controllers
                 });
             }
 
-            var validation = await _creditService.ValidarCreditoDoUsuario(user.Profile.ScoreAtual);
+            var validation = await _creditService.ValidarCreditoDoUsuario(user.Profile.ScoreAtual, userId);
 
             if (!validation.Aprovado)
             {
@@ -183,7 +186,7 @@ namespace backend.API.Controllers
             {
                 Risco = validation.NivelRisco,
                 TaxaJuros = validation.TaxaJuros,
-                LimiteDisponivel = validation.LimiteMaximo,
+                LimiteDisponivel = validation.LimiteDisponivel,
                 PodeSolicitar = true,
                 ParcelasPagas = renovacaoVal.ParcelasPagas,
                 MinimoExigido = renovacaoVal.MinimoExigido,
@@ -234,7 +237,7 @@ namespace backend.API.Controllers
                 }
 
                 // Regra 2: Validação de Score
-                var validation = await _creditService.ValidarCreditoDoUsuario(user.Profile.ScoreAtual);
+                var validation = await _creditService.ValidarCreditoDoUsuario(user.Profile.ScoreAtual, userId);
                 if (!validation.Aprovado)
                 {
                     string msg = validation.Mensagem;
@@ -246,9 +249,9 @@ namespace backend.API.Controllers
                 }
 
                 // Regra 3: Validação de Limite
-                if (dto.ValorSolicitado > validation.LimiteMaximo)
+                if (!dto.SolicitaAumentoLimite && dto.ValorSolicitado > validation.LimiteDisponivel)
                 {
-                    return BadRequest(new { message = "Valor solicitado excede o limite disponível para seu perfil." });
+                    return BadRequest(new { message = "Valor solicitado excede o limite disponível para seu perfil. Marque a opção de solicitar aumento de limite se desejar prosseguir." });
                 }
 
                 if (dto.QuantidadeParcelas <= 0)
@@ -285,6 +288,8 @@ namespace backend.API.Controllers
                     NivelRisco = validation.NivelRisco,
                     PercentualMultaAtrasoContrato = multaAtraso,
                     PercentualJurosDiarioContrato = jurosDiario,
+                    SolicitaAumentoLimite = dto.SolicitaAumentoLimite,
+                    LimiteNoMomentoSolicitacao = validation.LimiteDisponivel,
                     CreatedAt = DateTime.UtcNow,
                     DataCriacao = DateTime.UtcNow,
                     DataSolicitacao = DateTime.UtcNow

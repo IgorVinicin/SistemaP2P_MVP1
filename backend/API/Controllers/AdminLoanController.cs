@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace backend.API.Controllers
@@ -32,7 +33,8 @@ namespace backend.API.Controllers
             [FromQuery] int pageSize = 20,
             [FromQuery] string? search = null,
             [FromQuery] string? nivelRisco = null,
-            [FromQuery] string? tipoEmprestimo = null)
+            [FromQuery] string? tipoEmprestimo = null,
+            [FromQuery] bool? somenteAumentoLimite = null)
         {
             var query = _context.LoanRequests
                 .AsNoTracking()
@@ -59,6 +61,11 @@ namespace backend.API.Controllers
                 query = query.Where(l => l.TipoEmprestimo == tipoEmprestimo);
             }
 
+            if (somenteAumentoLimite.HasValue)
+            {
+                query = query.Where(l => l.SolicitaAumentoLimite == somenteAumentoLimite.Value);
+            }
+
             var totalCount = await query.CountAsync();
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             if (page < 1) page = 1;
@@ -83,7 +90,9 @@ namespace backend.API.Controllers
                     CPF = l.User != null && l.User.Profile != null ? l.User.Profile.CPF : string.Empty,
                     Score = l.ScoreNoMomento > 0 ? l.ScoreNoMomento : l.ScoreNaSolicitacao,
                     l.TipoEmprestimo,
-                    l.Periodicidade
+                    l.Periodicidade,
+                    l.SolicitaAumentoLimite,
+                    l.LimiteNoMomentoSolicitacao
                 })
                 .ToListAsync();
 
@@ -157,7 +166,10 @@ namespace backend.API.Controllers
                     CPF = l.User != null && l.User.Profile != null ? l.User.Profile.CPF : string.Empty,
                     Score = l.ScoreNoMomento > 0 ? l.ScoreNoMomento : l.ScoreNaSolicitacao,
                     l.TipoEmprestimo,
-                    l.Periodicidade
+                    l.Periodicidade,
+                    TemParcelaAtrasada = _context.LoanInstallments.Any(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date),
+                    DiasAtrasoMax = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).Select(i => (int?)(DateTime.UtcNow.Date - i.DataVencimento.Date).TotalDays).Max() ?? 0,
+                    ParcelaAtrasadaFormatada = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).OrderBy(i => i.NumeroParcela).Select(i => i.NumeroParcela + "/" + (l.QuantidadeParcelas > 0 ? l.QuantidadeParcelas : l.Parcelas)).FirstOrDefault()
                 })
                 .ToListAsync();
 
@@ -242,7 +254,10 @@ namespace backend.API.Controllers
                     DataSolicitacao = l.DataSolicitacao,
                     TipoEmprestimo = l.TipoEmprestimo,
                     Periodicidade = l.Periodicidade,
-                    Score = l.ScoreNoMomento > 0 ? l.ScoreNoMomento : l.ScoreNaSolicitacao
+                    Score = l.ScoreNoMomento > 0 ? l.ScoreNoMomento : l.ScoreNaSolicitacao,
+                    TemParcelaAtrasada = _context.LoanInstallments.Any(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date),
+                    DiasAtrasoMax = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).Select(i => (int?)(DateTime.UtcNow.Date - i.DataVencimento.Date).TotalDays).Max() ?? 0,
+                    ParcelaAtrasadaFormatada = _context.LoanInstallments.Where(i => i.LoanRequestId == l.Id && i.Status != "Paga" && i.Status != "Cancelada" && i.DataVencimento.Date < DateTime.UtcNow.Date).OrderBy(i => i.NumeroParcela).Select(i => i.NumeroParcela + "/" + (l.QuantidadeParcelas > 0 ? l.QuantidadeParcelas : l.Parcelas)).FirstOrDefault()
                 }).ToList()
             }).ToList();
 
@@ -265,6 +280,8 @@ namespace backend.API.Controllers
             var loan = await _context.LoanRequests
                 .Include(l => l.User)
                 .ThenInclude(u => u!.Profile)
+                .Include(l => l.User)
+                .ThenInclude(u => u!.Company)
                 .FirstOrDefaultAsync(l => l.Id == id);
 
             if (loan == null)
@@ -281,6 +298,25 @@ namespace backend.API.Controllers
                     l.ValorSolicitado,
                     l.Status,
                     l.DataSolicitacao
+                })
+                .ToListAsync();
+
+            var historicoPagamentos = await _context.LoanInstallments
+                .Include(i => i.LoanRequest)
+                .Where(i => i.LoanRequest!.UserId == loan.UserId)
+                .OrderByDescending(i => i.DataVencimento)
+                .Select(i => new
+                {
+                    i.LoanRequestId,
+                    i.NumeroParcela,
+                    i.ValorParcela,
+                    i.ValorPago,
+                    i.DataVencimento,
+                    i.DataPagamento,
+                    i.DiasAtraso,
+                    i.Status,
+                    i.Multa,
+                    i.JurosMora
                 })
                 .ToListAsync();
 
@@ -302,6 +338,11 @@ namespace backend.API.Controllers
                 loan.ObservacaoAdmin,
                 loan.TipoEmprestimo,
                 loan.Periodicidade,
+                loan.SolicitaAumentoLimite,
+                loan.LimiteNoMomentoSolicitacao,
+                Nome = loan.User?.Profile?.Nome ?? loan.User?.Email ?? string.Empty,
+                CPF = loan.User?.Profile?.CPF ?? string.Empty,
+                Email = loan.User?.Email ?? string.Empty,
                 UserProfile = loan.User != null && loan.User.Profile != null ? new
                 {
                     Nome = loan.User.Profile.Nome,
@@ -310,7 +351,15 @@ namespace backend.API.Controllers
                     DataNascimento = loan.User.Profile.DataNascimento,
                     Score = loan.ScoreNoMomento > 0 ? loan.ScoreNoMomento : loan.ScoreNaSolicitacao
                 } : null,
-                OutrosEmprestimos = outrosEmprestimos
+                Company = loan.User != null && loan.User.Company != null ? new
+                {
+                    loan.User.Company.RazaoSocial,
+                    loan.User.Company.NomeFantasia,
+                    loan.User.Company.CNPJ,
+                    loan.User.Company.FaturamentoMensal
+                } : null,
+                OutrosEmprestimos = outrosEmprestimos,
+                HistoricoPagamentos = historicoPagamentos
             };
 
             return Ok(detail);
@@ -352,14 +401,46 @@ namespace backend.API.Controllers
                     loan.DataAprovacao = DateTime.UtcNow;
 
                     var priceCalc = new PriceCalculationService();
-                    var installments = priceCalc.CalculateInstallments(loan.Id, loan.ValorSolicitado, loan.QuantidadeParcelas, loan.TaxaJuros, loan.Periodicidade);
+                    var installments = priceCalc.CalculateInstallments(loan.Id, loan.ValorSolicitado, loan.QuantidadeParcelas, loan.TaxaJuros, loan.Periodicidade, 1m, dto.DataPrimeiraParcela);
                     loan.ValorTotal = installments.Sum(inst => inst.ValorParcela);
                     _context.LoanInstallments.AddRange(installments);
 
-                    var (allocated, errorMessage) = await _allocationService.AllocateInvestorsForLoanAsync(loan.Id, dto.InvestorGroupId);
-                    if (!allocated)
+                    if (dto.InvestorGroupId.HasValue && dto.InvestorGroupId.Value != Guid.Empty)
                     {
-                        throw new Exception(errorMessage);
+                        var (allocated, errorMessage) = await _allocationService.AllocateInvestorsForLoanAsync(loan.Id, dto.InvestorGroupId);
+                        if (!allocated)
+                        {
+                            throw new Exception(errorMessage);
+                        }
+                    }
+                    else
+                    {
+                        // Financiado com recursos próprios da administração (operação manual sem desconto de investidores)
+                        var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrador";
+                        _context.FinancialEventHistories.Add(new FinancialEventHistory
+                        {
+                            Id = Guid.NewGuid(),
+                            Data = DateTime.UtcNow,
+                            UsuarioResponsavel = adminEmail,
+                            EventoExecutado = "APROVACAO_RECURSOS_PROPRIOS",
+                            Observacao = $"Empréstimo {loan.Id} aprovado com recursos próprios da administração (sem rateio de investidores). Valor: {loan.ValorSolicitado:C2}.",
+                            LoanRequestId = loan.Id,
+                            Valor = loan.ValorSolicitado
+                        });
+
+                        var ledgerService = new LedgerService(_context);
+                        await ledgerService.AddTransactionAsync(
+                            source: LedgerAccount.PlatformCash,
+                            destination: LedgerAccount.BorrowerAccount,
+                            amount: loan.ValorSolicitado,
+                            type: LedgerTransactionType.LoanDisbursement,
+                            referenceType: "Loan",
+                            referenceId: loan.Id,
+                            loanId: loan.Id,
+                            userId: loan.UserId,
+                            observacao: $"Desembolso com recursos próprios da administração para empréstimo {loan.Id}",
+                            createdBy: adminEmail
+                        );
                     }
 
                     await _context.SaveChangesAsync();

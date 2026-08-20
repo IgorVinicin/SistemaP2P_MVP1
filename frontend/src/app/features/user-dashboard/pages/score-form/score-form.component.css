@@ -1,21 +1,22 @@
+/* ============================================
+   SCORE FORM — Dinheiro a Jato Design System
+   ============================================ */
+
 .breadcrumb {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 0.875rem;
+  gap: 6px;
+  font-size: 0.8125rem;
   color: var(--text-muted);
-  margin-bottom: 24px;
+  margin-bottom: var(--space-5);
 }
 
-.breadcrumb-item.active {
-  color: var(--text-main);
-  font-weight: 600;
-}
+.breadcrumb-item.active { color: var(--text-main); font-weight: 600; }
 
 .score-form-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--space-5);
   max-width: 800px;
   margin: 0 auto;
 }
@@ -25,113 +26,97 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  padding: var(--space-10);
   color: var(--text-muted);
 }
 
 .loading-state mat-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-  margin-bottom: 16px;
-  animation: spin 2s linear infinite;
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-4);
+  animation: spin 1.2s linear infinite;
+  color: var(--dj-blue);
 }
 
 @keyframes spin { 100% { transform: rotate(360deg); } }
 
 /* Shared Card Styles */
 .card-header {
-  padding: 16px 24px;
-  background-color: var(--primary-light);
+  padding: var(--space-4) var(--space-5);
+  background-color: var(--bg-elevated);
   border-bottom: 1px solid var(--border-color);
 }
 
-.card-header h2 {
-  margin: 0;
-  font-size: 1.125rem;
-  font-weight: 600;
-}
+.card-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: var(--text-main); }
 
 .card-actions {
-  background-color: #f8fafc;
-  padding: 12px 24px;
+  background-color: var(--bg-elevated);
+  padding: var(--space-3) var(--space-5);
   display: flex;
   justify-content: center;
   border-top: 1px solid var(--border-color);
 }
 
 /* Result Card */
-.result-card {
-  text-align: center;
-  padding: 0 !important;
-}
-
-.result-content {
-  padding: 48px 24px !important;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+.result-card { text-align: center; padding: 0 !important; border-radius: var(--radius-lg) !important; }
+.result-content { padding: var(--space-10) var(--space-6) !important; display: flex; flex-direction: column; align-items: center; }
 
 .status-icon {
   font-size: 64px;
   width: 64px;
   height: 64px;
-  margin-bottom: 16px;
-  color: var(--success-color);
+  margin-bottom: var(--space-4);
+  color: var(--dj-success);
 }
 
 .score-desc-box {
-  background-color: #f8fafc;
+  background-color: var(--bg-elevated);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 24px;
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  margin-top: var(--space-5);
   max-width: 500px;
 }
-
-.score-desc-box p { margin: 0; }
+.score-desc-box p { margin: 0; font-size: 0.875rem; color: var(--text-secondary); }
 
 /* Welcome Card */
-.welcome-card { padding: 0 !important; }
-.intro-text { font-weight: 500; margin-bottom: 16px; }
-.instructions ul {
-  padding-left: 20px;
-  margin: 0;
-  color: var(--text-secondary);
-}
-.instructions li { margin-bottom: 8px; }
+.welcome-card { padding: 0 !important; border-radius: var(--radius-lg) !important; }
+.intro-text { font-weight: 600; margin-bottom: var(--space-4); color: var(--text-main); }
+.instructions ul { padding-left: 20px; margin: 0; color: var(--text-secondary); }
+.instructions li { margin-bottom: 8px; font-size: 0.8125rem; }
 
 /* Info Banner */
 .info-banner {
-  background-color: #e0f2fe !important;
+  background-color: var(--dj-info-light) !important;
   border-color: #bae6fd !important;
+  border-radius: var(--radius-md) !important;
 }
 .info-banner mat-card-content {
   display: flex;
   align-items: center;
-  gap: 12px;
-  color: #0369a1;
+  gap: var(--space-3);
+  color: var(--dj-info-text);
+  padding: var(--space-3) var(--space-4);
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 /* Question List */
-.questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
+.questions-list { display: flex; flex-direction: column; gap: var(--space-4); }
 
 .question-title {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: var(--space-4);
   display: flex;
   align-items: center;
   gap: 8px;
+  color: var(--text-main);
 }
 
 .q-number {
-  background-color: var(--primary-light);
+  background-color: var(--bg-elevated);
   border: 1px solid var(--border-color);
   border-radius: 50%;
   width: 28px;
@@ -139,22 +124,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
-.options-group {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+.options-group { display: flex; flex-direction: column; gap: 12px; }
 
 /* Submit actions */
 .submit-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 16px;
-  margin-top: 16px;
-  padding-top: 16px;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
   border-top: 1px solid var(--border-color);
 }
 
@@ -163,11 +145,11 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 48px;
+  padding: var(--space-10);
   color: var(--text-muted);
-  background: white;
-  border-radius: 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
 }
 
-.empty-state mat-icon { font-size: 48px; width: 48px; height: 48px; margin-bottom: 16px; }
+.empty-state mat-icon { font-size: 40px; width: 40px; height: 40px; margin-bottom: var(--space-4); color: #cbd5e1; }

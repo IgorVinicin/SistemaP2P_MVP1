@@ -18,6 +18,14 @@ export interface CreateUpdateGroupDto {
   investorIds: string[];
 }
 
+export interface PagedGroupsResult {
+  items: InvestorGroup[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -25,8 +33,14 @@ export class AdminGroupService {
   private http = inject(HttpClient);
   private apiUrl = `${environment.apiUrl}/admin/groups`;
 
-  getGroups(): Observable<InvestorGroup[]> {
-    return this.http.get<InvestorGroup[]>(this.apiUrl);
+  getGroups(page: number = 1, pageSize: number = 10, search: string = ''): Observable<PagedGroupsResult> {
+    let params: any = { page, pageSize };
+    if (search) params.search = search;
+    return this.http.get<PagedGroupsResult>(this.apiUrl, { params });
+  }
+
+  getAllGroups(): Observable<PagedGroupsResult> {
+    return this.http.get<PagedGroupsResult>(this.apiUrl, { params: { page: 1, pageSize: 100 } });
   }
 
   getGroup(id: string): Observable<InvestorGroup> {

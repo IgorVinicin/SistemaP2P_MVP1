@@ -13,10 +13,10 @@
     <p>Carregando perguntas...</p>
   </div>
 
-  <div *ngIf="!isLoading && questions.length === 0" style="text-align: center; padding: 4rem 2rem; background: white; border-radius: 12px; border: 1px solid #e2e8f0;">
-    <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: #94a3b8; margin-bottom: 1rem;">quiz</mat-icon>
-    <h3 style="margin: 0; color: #334155; font-size: 1.2rem;">Nenhuma pergunta cadastrada</h3>
-    <p style="color: #64748b; margin: 0.5rem 0 1.5rem 0;">Crie perguntas de score dinâmico para os clientes responderem.</p>
+  <div *ngIf="!isLoading && questions.length === 0" style="text-align: center; padding: 4rem 2rem; background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border-color);">
+    <mat-icon style="font-size: 48px; width: 48px; height: 48px; color: var(--text-secondary); margin-bottom: 1rem;">quiz</mat-icon>
+    <h3 style="margin: 0; color: var(--text-main); font-size: 1.2rem;">Nenhuma pergunta cadastrada</h3>
+    <p style="color: var(--text-secondary); margin: 0.5rem 0 1.5rem 0;">Crie perguntas de score dinâmico para os clientes responderem.</p>
     <button mat-flat-button color="primary" (click)="openQuestionDialog()">Cadastrar Primeira Pergunta</button>
   </div>
 

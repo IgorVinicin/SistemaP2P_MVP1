@@ -39,37 +39,63 @@ export class DashboardHomeComponent implements OnInit {
 
   public ngOnInit(): void {
     const role = this.authService.userRole();
-    const status = this.authService.userStatus();
 
     if (role === 'Administrador') {
       this.router.navigate(['/admin']);
       return;
     }
 
-    if (role === 'Investidor') {
-      if (status === 'Aprovado') {
-        this.router.navigate(['/investor/dashboard']);
-        return;
-      } else if (status === 'EmAnalise') {
-        this.router.navigate(['/investor/aguardando-aprovacao']);
-        return;
-      } else if (status === 'Reprovado') {
-        this.router.navigate(['/investor/reprovado']);
-        return;
-      }
-    }
+    // Consulta o status real no backend para detectar aprovações feitas pelo admin
+    this.authService.getMyStatus().subscribe({
+      next: (me) => {
+        // Atualiza cache local se o status mudou
+        if (me.status !== this.authService.userStatus()) {
+          this.authService.updateStatus(me.status);
+        }
 
-    if (role === 'Cliente') {
-      if (status === 'Aprovado' || status === 'EmAnalise') {
-        this.router.navigate(['/loans/my']);
-        return;
-      }
-    }
+        const status = me.status;
 
-    this.loadDocumentsStatus();
-    if (status === 'Aprovado' && role === 'Cliente') {
-      this.loadEligibility();
-    }
+        if (role === 'Investidor') {
+          if (status === 'Aprovado') {
+            this.router.navigate(['/investor/dashboard']);
+            return;
+          } else if (status === 'EmAnalise') {
+            this.router.navigate(['/investor/aguardando-aprovacao']);
+            return;
+          } else if (status === 'Reprovado') {
+            this.router.navigate(['/investor/reprovado']);
+            return;
+          }
+        }
+
+        this.loadDocumentsStatus();
+        if (status === 'Aprovado' && role === 'Cliente') {
+          this.loadEligibility();
+        }
+      },
+      error: () => {
+        // Fallback para o cache local caso a requisição falhe
+        const status = this.authService.userStatus();
+
+        if (role === 'Investidor') {
+          if (status === 'Aprovado') {
+            this.router.navigate(['/investor/dashboard']);
+            return;
+          } else if (status === 'EmAnalise') {
+            this.router.navigate(['/investor/aguardando-aprovacao']);
+            return;
+          } else if (status === 'Reprovado') {
+            this.router.navigate(['/investor/reprovado']);
+            return;
+          }
+        }
+
+        this.loadDocumentsStatus();
+        if (status === 'Aprovado' && role === 'Cliente') {
+          this.loadEligibility();
+        }
+      }
+    });
   }
 
   public loadDocumentsStatus(): void {
@@ -96,15 +122,22 @@ export class DashboardHomeComponent implements OnInit {
     return doc ? doc.status : null;
   }
 
+  public get allDocsUploaded(): boolean {
+    const temFrente = this.documents.some(d => d.tipoDocumento === 'Frente' && d.status !== 'Reprovado');
+    const temVerso = this.documents.some(d => d.tipoDocumento === 'Verso' && d.status !== 'Reprovado');
+    const temSelfie = this.documents.some(d => d.tipoDocumento === 'Selfie' && d.status !== 'Reprovado');
+    if (this.authService.possuiEmpresa()) {
+      const temFachada = this.documents.some(d => d.tipoDocumento === 'FachadaEmpresa' && d.status !== 'Reprovado');
+      return temFrente && temVerso && temSelfie && temFachada;
+    }
+    return temFrente && temVerso && temSelfie;
+  }
+
   public onUploadSuccess(newStatus: string): void {
     // Atualiza status do usuário no AuthService
     this.authService.updateStatus(newStatus);
     // Recarrega lista de documentos
     this.loadDocumentsStatus();
-
-    if (this.authService.userRole() === 'Cliente' && (newStatus === 'Aprovado' || newStatus === 'EmAnalise')) {
-      this.router.navigate(['/loans/my']);
-    }
   }
 
   public loadEligibility(): void {

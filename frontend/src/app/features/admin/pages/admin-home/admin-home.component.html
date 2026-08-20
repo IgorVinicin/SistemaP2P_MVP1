@@ -1,74 +1,326 @@
-<div class="breadcrumb">
-  <span class="breadcrumb-item active">Dashboard</span>
-</div>
-
 <div class="dashboard-header">
-  <h2>Visão Geral do Sistema</h2>
-  <p>Bem-vindo ao painel administrativo. Acompanhe os principais indicadores da plataforma P2P.</p>
+  <div class="dashboard-greeting">
+    <span class="greeting-text">Olá, Administrador! 👋</span>
+    <h1>Visão Geral do Sistema</h1>
+    <p>Acompanhe os principais indicadores da Dinheiro a Jato em tempo real.</p>
+  </div>
 </div>
-
-<div class="kpi-grid">
-  <!-- Card: Cadastros Pendentes -->
-  <mat-card class="kpi-card warn-card">
-    <mat-card-content>
-      <div class="kpi-icon">
+<!-- KPI Cards -->
+<div class="kpi-row">
+  <div class="kpi-card kpi-warn">
+    <div class="kpi-body">
+      <div class="kpi-icon-wrap">
         <mat-icon>how_to_reg</mat-icon>
       </div>
-      <div class="kpi-details">
-        <span class="kpi-title">Cadastros Pendentes</span>
-        <span class="kpi-value">{{ pendingTotal }}</span>
+      <div class="kpi-info">
+        <span class="kpi-label">Cadastros Pendentes</span>
+        <span class="kpi-number">{{ pendingTotal }}</span>
       </div>
-    </mat-card-content>
-    <div class="kpi-action">
-      <a mat-button color="warn" routerLink="/admin/users">Analisar Agora <mat-icon>arrow_forward</mat-icon></a>
     </div>
-  </mat-card>
+    <a class="kpi-link" routerLink="/admin/users">
+      Analisar Agora <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </div>
 
-  <!-- Card: Total de Usuários -->
-  <mat-card class="kpi-card primary-card">
-    <mat-card-content>
-      <div class="kpi-icon">
+  <div class="kpi-card kpi-primary">
+    <div class="kpi-body">
+      <div class="kpi-icon-wrap">
         <mat-icon>group</mat-icon>
       </div>
-      <div class="kpi-details">
-        <span class="kpi-title">Total de Usuários</span>
-        <span class="kpi-value">{{ usersTotal }}</span>
+      <div class="kpi-info">
+        <span class="kpi-label">Total de Usuários</span>
+        <span class="kpi-number">{{ usersTotal }}</span>
       </div>
-    </mat-card-content>
-    <div class="kpi-action">
-      <a mat-button color="primary" routerLink="/admin/users">Ver Base <mat-icon>arrow_forward</mat-icon></a>
     </div>
-  </mat-card>
+    <a class="kpi-link" routerLink="/admin/users">
+      Ver Base <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </div>
 
-  <!-- Card: Carteiras Ativas -->
-  <mat-card class="kpi-card accent-card">
-    <mat-card-content>
-      <div class="kpi-icon">
+  <div class="kpi-card kpi-success">
+    <div class="kpi-body">
+      <div class="kpi-icon-wrap">
         <mat-icon>account_balance_wallet</mat-icon>
       </div>
-      <div class="kpi-details">
-        <span class="kpi-title">Carteiras de Investidores</span>
-        <span class="kpi-value">{{ walletsTotal }}</span>
+      <div class="kpi-info">
+        <span class="kpi-label">Carteiras de Investidores</span>
+        <span class="kpi-number">{{ walletsTotal }}</span>
       </div>
-    </mat-card-content>
-    <div class="kpi-action">
-      <a mat-button color="accent" routerLink="/admin/users">Gerenciar <mat-icon>arrow_forward</mat-icon></a>
     </div>
-  </mat-card>
+    <a class="kpi-link" routerLink="/admin/users">
+      Gerenciar <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </div>
 
-  <!-- Card: Atalho Relatórios -->
-  <mat-card class="kpi-card default-card">
-    <mat-card-content>
-      <div class="kpi-icon">
+  <div class="kpi-card kpi-default">
+    <div class="kpi-body">
+      <div class="kpi-icon-wrap">
         <mat-icon>bar_chart</mat-icon>
       </div>
-      <div class="kpi-details">
-        <span class="kpi-title">Relatórios e Métricas</span>
-        <span class="kpi-value">Acessar</span>
+      <div class="kpi-info">
+        <span class="kpi-label">Relatórios e Métricas</span>
+        <span class="kpi-number kpi-number-action">Acessar</span>
+      </div>
+    </div>
+    <a class="kpi-link" routerLink="/admin/reports">
+      <mat-icon>arrow_forward</mat-icon>
+    </a>
+  </div>
+</div>
+
+<!-- Pending Panels Grid -->
+<div class="panels-grid">
+  
+  <!-- Panel 1: Cadastros Pendentes -->
+  <mat-card class="panel-card">
+    <div class="panel-header">
+      <div class="panel-title-group">
+        <mat-icon class="panel-icon icon-warning">how_to_reg</mat-icon>
+        <h3>Cadastros Pendentes</h3>
+        <span class="count-badge warn" *ngIf="pendingTotal > 0">{{ pendingTotal }}</span>
+      </div>
+    </div>
+    <p class="panel-desc">Solicitações de cadastro aguardando análise de documentos.</p>
+
+    <mat-card-content>
+      <div class="panel-search">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Pesquisar por Nome, CPF ou E-mail</mat-label>
+          <input matInput [(ngModel)]="pendingSearch" (keyup.enter)="searchPending()" placeholder="Ex: joao@email.com">
+          <button mat-icon-button matSuffix (click)="searchPending()"><mat-icon>search</mat-icon></button>
+        </mat-form-field>
+      </div>
+
+      <div *ngIf="isLoadingPending" class="loading-state">
+        <mat-icon>autorenew</mat-icon>
+        <p>Carregando solicitações...</p>
+      </div>
+
+      <div *ngIf="!isLoadingPending && pendingUsers.length === 0" class="empty-state">
+        <mat-icon>done_all</mat-icon>
+        <h3>Tudo em dia!</h3>
+        <p>Nenhum cadastro pendente de análise no momento.</p>
+      </div>
+
+      <div class="table-responsive" *ngIf="!isLoadingPending && pendingUsers.length > 0">
+        <table mat-table [dataSource]="pendingUsers">
+          <ng-container matColumnDef="nome">
+            <th mat-header-cell *matHeaderCellDef> Nome </th>
+            <td mat-cell *matCellDef="let user"> {{ user.nome || 'Sem Nome' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef> E-mail </th>
+            <td mat-cell *matCellDef="let user"> {{ user.email }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="role">
+            <th mat-header-cell *matHeaderCellDef> Perfil </th>
+            <td mat-cell *matCellDef="let user"> 
+              <span class="role-badge" [ngClass]="user.role?.toLowerCase()">
+                {{ user.role }}
+              </span> 
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="scoreAtual">
+            <th mat-header-cell *matHeaderCellDef> Score </th>
+            <td mat-cell *matCellDef="let user" class="fw-600"> {{ user.scoreAtual }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="createdAt">
+            <th mat-header-cell *matHeaderCellDef> Data </th>
+            <td mat-cell *matCellDef="let user"> {{ user.createdAt | date:'dd/MM/yyyy' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="acoes">
+            <th mat-header-cell *matHeaderCellDef> Ações </th>
+            <td mat-cell *matCellDef="let user">
+              <button mat-flat-button color="primary" (click)="openAnalysis(user.id)" class="action-btn-sm">
+                Analisar
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <mat-paginator *ngIf="pendingTotal > 0"
+                       [length]="pendingTotal"
+                       [pageSize]="pendingPageSize"
+                       [pageSizeOptions]="[5, 10, 20]"
+                       (page)="onPendingPageChange($event)">
+        </mat-paginator>
       </div>
     </mat-card-content>
-    <div class="kpi-action">
-      <a mat-button routerLink="/admin/reports">Ver Relatórios <mat-icon>arrow_forward</mat-icon></a>
-    </div>
   </mat-card>
+
+  <!-- Panel 2: Empréstimos Pendentes -->
+  <mat-card class="panel-card">
+    <div class="panel-header">
+      <div class="panel-title-group">
+        <mat-icon class="panel-icon icon-info">real_estate_agent</mat-icon>
+        <h3>Empréstimos Pendentes</h3>
+        <span class="count-badge" *ngIf="pendingLoansTotal > 0">{{ pendingLoansTotal }}</span>
+      </div>
+    </div>
+    <p class="panel-desc">Solicitações de crédito aguardando definição de taxa e aprovação.</p>
+
+    <mat-card-content>
+      <div class="panel-search">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Pesquisar por Tomador ou CPF</mat-label>
+          <input matInput [(ngModel)]="loansSearch" (keyup.enter)="searchLoans()" placeholder="Ex: Maria Santos">
+          <button mat-icon-button matSuffix (click)="searchLoans()"><mat-icon>search</mat-icon></button>
+        </mat-form-field>
+      </div>
+
+      <div *ngIf="isLoadingLoans" class="loading-state">
+        <mat-icon>autorenew</mat-icon>
+        <p>Carregando solicitações de empréstimo...</p>
+      </div>
+
+      <div *ngIf="!isLoadingLoans && pendingLoans.length === 0" class="empty-state">
+        <mat-icon>done_all</mat-icon>
+        <h3>Nenhum pedido pendente!</h3>
+        <p>Não há solicitações de empréstimo aguardando aprovação.</p>
+      </div>
+
+      <div class="table-responsive" *ngIf="!isLoadingLoans && pendingLoans.length > 0">
+        <table mat-table [dataSource]="pendingLoans">
+          <ng-container matColumnDef="tomador">
+            <th mat-header-cell *matHeaderCellDef> Tomador </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.nome || loan.userProfile?.nome || 'Tomador' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="cpf">
+            <th mat-header-cell *matHeaderCellDef> CPF </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.cpf || loan.userProfile?.cpf || 'N/A' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="valor">
+            <th mat-header-cell *matHeaderCellDef> Valor Solicitado </th>
+            <td mat-cell *matCellDef="let loan" class="financial-value"> {{ loan.valorSolicitado | currency:'BRL' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="parcelas">
+            <th mat-header-cell *matHeaderCellDef> Parcelas </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.quantidadeParcelas }}x </td>
+          </ng-container>
+
+          <ng-container matColumnDef="risco">
+            <th mat-header-cell *matHeaderCellDef> Risco </th>
+            <td mat-cell *matCellDef="let loan">
+              <span class="risk-badge"
+                    [ngClass]="loan.risco === 'A' ? 'baixo' : loan.risco === 'B' ? 'medio' : 'alto'">
+                {{ loan.risco || 'N/A' }}
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="data">
+            <th mat-header-cell *matHeaderCellDef> Data </th>
+            <td mat-cell *matCellDef="let loan"> {{ (loan.dataSolicitacao || loan.dataCriacao) | date:'dd/MM/yyyy' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="acoes">
+            <th mat-header-cell *matHeaderCellDef> Ações </th>
+            <td mat-cell *matCellDef="let loan">
+              <button mat-flat-button color="primary" (click)="analyzeLoan(loan.id!)" class="action-btn-sm">
+                Aprovar
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="loanDisplayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: loanDisplayedColumns;"></tr>
+        </table>
+
+        <mat-paginator *ngIf="pendingLoansTotal > 0"
+                       [length]="pendingLoansTotal"
+                       [pageSize]="loansPageSize"
+                       [pageSizeOptions]="[5, 10, 20]"
+                       (page)="onLoansPageChange($event)">
+        </mat-paginator>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Panel 3: Solicitações de Aumento de Limite -->
+  <mat-card class="panel-card">
+    <div class="panel-header">
+      <div class="panel-title-group">
+        <mat-icon class="panel-icon icon-danger">warning_amber</mat-icon>
+        <h3>Solicitações de Aumento de Limite</h3>
+        <span class="count-badge danger" *ngIf="limitTotal > 0">{{ limitTotal }}</span>
+      </div>
+    </div>
+    <p class="panel-desc">Solicitações de crédito acima do limite pré-aprovado do perfil.</p>
+
+    <mat-card-content>
+      <div class="panel-search">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Pesquisar por Tomador ou CPF</mat-label>
+          <input matInput [(ngModel)]="limitSearch" (keyup.enter)="searchLimits()" placeholder="Ex: João da Silva">
+          <button mat-icon-button matSuffix (click)="searchLimits()"><mat-icon>search</mat-icon></button>
+        </mat-form-field>
+      </div>
+
+      <div *ngIf="isLoadingLimits" class="loading-state">
+        <mat-icon>autorenew</mat-icon>
+        <p>Carregando solicitações de aumento de limite...</p>
+      </div>
+
+      <div *ngIf="!isLoadingLimits && limitRequests.length === 0" class="empty-state">
+        <mat-icon>done_all</mat-icon>
+        <h3>Nenhuma solicitação de aumento!</h3>
+        <p>Não há pedidos de aumento de limite aguardando análise.</p>
+      </div>
+
+      <div class="table-responsive" *ngIf="!isLoadingLimits && limitRequests.length > 0">
+        <table mat-table [dataSource]="limitRequests">
+          <ng-container matColumnDef="tomador">
+            <th mat-header-cell *matHeaderCellDef> Tomador </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.nome || 'Tomador' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="cpf">
+            <th mat-header-cell *matHeaderCellDef> CPF </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.cpf || 'N/A' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="valorSolicitado">
+            <th mat-header-cell *matHeaderCellDef> Limite Solicitado </th>
+            <td mat-cell *matCellDef="let loan" class="financial-value text-info"> {{ loan.limiteSolicitado | currency:'BRL' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="limiteAtual">
+            <th mat-header-cell *matHeaderCellDef> Limite Atual </th>
+            <td mat-cell *matCellDef="let loan"> {{ loan.limiteAtualNoMomento | currency:'BRL' }} </td>
+          </ng-container>
+
+          <ng-container matColumnDef="acoes">
+            <th mat-header-cell *matHeaderCellDef> Ações </th>
+            <td mat-cell *matCellDef="let loan">
+              <button mat-flat-button color="primary" (click)="openAnalyzeLimit(loan)" class="action-btn-sm">
+                Analisar
+              </button>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="limitDisplayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: limitDisplayedColumns;"></tr>
+        </table>
+
+        <mat-paginator *ngIf="limitTotal > 0"
+                       [length]="limitTotal"
+                       [pageSize]="limitPageSize"
+                       [pageSizeOptions]="[5, 10, 20]"
+                       (page)="onLimitPageChange($event)">
+        </mat-paginator>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
 </div>

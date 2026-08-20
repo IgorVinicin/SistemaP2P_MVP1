@@ -11,7 +11,7 @@ namespace backend.API.Controllers
 {
     [ApiController]
     [Route("api/admin/treasury")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrador")]
     public class AdminTreasuryController : ControllerBase
     {
         private readonly ITreasuryService _treasuryService;
@@ -72,11 +72,35 @@ namespace backend.API.Controllers
         [HttpGet("withdrawals")]
         public async Task<IActionResult> ListWithdrawals([FromQuery] string? status)
         {
-            var query = _context.WithdrawalRequests.Include(w => w.Investor).AsQueryable();
+            var query = _context.WithdrawalRequests
+                .Include(w => w.Investor)
+                .ThenInclude(i => i!.Profile)
+                .AsQueryable();
+
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(w => w.Status == status);
 
-            var withdrawals = await query.OrderByDescending(w => w.CreatedAt).ToListAsync();
+            var withdrawals = await query
+                .OrderByDescending(w => w.CreatedAt)
+                .Select(w => new {
+                    w.Id,
+                    w.InvestorId,
+                    Investor = w.Investor == null ? null : new {
+                        Nome = w.Investor.Profile != null && !string.IsNullOrEmpty(w.Investor.Profile.Nome) ? w.Investor.Profile.Nome : w.Investor.Email,
+                        Cpf = w.Investor.Profile != null ? w.Investor.Profile.CPF : "",
+                        Email = w.Investor.Email
+                    },
+                    w.Valor,
+                    w.Status,
+                    w.ChavePix,
+                    w.TipoChavePix,
+                    w.Observacao,
+                    w.CreatedAt,
+                    w.ProcessedAt,
+                    w.GatewayReference
+                })
+                .ToListAsync();
+
             return Ok(withdrawals);
         }
 

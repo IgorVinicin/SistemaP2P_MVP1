@@ -1,14 +1,14 @@
-<h2 mat-dialog-title style="font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+<h2 mat-dialog-title style="font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
   <mat-icon>history</mat-icon> Histórico de Movimentações
 </h2>
 
 <mat-dialog-content style="min-width: 800px; max-height: 450px;">
-  <div style="margin-bottom: 15px; background-color: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+  <div style="margin-bottom: 15px; background-color: var(--bg-elevated); padding: 12px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
     <div>
-      <p style="margin: 0; font-size: 0.95rem; color: #334155;"><strong>Investidor:</strong> {{ data.nome || 'Sem Nome' }}</p>
-      <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: #64748b;"><strong>E-mail:</strong> {{ data.email }}</p>
+      <p style="margin: 0; font-size: 0.95rem; color: var(--text-main);"><strong>Investidor:</strong> {{ data.nome || 'Sem Nome' }}</p>
+      <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: var(--text-secondary);"><strong>E-mail:</strong> {{ data.email }}</p>
     </div>
-    <div style="font-size: 0.85rem; color: #64748b; font-weight: 500;">
+    <div style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;">
       ID: {{ data.investorId }}
     </div>
   </div>
@@ -17,7 +17,7 @@
     <p>Carregando movimentações...</p>
   </div>
 
-  <div *ngIf="!isLoading && transactions.length === 0" style="text-align: center; padding: 30px; color: #64748b;">
+  <div *ngIf="!isLoading && transactions.length === 0" style="text-align: center; padding: 30px; color: var(--text-secondary);">
     <mat-icon style="font-size: 40px; width: 40px; height: 40px; color: #cbd5e1;">folder_open</mat-icon>
     <p style="margin-top: 10px; font-weight: 500;">Nenhuma movimentação financeira encontrada para este investidor.</p>
   </div>

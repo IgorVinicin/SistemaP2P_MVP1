@@ -11,6 +11,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatListModule } from '@angular/material/list';
 import { MatCardModule } from '@angular/material/card';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { AdminGroupService, InvestorGroup, CreateUpdateGroupDto } from '../../../../core/services/admin-group.service';
 import { AdminService } from '../../../../core/services/admin.service';
 import { AdminCreditService } from '../../../../core/services/admin-credit.service';
@@ -31,7 +32,7 @@ function maxSelectedValidator(max: () => number): ValidatorFn {
   imports: [
     CommonModule, ReactiveFormsModule, FormsModule, MatTableModule, MatButtonModule, 
     MatIconModule, MatDialogModule, MatSnackBarModule, MatInputModule, MatFormFieldModule,
-    MatSelectModule, MatListModule, MatCardModule
+    MatSelectModule, MatListModule, MatCardModule, MatPaginatorModule
   ],
   templateUrl: './admin-groups.component.html',
   styleUrls: ['./admin-groups.component.css']
@@ -48,6 +49,12 @@ export class AdminGroupsComponent implements OnInit {
   public groups: InvestorGroup[] = [];
   public displayedColumns: string[] = ['nome', 'descricao', 'investorsCount', 'createdAt', 'actions'];
   
+  // Paginação e busca
+  public page = 1;
+  public pageSize = 10;
+  public totalCount = 0;
+  public groupSearch = '';
+
   public investorsList: any[] = [];
   public investorSearch: string = '';
   public groupForm!: FormGroup;
@@ -90,10 +97,24 @@ export class AdminGroupsComponent implements OnInit {
   }
 
   loadGroups() {
-    this.groupService.getGroups().subscribe({
-      next: (data: any) => this.groups = data,
-      error: (err: any) => this.snackBar.open('Erro ao carregar grupos.', 'Fechar', { duration: 3000 })
+    this.groupService.getGroups(this.page, this.pageSize, this.groupSearch).subscribe({
+      next: (data: any) => {
+        this.groups = data.items || data;
+        this.totalCount = data.totalCount || this.groups.length;
+      },
+      error: () => this.snackBar.open('Erro ao carregar grupos.', 'Fechar', { duration: 3000 })
     });
+  }
+
+  onPageChange(event: PageEvent) {
+    this.page = event.pageIndex + 1;
+    this.pageSize = event.pageSize;
+    this.loadGroups();
+  }
+
+  onSearch() {
+    this.page = 1;
+    this.loadGroups();
   }
 
   loadInvestors() {
@@ -105,12 +126,15 @@ export class AdminGroupsComponent implements OnInit {
     });
   }
 
+  public editingGroupInvestors: any[] = [];
+
   openModal(group?: InvestorGroup) {
     if (group) {
       this.editingGroupId = group.id;
       
       this.groupService.getGroup(group.id).subscribe({
         next: (g: any) => {
+          this.editingGroupInvestors = g.investors || [];
           this.groupForm.patchValue({
             nome: g.nome,
             descricao: g.descricao,
@@ -121,6 +145,7 @@ export class AdminGroupsComponent implements OnInit {
       });
     } else {
       this.editingGroupId = null;
+      this.editingGroupInvestors = [];
       this.groupForm.reset({ investorIds: [] });
       this.investorSearch = '';
       this.isModalOpen = true;
@@ -186,7 +211,21 @@ export class AdminGroupsComponent implements OnInit {
 
   getSelectedInvestorsFull(): any[] {
     const selectedIds = this.groupForm.get('investorIds')?.value || [];
-    return this.investorsList.filter(inv => selectedIds.includes(inv.id));
+    return selectedIds.map((id: string) => {
+      const fromList = this.investorsList.find(inv => inv.id === id);
+      if (fromList) return fromList;
+
+      const fromEditingGroup = this.editingGroupInvestors.find(i => i.investorId === id);
+      if (fromEditingGroup) {
+        return {
+          id: fromEditingGroup.investorId,
+          nome: fromEditingGroup.name,
+          saldoDisponivel: fromEditingGroup.saldoDisponivel || 0
+        };
+      }
+
+      return { id, nome: 'Investidor', saldoDisponivel: 0 };
+    });
   }
 
   removeInvestor(investorId: string) {

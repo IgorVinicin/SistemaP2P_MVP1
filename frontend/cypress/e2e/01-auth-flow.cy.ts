@@ -1,12 +1,13 @@
 describe('Fluxo de Autenticação', () => {
   it('Deve carregar a tela de login', () => {
     cy.visit('/login');
-    cy.get('h2').contains('Entrar no P2P Lending');
+    cy.get('mat-card-title').contains('Login - Nexo Capital');
   });
 
   it('Deve tentar logar sem preencher campos e ver mensagens de erro', () => {
     cy.visit('/login');
-    cy.get('button[type="submit"]').click();
+    cy.get('input[formControlName="email"]').focus().blur();
+    cy.get('input[formControlName="senha"]').focus().blur();
     
     // Supondo que você tenha validações de required no form
     cy.get('mat-error').should('exist');

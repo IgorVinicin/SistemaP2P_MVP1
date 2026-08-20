@@ -10,6 +10,8 @@ import { CreditConfigComponent } from './features/admin/pages/credit-config/cred
 import { LoanRequestComponent } from './features/user-dashboard/pages/loan-request/loan-request.component';
 import { MyLoansComponent } from './features/user-dashboard/pages/my-loans/my-loans.component';
 import { LoanHistoryComponent } from './features/user-dashboard/pages/loan-history/loan-history.component';
+import { LimitRequestComponent } from './features/user-dashboard/pages/limit-request/limit-request.component';
+import { ProfileComponent } from './features/user-dashboard/pages/profile/profile.component';
 import { AdminLoansComponent } from './features/admin/pages/admin-loans/admin-loans.component';
 import { AdminUsersComponent } from './features/admin/pages/admin-users/admin-users.component';
 import { AdminGroupsComponent } from './features/admin/pages/admin-groups/admin-groups.component';
@@ -36,6 +38,7 @@ export const routes: Routes = [
     canActivate: [authGuard],
     children: [
       { path: 'dashboard', component: DashboardHomeComponent },
+      { path: 'profile', component: ProfileComponent },
       { path: 'investor/dashboard', component: InvestorDashboardComponent, canActivate: [investorGuard] },
       { path: 'investor/aguardando-aprovacao', component: InvestorWaitingComponent, canActivate: [investorGuard] },
       { path: 'investor/reprovado', component: InvestorReprovedComponent, canActivate: [investorGuard] },
@@ -54,6 +57,7 @@ export const routes: Routes = [
       { path: 'loans/request', component: LoanRequestComponent },
       { path: 'loans/my', component: MyLoansComponent },
       { path: 'loans/history', component: LoanHistoryComponent },
+      { path: 'limits/request', component: LimitRequestComponent },
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' }
     ]
   },

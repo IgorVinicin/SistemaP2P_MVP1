@@ -14,6 +14,8 @@ namespace backend.Domain.Entities
         
         // Identificador externo gerado por gateway futuro (ex: endToEndId do PIX)
         public string? GatewayReference { get; set; }
+        public string? ChavePix { get; set; }
+        public string? TipoChavePix { get; set; }
         public string? Observacao { get; set; }
 
         [ConcurrencyCheck]

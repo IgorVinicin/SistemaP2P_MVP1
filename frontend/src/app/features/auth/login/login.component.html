@@ -1,30 +1,49 @@
-<div class="login-wrapper">
-  <mat-card class="login-card">
-    <mat-card-header>
-      <mat-card-title>Login - Sistema P2P</mat-card-title>
-      <mat-card-subtitle>Acesse sua conta para continuar</mat-card-subtitle>
-    </mat-card-header>
-    
-    <mat-card-content>
+<div class="login-page">
+  <!-- Left Panel — Branding -->
+  <div class="login-brand-panel">
+    <div class="brand-content">
+      <img src="logo.png" alt="Dinheiro a Jato" class="brand-logo">
+      <h1 class="brand-name">DINHEIRO A JATO</h1>
+      <p class="brand-tagline">Empréstimo de dinheiro na hora</p>
+      <div class="brand-separator"></div>
+      <!-- Removed brand-institution -->
+    </div>
+  </div>
+
+  <!-- Right Panel — Form -->
+  <div class="login-form-panel">
+    <div class="login-form-wrapper">
+      <div class="login-form-header">
+        <img src="logo.png" alt="Dinheiro a Jato" class="form-logo-mobile">
+        <h2>Acesse sua conta</h2>
+        <p>Insira suas credenciais para continuar</p>
+      </div>
+
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form">
         <mat-form-field appearance="outline">
-          <mat-label>E-mail</mat-label>
-          <input matInput type="email" formControlName="email" placeholder="exemplo@email.com">
-          <mat-error *ngIf="loginForm.get('email')?.hasError('required')">E-mail é obrigatório</mat-error>
-          <mat-error *ngIf="loginForm.get('email')?.hasError('email')">E-mail inválido</mat-error>
+          <mat-label>CPF ou E-mail</mat-label>
+          <mat-icon matPrefix>person_outline</mat-icon>
+          <input matInput type="text" formControlName="email" placeholder="Digite seu CPF ou E-mail">
+          <mat-error *ngIf="loginForm.get('email')?.hasError('required')">CPF ou E-mail é obrigatório</mat-error>
         </mat-form-field>
 
         <mat-form-field appearance="outline">
           <mat-label>Senha</mat-label>
+          <mat-icon matPrefix>lock_outline</mat-icon>
           <input matInput type="password" formControlName="senha" placeholder="Sua senha">
           <mat-error *ngIf="loginForm.get('senha')?.hasError('required')">Senha é obrigatória</mat-error>
           <mat-error *ngIf="loginForm.get('senha')?.hasError('minlength')">Senha deve ter no mínimo 4 caracteres</mat-error>
         </mat-form-field>
 
-        <button mat-raised-button color="primary" type="submit" [disabled]="loginForm.invalid || isLoading">
+        <button mat-flat-button color="primary" type="submit" [disabled]="loginForm.invalid || isLoading" class="login-submit-btn">
+          <mat-icon *ngIf="!isLoading">login</mat-icon>
           {{ isLoading ? 'Entrando...' : 'Entrar' }}
         </button>
       </form>
-    </mat-card-content>
-  </mat-card>
+
+      <div class="login-footer">
+        <span>Dinheiro a Jato &copy; {{ currentYear }}</span>
+      </div>
+    </div>
+  </div>
 </div>

@@ -1,18 +1,56 @@
+using backend.API.Middleware;
 using backend.Application.Services;
 using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Threading.RateLimiting;
+using DotNetEnv;
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Tratamento Global de Exceções (RFC 7807)
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
+// Configuração de Rate Limiting
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter(policyName: "AuthRateLimit", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 10;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+    options.AddSlidingWindowLimiter(policyName: "GeneralRateLimit", limiterOptions =>
+    {
+        limiterOptions.PermitLimit = 120;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.SegmentsPerWindow = 4;
+        limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        limiterOptions.QueueLimit = 0;
+    });
+});
+
 // Add services to the container.
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
+});
 
+builder.Services.AddHttpClient();
+
+builder.Services.AddSingleton<ILoginAttemptService, LoginAttemptService>();
+builder.Services.AddScoped<ICpfConsultationService, CpfConsultationService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<CreditValidationService>();
 builder.Services.AddScoped<DelinquencyService>();
@@ -22,9 +60,11 @@ builder.Services.AddScoped<LedgerService>();
 builder.Services.AddScoped<CashFlowService>();
 builder.Services.AddScoped<WalletDistributionService>();
 builder.Services.AddScoped<InvestorYieldService>();
+builder.Services.AddScoped<ITreasuryService, TreasuryService>();
+builder.Services.AddHostedService<DailyYieldBackgroundService>();
 
-// Configuração JWT
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
+// Configuração JWT (prioriza Variável de Ambiente JWT_KEY para produção segura)
+var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
 var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
@@ -81,9 +121,15 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+app.UseExceptionHandler();
+
+// app.UseHttpsRedirection();
 
 app.UseCors("AllowAngular");
+
+app.UseRateLimiter();
+
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -198,35 +244,53 @@ using (var scope = app.Services.CreateScope())
                 Id = Guid.NewGuid(),
                 ScoreMinimoParaSolicitacao = 150,
                 ValorMinimoInvestimento = 5000.00m,
-                MinimoParcelasPagasNovaSolicitacao = 4
+                MinimoParcelasPagasNovaSolicitacao = 4,
+                TaxaRendimentoPool = 5.00m
             });
+        }
+        else
+        {
+            // Corrige taxa de rendimento se estiver zerada
+            var cfg = context.CreditConfigs.First();
+            if (cfg.TaxaRendimentoPool <= 0)
+            {
+                cfg.TaxaRendimentoPool = 5.00m;
+            }
         }
 
         // 1. Seed Administrador
-        if (!context.Users.Any(u => u.Email == "admin@p2p.com"))
         {
             var hasher = new PasswordHasher<User>();
-            var admin = new User
+            var admin = context.Users.Include(u => u.Profile).FirstOrDefault(u => u.Email == "admin@p2p.com");
+            if (admin == null)
             {
-                Id = Guid.NewGuid(),
-                Email = "admin@p2p.com",
-                Role = "Administrador",
-                Status = "Aprovado"
-            };
-            admin.PasswordHash = hasher.HashPassword(admin, "Admin123!");
+                admin = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "admin@p2p.com",
+                    Role = "Administrador",
+                    Status = "Aprovado"
+                };
+                admin.PasswordHash = hasher.HashPassword(admin, "Senha123!");
 
-            var profile = new UserProfile
+                var profile = new UserProfile
+                {
+                    Id = admin.Id,
+                    Nome = "Administrador do Sistema",
+                    CPF = "00000000000",
+                    Telefone = "00000000000",
+                    DataNascimento = DateTime.UtcNow.AddYears(-30),
+                    ScoreAtual = 1000
+                };
+                admin.Profile = profile;
+                context.Users.Add(admin);
+            }
+            else
             {
-                Id = admin.Id,
-                Nome = "Administrador do Sistema",
-                CPF = "00000000000",
-                Telefone = "00000000000",
-                DataNascimento = DateTime.UtcNow.AddYears(-30),
-                ScoreAtual = 1000
-            };
-            admin.Profile = profile;
-
-            context.Users.Add(admin);
+                admin.PasswordHash = hasher.HashPassword(admin, "Senha123!");
+                admin.Role = "Administrador";
+                admin.Status = "Aprovado";
+            }
         }
 
         // Seed do novo administrador solicitado
@@ -254,6 +318,115 @@ using (var scope = app.Services.CreateScope())
             admin.Profile = profile;
 
             context.Users.Add(admin);
+        }
+
+        // Seed cliente1@p2p.com
+        {
+            var hasher = new PasswordHasher<User>();
+            var cliente = context.Users.Include(u => u.Profile).FirstOrDefault(u => u.Email == "cliente1@p2p.com");
+            if (cliente == null)
+            {
+                cliente = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "cliente1@p2p.com",
+                    Role = "Cliente",
+                    Status = "Aprovado"
+                };
+                cliente.PasswordHash = hasher.HashPassword(cliente, "Senha123!");
+
+                var profile = new UserProfile
+                {
+                    Id = cliente.Id,
+                    Nome = "Cliente Um",
+                    CPF = "11111111111",
+                    Telefone = "11911111111",
+                    DataNascimento = DateTime.UtcNow.AddYears(-25),
+                    ScoreAtual = 750,
+                    QuestionnaireCompleted = true
+                };
+                cliente.Profile = profile;
+                context.Users.Add(cliente);
+            }
+            else
+            {
+                cliente.PasswordHash = hasher.HashPassword(cliente, "Senha123!");
+                cliente.Role = "Cliente";
+                cliente.Status = "Aprovado";
+            }
+        }
+
+        // Seed investidor1@p2p.com
+        {
+            var hasher = new PasswordHasher<User>();
+            var investidor = context.Users.Include(u => u.Profile).Include(u => u.Wallet).FirstOrDefault(u => u.Email == "investidor1@p2p.com");
+            if (investidor == null)
+            {
+                investidor = new User
+                {
+                    Id = Guid.NewGuid(),
+                    Email = "investidor1@p2p.com",
+                    Role = "Investidor",
+                    Status = "Aprovado"
+                };
+                investidor.PasswordHash = hasher.HashPassword(investidor, "Senha123!");
+
+                var profile = new UserProfile
+                {
+                    Id = investidor.Id,
+                    Nome = "Investidor Um",
+                    CPF = "22222222222",
+                    Telefone = "11922222222",
+                    DataNascimento = DateTime.UtcNow.AddYears(-35),
+                    ScoreAtual = 900,
+                    QuestionnaireCompleted = true
+                };
+                investidor.Profile = profile;
+
+                var wallet = new InvestorWallet
+                {
+                    Id = investidor.Id,
+                    SaldoDisponivel = 50000.00m,
+                    SaldoComprometido = 0,
+                    SaldoInvestido = 0,
+                    Rendimentos = 0,
+                    TotalAportado = 50000.00m,
+                    PerfilInvestimento = "Moderado",
+                    Rentabilidade = 10.00m,
+                    DataCriacao = DateTime.UtcNow,
+                    DataAtualizacao = DateTime.UtcNow
+                };
+                investidor.Wallet = wallet;
+                context.Users.Add(investidor);
+            }
+            else
+            {
+                investidor.PasswordHash = hasher.HashPassword(investidor, "Senha123!");
+                investidor.Role = "Investidor";
+                investidor.Status = "Aprovado";
+                if (investidor.Wallet == null)
+                {
+                    investidor.Wallet = new InvestorWallet
+                    {
+                        Id = investidor.Id,
+                        SaldoDisponivel = 50000.00m,
+                        SaldoComprometido = 0,
+                        SaldoInvestido = 0,
+                        Rendimentos = 0,
+                        TotalAportado = 50000.00m,
+                        PerfilInvestimento = "Moderado",
+                        Rentabilidade = 10.00m,
+                        DataCriacao = DateTime.UtcNow,
+                        DataAtualizacao = DateTime.UtcNow
+                    };
+                }
+                else
+                {
+                    investidor.Wallet.SaldoDisponivel = 50000.00m;
+                    investidor.Wallet.SaldoBloqueado = 0;
+                    investidor.Wallet.SaldoComprometido = 0;
+                }
+            }
         }
 
         // 2. Seed Perguntas de Score
@@ -312,124 +485,69 @@ using (var scope = app.Services.CreateScope())
             });
         }
 
-        // 4. Seed Test Investors
-        var testInvestors = new[]
+        // 4. Seed de Solicitação de Saque de Demonstração
         {
-            new { Email = "investidor1@p2p.com", Nome = "Investidor Alpha", CPF = "11111111111", Saldo = 10000.00m, Rentabilidade = 5.00m },
-            new { Email = "investidor2@p2p.com", Nome = "Investidor Beta", CPF = "22222222222", Saldo = 15000.00m, Rentabilidade = 6.00m },
-            new { Email = "investidor3@p2p.com", Nome = "Investidor Gamma", CPF = "33333333333", Saldo = 12000.00m, Rentabilidade = 4.00m },
-            new { Email = "investidor4@p2p.com", Nome = "Investidor LowBalance", CPF = "44444444444", Saldo = 1000.00m, Rentabilidade = 5.00m }
-        };
-
-        var testPasswordHasher = new PasswordHasher<User>();
-
-        foreach (var invData in testInvestors)
-        {
-            if (!context.Users.Any(u => u.Email == invData.Email))
+            var investidor = context.Users.FirstOrDefault(u => u.Email == "investidor1@p2p.com");
+            if (investidor != null && !context.WithdrawalRequests.Any(w => w.InvestorId == investidor.Id))
             {
-                var user = new User
+                context.WithdrawalRequests.Add(new backend.Domain.Entities.WithdrawalRequest
                 {
                     Id = Guid.NewGuid(),
-                    Email = invData.Email,
-                    Role = "Investidor",
-                    Status = "Aprovado"
-                };
-                user.PasswordHash = testPasswordHasher.HashPassword(user, "Senha123!");
-
-                var profile = new UserProfile
-                {
-                    Id = user.Id,
-                    Nome = invData.Nome,
-                    CPF = invData.CPF,
-                    Telefone = "11999999999",
-                    DataNascimento = DateTime.UtcNow.AddYears(-35),
-                    ScoreAtual = 800,
-                    QuestionnaireCompleted = true
-                };
-
-                var wallet = new InvestorWallet
-                {
-                    Id = user.Id,
-                    SaldoDisponivel = invData.Saldo,
-                    SaldoComprometido = 0,
-                    SaldoInvestido = 0,
-                    Rendimentos = 0,
-                    TotalAportado = invData.Saldo,
-                    TotalSacado = 0,
-                    PerfilInvestimento = "Moderado",
-                    Rentabilidade = invData.Rentabilidade,
-                    DataCriacao = DateTime.UtcNow,
-                    DataAtualizacao = DateTime.UtcNow
-                };
-
-                user.Profile = profile;
-                user.Wallet = wallet;
-
-                context.Users.Add(user);
+                    InvestorId = investidor.Id,
+                    Valor = 1000.00m,
+                    Status = "Pending",
+                    ChavePix = "investidor1@p2p.com",
+                    TipoChavePix = "Email",
+                    Observacao = "Saque de demonstração — aguardando aprovação do administrador.",
+                    CreatedAt = DateTime.UtcNow
+                });
             }
         }
 
-        // 5. Seed Test Borrowers
-        var testBorrowers = new[]
+        // 5. Seed de Produtos de Investimento (Prateleira Bancária)
+        if (!context.InvestmentProducts.Any())
         {
-            new { Email = "tomador1@p2p.com", Nome = "Tomador Um", CPF = "55555555555", Score = 800 },
-            new { Email = "tomador2@p2p.com", Nome = "Tomador Dois", CPF = "66666666666", Score = 250 }
-        };
-
-        foreach (var bData in testBorrowers)
-        {
-            if (!context.Users.Any(u => u.Email == bData.Email))
-            {
-                var user = new User
+            context.InvestmentProducts.AddRange(
+                new InvestmentProduct
                 {
                     Id = Guid.NewGuid(),
-                    Email = bData.Email,
-                    Role = "Cliente",
-                    Status = "Aprovado"
-                };
-                user.PasswordHash = testPasswordHasher.HashPassword(user, "Senha123!");
-
-                var profile = new UserProfile
+                    Nome = "Pool de Liquidez Conservador",
+                    RentabilidadeMensal = 1.80m,
+                    ValorMinimo = 5000.00m,
+                    Descricao = "Investimento diversificado em tomadores com score elevado (A/B), com garantia e mitigação de risco.",
+                    Condicoes = "Liquidez imediata para resgate com aviso de 30 dias. Cobertura proporcional pelo Fundo de Proteção.",
+                    Risco = "Baixo",
+                    PrazoMinimo = "Livre",
+                    Ativo = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new InvestmentProduct
                 {
-                    Id = user.Id,
-                    Nome = bData.Nome,
-                    CPF = bData.CPF,
-                    Telefone = "11988888888",
-                    DataNascimento = DateTime.UtcNow.AddYears(-28),
-                    ScoreAtual = bData.Score,
-                    QuestionnaireCompleted = true
-                };
-
-                user.Profile = profile;
-                context.Users.Add(user);
-            }
-        }
-
-        // 6. Seed Test Loan Request for Tomador 1
-        var tomadorUser = context.Users.Include(u => u.LoanRequests).FirstOrDefault(u => u.Email == "tomador1@p2p.com");
-        if (tomadorUser != null && !tomadorUser.LoanRequests.Any())
-        {
-            var loan = new LoanRequest
-            {
-                Id = Guid.NewGuid(),
-                UserId = tomadorUser.Id,
-                ValorSolicitado = 6000.00m,
-                Parcelas = 12,
-                QuantidadeParcelas = 12,
-                Status = "Pendente",
-                ScoreNaSolicitacao = 800,
-                ScoreNoMomento = 800,
-                Finalidade = "Simulação e Teste de Alocação P2P",
-                Observacoes = "Criado automaticamente pelo seed de teste.",
-                TaxaJurosAplicada = 2.00m,
-                TaxaJuros = 2.00m,
-                ValorTotal = 7440.00m,
-                NivelRisco = "Baixo",
-                CreatedAt = DateTime.UtcNow,
-                DataCriacao = DateTime.UtcNow,
-                DataSolicitacao = DateTime.UtcNow
-            };
-            context.LoanRequests.Add(loan);
+                    Id = Guid.NewGuid(),
+                    Nome = "Crédito P2P Moderado",
+                    RentabilidadeMensal = 2.50m,
+                    ValorMinimo = 10000.00m,
+                    Descricao = "Alocação em contratos com rentabilidade atrativa e score intermediário (B/C).",
+                    Condicoes = "Amortizações mensais creditadas diretamente no saldo com rendimentos reinvestíveis.",
+                    Risco = "Moderado",
+                    PrazoMinimo = "90 dias",
+                    Ativo = true,
+                    CreatedAt = DateTime.UtcNow
+                },
+                new InvestmentProduct
+                {
+                    Id = Guid.NewGuid(),
+                    Nome = "Crédito Estruturado Alta Rentabilidade",
+                    RentabilidadeMensal = 3.20m,
+                    ValorMinimo = 25000.00m,
+                    Descricao = "Voltado para investidores arrojados buscando maximização de rendimentos em operações de curto/médio prazo.",
+                    Condicoes = "Maior taxa de retorno, com garantias contratuais e esteira de cobrança intensiva.",
+                    Risco = "Alto",
+                    PrazoMinimo = "180 dias",
+                    Ativo = true,
+                    CreatedAt = DateTime.UtcNow
+                }
+            );
         }
 
         context.SaveChanges();

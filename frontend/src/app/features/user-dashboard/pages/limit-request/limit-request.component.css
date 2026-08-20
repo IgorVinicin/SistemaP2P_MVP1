@@ -1,0 +1,87 @@
+/* ============================================
+   LIMIT REQUEST — Dinheiro a Jato Design System
+   ============================================ */
+
+.limit-req-container {
+  padding: var(--space-4);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.status-badge {
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.pending { background-color: var(--dj-warning-light); color: var(--dj-warning-text); }
+.status-badge.approved { background-color: var(--dj-success-light); color: var(--dj-success-text); }
+.status-badge.rejected { background-color: var(--dj-danger-light); color: var(--dj-danger-text); }
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th.mat-mdc-header-cell {
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  background-color: var(--bg-elevated) !important;
+  font-size: 0.6875rem !important;
+  text-transform: uppercase;
+}
+
+
+/* Responsive Grid Layouts */
+.eligibility-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.limit-grid-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+}
+
+.actions-row {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 768px) {
+  .limit-req-container {
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .limit-grid-content {
+    grid-template-columns: 1fr;
+  }
+
+  .eligibility-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actions-row button {
+    width: 100%;
+  }
+}
+

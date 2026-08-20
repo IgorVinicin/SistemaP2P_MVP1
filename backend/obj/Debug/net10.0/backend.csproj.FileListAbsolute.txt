@@ -1,10 +1,5 @@
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\appsettings.Development.json
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\appsettings.json
-C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\temp_build\appsettings.Development.json
-C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\temp_build\appsettings.json
-C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\temp_build\backend.deps.json
-C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\temp_build\backend.runtimeconfig.json
-C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\temp_build\backend.staticwebassets.endpoints.json
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\backend.staticwebassets.endpoints.json
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\backend.exe
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\backend.deps.json
@@ -136,3 +131,15 @@ C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\backen
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\obj\Debug\net10.0\ref\backend.dll
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\package-lock.json
 C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\package.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\appsettings.Development.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\appsettings.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\package-lock.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\package.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.staticwebassets.endpoints.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.exe
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.deps.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.runtimeconfig.json
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.dll
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend.Tests\test_build\backend.pdb
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\DotNetEnv.dll
+C:\Users\pcdox\Documents\GitHub\SistemaP2P_MVP1\backend\bin\Debug\net10.0\Superpower.dll

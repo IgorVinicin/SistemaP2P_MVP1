@@ -1,0 +1,54 @@
+<h2 mat-dialog-title style="margin: 0; font-size: 1.3rem; font-weight: 600; color: var(--text-main); display: flex; align-items: center; gap: 8px; padding: 1.25rem 1.5rem 0.75rem;">
+  <mat-icon style="color: var(--dj-blue);">trending_up</mat-icon> Analisar Solicitação de Limite
+</h2>
+
+<mat-dialog-content style="padding: 0 1.5rem 1rem; color: var(--text-main);">
+  <div class="user-summary" style="background-color: var(--bg-elevated); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+    <div>
+      <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Tomador</span>
+      <strong style="color: var(--text-main); font-size: 0.95rem;">{{ request.nome }}</strong>
+    </div>
+    <div>
+      <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">CPF</span>
+      <span style="color: var(--text-muted); font-weight: 500;">{{ request.cpf }}</span>
+    </div>
+    <div>
+      <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Pontuação de Score</span>
+      <span class="score-badge" style="background-color: var(--dj-success-light); color: var(--dj-success); font-size: 0.8rem; font-weight: 600; padding: 1px 6px; border-radius: 4px;">{{ request.score }}</span>
+    </div>
+    <div>
+      <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Limite Atual</span>
+      <strong style="color: var(--text-muted);">{{ request.limiteAtualNoMomento | currency:'BRL' }}</strong>
+    </div>
+    <div style="grid-column: span 2; border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+      <span style="font-size: 0.8rem; color: var(--text-secondary); display: block; margin-bottom: 2px;">Limite Solicitado pelo Tomador</span>
+      <strong style="color: var(--dj-blue); font-size: 1.1rem;">{{ request.limiteSolicitado | currency:'BRL' }}</strong>
+    </div>
+  </div>
+
+  <div class="form-inputs" style="display: flex; flex-direction: column; gap: 1rem;">
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Limite Final Aprovado (R$)</mat-label>
+      <input matInput type="number" [(ngModel)]="valorAprovado" required min="1">
+      <span matTextPrefix style="margin-right: 4px;">R$&nbsp;</span>
+      <mat-hint>Você pode editar este valor para conceder um aumento parcial ou total.</mat-hint>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" style="width: 100%;">
+      <mat-label>Observações / Justificativa Interna</mat-label>
+      <textarea matInput rows="3" [(ngModel)]="observacaoAdmin" placeholder="Digite uma mensagem para o cliente (motivo de recusa ou termos de aprovação)..."></textarea>
+    </mat-form-field>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions style="display: flex; justify-content: flex-end; gap: 0.75rem; padding: 0.75rem 1.5rem 1.25rem; border-top: 1px solid #f1f5f9;">
+  <button mat-button (click)="cancel()" [disabled]="isSubmitting">Cancelar</button>
+  
+  <button mat-flat-button color="warn" (click)="reject()" [disabled]="isSubmitting" style="background-color: var(--dj-danger); color: white;">
+    Recusar Pedido
+  </button>
+  
+  <button mat-flat-button color="primary" (click)="approve()" [disabled]="isSubmitting" style="background-color: var(--dj-success); color: white;">
+    Aprovar Aumento
+  </button>
+</mat-dialog-actions>

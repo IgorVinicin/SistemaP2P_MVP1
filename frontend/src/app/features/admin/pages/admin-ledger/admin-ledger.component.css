@@ -1,69 +1,37 @@
+/* ============================================
+   ADMIN LEDGER — Dinheiro a Jato Design System
+   ============================================ */
+
 .ledger-container {
-  padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
 }
 
-.header-section {
-  margin-bottom: 24px;
-}
-
+.header-section { margin-bottom: var(--space-6); }
 .header-section h1 {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 24px;
-  margin: 0 0 8px 0;
-  color: #333;
+  gap: var(--space-2);
+  font-size: 1.375rem;
+  margin: 0 0 var(--space-1) 0;
+  color: var(--text-main);
 }
 
-.header-section p {
-  color: #666;
-  margin: 0;
-}
+.header-section p { color: var(--text-secondary); margin: 0; font-size: 0.8125rem; }
 
-.filter-card {
-  margin-bottom: 24px;
-}
+.filter-card { margin-bottom: var(--space-6); }
+.filters { display: flex; gap: var(--space-4); flex-wrap: wrap; }
+.filters mat-form-field { flex: 1; min-width: 250px; }
 
-.filters {
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+table { width: 100%; }
 
-.filters mat-form-field {
-  flex: 1;
-  min-width: 250px;
-}
-
-
-
-table {
-  width: 100%;
-}
-
-.account-origin {
-  color: #d32f2f;
-  font-weight: 500;
-}
-
-.account-dest {
-  color: #388e3c;
-  font-weight: 500;
-}
-
-.value-cell {
-  font-weight: bold;
-}
-
-.text-muted {
-  color: #888;
-  font-size: 0.85em;
-}
+.account-origin { color: var(--dj-danger); font-weight: 600; }
+.account-dest { color: var(--dj-success); font-weight: 600; }
+.value-cell { font-weight: 700; font-variant-numeric: tabular-nums; }
+.text-muted { color: var(--text-muted); font-size: 0.8125rem; }
 
 .custom-chip {
-  background-color: #e3f2fd !important;
-  color: #1976d2 !important;
-  font-weight: 500;
+  background-color: var(--dj-blue-light) !important;
+  color: var(--dj-blue) !important;
+  font-weight: 600;
 }

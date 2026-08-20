@@ -18,7 +18,7 @@ namespace backend.Application.Services
 
         public async Task UpdateOverdueInstallmentsAsync()
         {
-            var today = DateTime.UtcNow.Date;
+            var today = DateTime.UtcNow.AddHours(-3).Date;
             var config = await _context.CreditConfigs.FirstOrDefaultAsync();
             decimal percentualMulta = config?.PercentualMultaAtraso ?? 2.00m;
             decimal percentualJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
@@ -35,13 +35,14 @@ namespace backend.Application.Services
 
             foreach (var inst in unpaidInstallments)
             {
-                if (inst.DataVencimento.Date < today)
+                var vencimento = inst.DataVencimento.AddHours(-3).Date;
+                if (vencimento < today)
                 {
-                    int dias = (int)(today - inst.DataVencimento.Date).TotalDays;
+                    int dias = (int)(today - vencimento).TotalDays;
                     
                     // Fallback para empréstimos antigos que não tem taxa congelada
-                    decimal multa = inst.LoanRequest.PercentualMultaAtrasoContrato > 0 ? inst.LoanRequest.PercentualMultaAtrasoContrato : percentualMulta;
-                    decimal juros = inst.LoanRequest.PercentualJurosDiarioContrato > 0 ? inst.LoanRequest.PercentualJurosDiarioContrato : percentualJurosDiario;
+                    decimal multa = inst.LoanRequest!.PercentualMultaAtrasoContrato > 0 ? inst.LoanRequest!.PercentualMultaAtrasoContrato : percentualMulta;
+                    decimal juros = inst.LoanRequest!.PercentualJurosDiarioContrato > 0 ? inst.LoanRequest!.PercentualJurosDiarioContrato : percentualJurosDiario;
 
                     decimal novaMulta = Math.Round(inst.ValorParcela * (multa / 100m), 2);
                     decimal novoJuros = Math.Round(inst.ValorParcela * (juros / 100m) * dias, 2);

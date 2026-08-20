@@ -41,8 +41,8 @@ namespace backend.API.Controllers
                 // Atualizar parcelas em atraso primeiro
                 await _delinquencyService.UpdateOverdueInstallmentsAsync();
 
-                // Buscar parcelas que não estão pagas nem canceladas e estão vencidas
-                var today = DateTime.UtcNow.Date;
+                // Buscar parcelas que não estão pagas nem canceladas e estão vencidas considerando o horário de Brasília (UTC-3)
+                var today = DateTime.UtcNow.AddHours(-3).Date;
 
                 var query = _context.LoanInstallments
                     .AsNoTracking()

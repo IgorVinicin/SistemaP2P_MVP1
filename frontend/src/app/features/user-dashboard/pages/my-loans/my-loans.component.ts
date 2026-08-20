@@ -6,11 +6,13 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { LoanService } from '../../../../core/services/loan.service';
 import { LoanRequest } from '../../../../core/models/loan.models';
 import { LoanInstallmentService } from '../../../../core/services/loan-installment.service';
 import { LoanInstallmentDto } from '../../../../core/models/installment.models';
+import { PayInstallmentDialogComponent, PayInstallmentDialogResult } from '../../components/pay-installment-dialog/pay-installment-dialog.component';
 
 @Component({
   selector: 'app-my-loans',
@@ -22,7 +24,8 @@ import { LoanInstallmentDto } from '../../../../core/models/installment.models';
     MatIconModule,
     MatCardModule,
     MatTableModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatDialogModule
   ],
   templateUrl: './my-loans.component.html',
   styleUrls: ['./my-loans.component.css']
@@ -32,9 +35,10 @@ export class MyLoansComponent implements OnInit {
   private installmentService = inject(LoanInstallmentService);
   private snackBar = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
+  private dialog = inject(MatDialog);
 
   public loans: LoanRequest[] = [];
-  public displayedColumns: string[] = ['valor', 'parcelas', 'status', 'data', 'acoes'];
+  public displayedColumns: string[] = ['valor', 'status', 'data', 'acoes'];
   public isLoading = false;
 
   public selectedLoan: LoanRequest | null = null;
@@ -45,6 +49,11 @@ export class MyLoansComponent implements OnInit {
   public get hasActiveLoan(): boolean {
     const statusAtivos = ['pendente', 'emanalise', 'aprovado', 'ativo', 'empagamento', 'inadimplente'];
     return this.loans.some(l => l.status && statusAtivos.includes(l.status.toLowerCase()));
+  }
+
+  public get hasPaidLoan(): boolean {
+    const statusPagos = ['quitado', 'finalizado', 'liquidado', 'pago'];
+    return this.loans.some(l => l.status && statusPagos.includes(l.status.toLowerCase()));
   }
 
   ngOnInit(): void {
@@ -97,21 +106,50 @@ export class MyLoansComponent implements OnInit {
   }
 
   public payInstallment(installmentId: string): void {
-    if (!confirm('Deseja realmente simular o pagamento desta parcela?')) {
-      return;
-    }
-    this.installmentService.payInstallment(installmentId).subscribe({
-      next: (res) => {
-        this.snackBar.open(res.message || 'Parcela paga com sucesso!', 'Fechar', { duration: 3000 });
-        this.loadMyLoans();
-        if (this.selectedLoan && this.selectedLoan.id) {
-          this.loadInstallments(this.selectedLoan.id);
-        }
-      },
-      error: (err) => {
-        const msg = err.error?.message || 'Erro ao realizar pagamento da parcela.';
-        this.snackBar.open(msg, 'Fechar', { duration: 4000 });
-        this.cdr.detectChanges();
+    const installment = this.installments.find(i => i.id === installmentId);
+    if (!installment) return;
+
+    const dialogRef = this.dialog.open(PayInstallmentDialogComponent, {
+      data: { installment },
+      width: '480px',
+      maxWidth: '95vw',
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe((result: PayInstallmentDialogResult | undefined) => {
+      if (!result) return; // usuário cancelou
+
+      if (result.isLote && result.loteItems) {
+        this.api.payInstallmentsBatch(result.loteItems).subscribe({
+          next: (res) => {
+            this.snackBar.open(res.message || 'Lote de parcelas pago com sucesso!', 'Fechar', { duration: 3500 });
+            this.loadMyLoans();
+            if (this.selectedLoan && this.selectedLoan.id) {
+              this.loadInstallments(this.selectedLoan.id);
+            }
+          },
+          error: (err) => {
+            const msg = err.error?.message || 'Erro ao realizar pagamento do lote.';
+            this.snackBar.open(msg, 'Fechar', { duration: 4000 });
+            this.cdr.detectChanges();
+          }
+        });
+      }
+      else {
+        this.installmentService.payInstallment(installmentId, result.valorPago).subscribe({
+          next: (res) => {
+            this.snackBar.open(res.message || 'Parcela paga com sucesso!', 'Fechar', { duration: 3000 });
+            this.loadMyLoans();
+            if (this.selectedLoan && this.selectedLoan.id) {
+              this.loadInstallments(this.selectedLoan.id);
+            }
+          },
+          error: (err) => {
+            const msg = err.error?.message || 'Erro ao realizar pagamento da parcela.';
+            this.snackBar.open(msg, 'Fechar', { duration: 4000 });
+            this.cdr.detectChanges();
+          }
+        });
       }
     });
   }

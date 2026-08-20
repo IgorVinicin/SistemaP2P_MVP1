@@ -27,7 +27,7 @@ namespace backend.API.Controllers
 
         // POST /api/loans/installments/{id}/pay
         [HttpPost("loans/installments/{id}/pay")]
-        public async Task<IActionResult> PayInstallment(Guid id)
+        public async Task<IActionResult> PayInstallment(Guid id, [FromBody] PayInstallmentRequestDto dto)
         {
             try
             {
@@ -77,19 +77,57 @@ namespace backend.API.Controllers
                         installment.DiasAtraso = dias;
                         installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
                         installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
-                        installment.ValorPago = installment.ValorParcela + installment.Multa + installment.JurosMora;
                     }
                     else
                     {
-                        installment.ValorPago = installment.ValorParcela;
                         installment.DiasAtraso = 0;
                         installment.Multa = 0;
                         installment.JurosMora = 0;
                     }
 
+                    decimal totalDevido = installment.ValorParcela + installment.Multa + installment.JurosMora - installment.ValorPago;
+                    decimal valorPagoAgora = (dto != null && dto.ValorPago.HasValue) ? dto.ValorPago.Value : totalDevido;
+
+                    if (valorPagoAgora <= 0)
+                    {
+                        return BadRequest(new { message = "O valor pago deve ser maior que zero." });
+                    }
+                    if (valorPagoAgora > totalDevido)
+                    {
+                        valorPagoAgora = totalDevido;
+                    }
+
+                    decimal diferenca = totalDevido - valorPagoAgora;
+
+                    installment.ValorPago += valorPagoAgora;
                     installment.DataPagamento = DateTime.UtcNow;
                     installment.Status = "Paga";
                     installment.UpdatedAt = DateTime.UtcNow;
+
+                    if (diferenca > 0.01m)
+                    {
+                        // Buscar próxima parcela
+                        var nextInstallment = await _context.LoanInstallments
+                            .Where(i => i.LoanRequestId == installment.LoanRequestId && i.NumeroParcela == installment.NumeroParcela + 1)
+                            .FirstOrDefaultAsync();
+
+                        if (nextInstallment != null)
+                        {
+                            nextInstallment.ValorParcela += diferenca;
+                            nextInstallment.ValorPrincipal += diferenca;
+                            nextInstallment.UpdatedAt = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            // É a última parcela! Em vez de marcar como Paga e criar outra, mantemos a parcela final com status "Parcial" ou "Pendente" com o saldo restante.
+                            installment.Status = "Parcial";
+                            installment.ValorParcela = diferenca;
+                            installment.ValorPrincipal = diferenca;
+                            installment.ValorJuros = 0;
+                            installment.ValorPago = 0; // Reseta o valor pago acumulado para os próximos pagamentos parciais do saldo restante
+                            installment.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
 
                     // Registrar evento de pagamento no histórico
                     _context.FinancialEventHistories.Add(new FinancialEventHistory
@@ -98,12 +136,12 @@ namespace backend.API.Controllers
                         Data = DateTime.UtcNow,
                         UsuarioResponsavel = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente",
                         EventoExecutado = "PAGAMENTO_PARCELA",
-                        Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga com sucesso. Valor Pago: {installment.ValorPago:C2}.",
+                        Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga com sucesso. Valor Pago: {valorPagoAgora:C2}. Restante acumulado para a próxima: {diferenca:C2}.",
                         LoanRequestId = installment.LoanRequestId,
-                        Valor = installment.ValorPago
+                        Valor = valorPagoAgora
                     });
 
-                    // Salvar as alterações da parcela
+                    // Salvar as alterações
                     await _context.SaveChangesAsync();
 
                     // Recalcular status do empréstimo de forma centralizada
@@ -279,6 +317,324 @@ namespace backend.API.Controllers
             }
         }
 
+        // POST /api/admin/loans/installments/{id}/settle
+        [HttpPost("admin/loans/installments/{id}/settle")]
+        [Authorize(Roles = "Administrador")]
+        public async Task<IActionResult> AdminSettleInstallment(Guid id, [FromBody] AdminSettleInstallmentDto? dto)
+        {
+            try
+            {
+                var installment = await _context.LoanInstallments
+                    .Include(i => i.LoanRequest)
+                    .ThenInclude(l => l!.User)
+                    .ThenInclude(u => u!.Profile)
+                    .FirstOrDefaultAsync(i => i.Id == id);
 
+                if (installment == null || installment.LoanRequest == null)
+                {
+                    return NotFound(new { message = "Parcela não encontrada." });
+                }
+
+                if (installment.Status == "Paga")
+                {
+                    return BadRequest(new { message = "Esta parcela já está paga." });
+                }
+
+                var adminEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Administrador";
+
+                decimal totalDevido = installment.ValorParcela + installment.Multa + installment.JurosMora;
+                decimal valorEfetivo = (dto != null && dto.ValorPago.HasValue && dto.ValorPago.Value > 0) ? dto.ValorPago.Value : totalDevido;
+
+                installment.ValorPago = valorEfetivo;
+                installment.DataPagamento = DateTime.UtcNow;
+                installment.Status = "Paga";
+                installment.UpdatedAt = DateTime.UtcNow;
+
+                string obsFinal = $"Parcela {installment.NumeroParcela} do Empréstimo quitada manualmente pelo Admin ({adminEmail}). Valor Pago: {valorEfetivo:C2}.";
+                if (!string.IsNullOrWhiteSpace(dto?.FormaPagamento))
+                {
+                    obsFinal += $" Forma de Pagamento: {dto.FormaPagamento}.";
+                }
+                if (!string.IsNullOrWhiteSpace(dto?.Observacao))
+                {
+                    obsFinal += $" Observação: {dto.Observacao}.";
+                }
+
+                _context.FinancialEventHistories.Add(new FinancialEventHistory
+                {
+                    Id = Guid.NewGuid(),
+                    Data = DateTime.UtcNow,
+                    UsuarioResponsavel = adminEmail,
+                    EventoExecutado = "QUITACAO_PARCELA_ADMIN",
+                    Observacao = obsFinal,
+                    LoanRequestId = installment.LoanRequestId,
+                    Valor = valorEfetivo
+                });
+
+                await _context.SaveChangesAsync();
+
+                await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(installment.LoanRequestId, adminEmail);
+
+                var distService = new WalletDistributionService(_context);
+                await distService.DistributeInstallmentPaymentAsync(installment.Id, adminEmail);
+
+                return Ok(new 
+                { 
+                    message = "Parcela quitada com sucesso pelo administrador.", 
+                    installment = new 
+                    {
+                        id = installment.Id,
+                        status = installment.Status,
+                        valorPago = installment.ValorPago,
+                        dataPagamento = installment.DataPagamento
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpGet("loans/installments/pending-user")]
+        public async Task<IActionResult> GetPendingUserInstallments()
+        {
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Usuário não autenticado." });
+            }
+
+            var installments = await _context.LoanInstallments
+                .Include(i => i.LoanRequest)
+                .Where(i => i.LoanRequest!.UserId == userId && i.Status != "Paga" &&
+                            (i.LoanRequest!.Status == "Aprovado" || i.LoanRequest!.Status == "EmCaptacao" || i.LoanRequest!.Status == "Financiado" ||
+                             i.LoanRequest!.Status == "Ativo" || i.LoanRequest!.Status == "EmPagamento" || i.LoanRequest!.Status == "Inadimplente"))
+                .OrderBy(i => i.DataVencimento)
+                .ToListAsync();
+
+            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+            var today = DateTime.UtcNow.Date;
+
+            var result = installments.Select(i =>
+            {
+                decimal percentualMulta = i.LoanRequest!.PercentualMultaAtrasoContrato > 0 ? i.LoanRequest!.PercentualMultaAtrasoContrato : (config?.PercentualMultaAtraso ?? 2.00m);
+                decimal percentualJurosDiario = i.LoanRequest!.PercentualJurosDiarioContrato > 0 ? i.LoanRequest!.PercentualJurosDiarioContrato : (config?.PercentualJurosDiario ?? 0.033m);
+
+                decimal multa = 0;
+                decimal jurosMora = 0;
+                int diasAtraso = 0;
+
+                if (i.DataVencimento.Date < today)
+                {
+                    diasAtraso = (int)(today - i.DataVencimento.Date).TotalDays;
+                    multa = Math.Round(i.ValorParcela * (percentualMulta / 100m), 2);
+                    jurosMora = Math.Round(i.ValorParcela * (percentualJurosDiario / 100m) * diasAtraso, 2);
+                }
+
+                decimal totalDevido = i.ValorParcela + multa + jurosMora - i.ValorPago;
+
+                return new
+                {
+                    i.Id,
+                    i.LoanRequestId,
+                    EmprestimoTipo = i.LoanRequest.TipoEmprestimo,
+                    EmprestimoValor = i.LoanRequest.ValorSolicitado,
+                    i.NumeroParcela,
+                    i.ValorParcela,
+                    i.ValorPago,
+                    Multa = multa,
+                    JurosMora = jurosMora,
+                    DiasAtraso = diasAtraso,
+                    TotalDevido = totalDevido,
+                    i.DataVencimento
+                };
+            }).ToList();
+
+            return Ok(result);
+        }
+
+        [HttpPost("loans/installments/pay-batch")]
+        public async Task<IActionResult> PayInstallmentsBatch([FromBody] PayBatchRequestDto dto)
+        {
+            try
+            {
+                var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
+                {
+                    return Unauthorized(new { message = "Usuário não autenticado." });
+                }
+
+                if (dto == null || dto.Items == null || !dto.Items.Any())
+                {
+                    return BadRequest(new { message = "Lista de parcelas vazia ou inválida." });
+                }
+
+                bool isAdmin = User.IsInRole("Administrador") || User.FindFirst(ClaimTypes.Role)?.Value == "Administrador";
+                var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "Cliente";
+                var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+
+                decimal totalPagoLote = 0;
+                var paidIds = new System.Collections.Generic.List<Guid>();
+
+                foreach (var item in dto.Items)
+                {
+                    var installment = await _context.LoanInstallments
+                        .Include(i => i.LoanRequest)
+                        .FirstOrDefaultAsync(i => i.Id == item.InstallmentId);
+
+                    if (installment == null || installment.LoanRequest == null)
+                    {
+                        return NotFound(new { message = $"Parcela {item.InstallmentId} não encontrada." });
+                    }
+
+                    if (!isAdmin && installment.LoanRequest.UserId != userId)
+                    {
+                        return StatusCode(403, new { message = $"Acesso negado para a parcela {installment.NumeroParcela} do empréstimo {installment.LoanRequestId}." });
+                    }
+
+                    if (installment.Status == "Paga")
+                    {
+                        continue; // Ignora parcelas já pagas
+                    }
+
+                    decimal percentualMulta = installment.LoanRequest.PercentualMultaAtrasoContrato > 0 ? installment.LoanRequest.PercentualMultaAtrasoContrato : (config?.PercentualMultaAtraso ?? 2.00m);
+                    decimal percentualJurosDiario = installment.LoanRequest.PercentualJurosDiarioContrato > 0 ? installment.LoanRequest.PercentualJurosDiarioContrato : (config?.PercentualJurosDiario ?? 0.033m);
+
+                    var today = DateTime.UtcNow.Date;
+                    var vencimento = installment.DataVencimento.Date;
+
+                    if (vencimento < today)
+                    {
+                        int dias = (int)(today - vencimento).TotalDays;
+                        installment.DiasAtraso = dias;
+                        installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
+                        installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
+                    }
+                    else
+                    {
+                        installment.DiasAtraso = 0;
+                        installment.Multa = 0;
+                        installment.JurosMora = 0;
+                    }
+
+                    decimal totalDevido = installment.ValorParcela + installment.Multa + installment.JurosMora - installment.ValorPago;
+                    decimal valorPagoAgora = item.ValorPago > 0 ? item.ValorPago : totalDevido;
+
+                    if (valorPagoAgora <= 0)
+                    {
+                        continue;
+                    }
+
+                    if (valorPagoAgora > totalDevido)
+                    {
+                        valorPagoAgora = totalDevido;
+                    }
+
+                    decimal diferenca = totalDevido - valorPagoAgora;
+
+                    installment.ValorPago += valorPagoAgora;
+                    installment.DataPagamento = DateTime.UtcNow;
+                    installment.Status = "Paga";
+                    installment.UpdatedAt = DateTime.UtcNow;
+
+                    if (diferenca > 0.01m)
+                    {
+                        var nextInstallment = await _context.LoanInstallments
+                            .Where(i => i.LoanRequestId == installment.LoanRequestId && i.NumeroParcela == installment.NumeroParcela + 1)
+                            .FirstOrDefaultAsync();
+
+                        if (nextInstallment != null)
+                        {
+                            nextInstallment.ValorParcela += diferenca;
+                            nextInstallment.ValorPrincipal += diferenca;
+                            nextInstallment.UpdatedAt = DateTime.UtcNow;
+                        }
+                        else
+                        {
+                            installment.Status = "Parcial";
+                            installment.ValorParcela = diferenca;
+                            installment.ValorPrincipal = diferenca;
+                            installment.ValorJuros = 0;
+                            installment.ValorPago = 0;
+                            installment.UpdatedAt = DateTime.UtcNow;
+                        }
+                    }
+
+                    // Registrar evento de pagamento no histórico
+                    _context.FinancialEventHistories.Add(new FinancialEventHistory
+                    {
+                        Id = Guid.NewGuid(),
+                        Data = DateTime.UtcNow,
+                        UsuarioResponsavel = userEmail,
+                        EventoExecutado = "PAGAMENTO_PARCELA",
+                        Observacao = $"LOTE: Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga com sucesso. Valor Pago: {valorPagoAgora:C2}. Restante acumulado para a próxima: {diferenca:C2}.",
+                        LoanRequestId = installment.LoanRequestId,
+                        Valor = valorPagoAgora
+                    });
+
+                    totalPagoLote += valorPagoAgora;
+                    paidIds.Add(installment.Id);
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Pós-processamento de status e repasses fora do escopo principal do lote (executar para cada item pago)
+                foreach (var instId in paidIds)
+                {
+                    var inst = await _context.LoanInstallments.FindAsync(instId);
+                    if (inst != null)
+                    {
+                        await _delinquencyService.UpdateLoanStatusFromInstallmentsAsync(inst.LoanRequestId, userEmail);
+                        var distService = new WalletDistributionService(_context);
+                        await distService.DistributeInstallmentPaymentAsync(inst.Id, userEmail);
+                    }
+                }
+
+                return Ok(new
+                {
+                    message = "Pagamento do lote simulado com sucesso.",
+                    totalPago = totalPagoLote,
+                    itemsPaidCount = paidIds.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        private static DateTime GetNextBusinessDayStatic(DateTime date)
+        {
+            var next = date.AddDays(1);
+            while (next.DayOfWeek == DayOfWeek.Saturday || next.DayOfWeek == DayOfWeek.Sunday)
+            {
+                next = next.AddDays(1);
+            }
+            return next;
+        }
+    }
+
+    public class AdminSettleInstallmentDto
+    {
+        public decimal? ValorPago { get; set; }
+        public string? FormaPagamento { get; set; }
+        public string? Observacao { get; set; }
+    }
+
+    public class PayInstallmentRequestDto
+    {
+        public decimal? ValorPago { get; set; }
+    }
+
+    public class PayBatchRequestDto
+    {
+        public System.Collections.Generic.List<InstallmentPaymentItemDto> Items { get; set; } = new();
+    }
+
+    public class InstallmentPaymentItemDto
+    {
+        public Guid InstallmentId { get; set; }
+        public decimal ValorPago { get; set; }
     }
 }

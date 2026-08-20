@@ -13,7 +13,13 @@ export interface InvestorWalletDto {
   perdasDefinitivas: number;
   coberturasFundo: number;
   rentabilidade: number;
+  rentabilidadeSaldoDisponivel?: number;
+  rentabilidadeSaldoComprometido?: number;
   observacaoAdministrativa: string;
+  produtoInvestimentoId?: string;
+  produtoInvestimentoNome?: string;
+  produtoEscolhido?: boolean;
+  podeAlterarProduto?: boolean;
 }
 
 export interface InvestorTransactionDto {

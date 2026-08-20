@@ -16,8 +16,8 @@ export class LoanInstallmentService {
     return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments?t=${new Date().getTime()}`);
   }
 
-  public payInstallment(installmentId: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, {});
+  public payInstallment(installmentId: string, valorPago?: number): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, { valorPago });
   }
 
   public getAdminInstallments(
@@ -52,6 +52,19 @@ export class LoanInstallmentService {
 
     return this.http.get<PagedResult<any>>(`${this.apiUrl}/admin/loans/installments`, {
       params
+    });
+  }
+
+  public settleInstallment(
+    installmentId: string, 
+    valorPago?: number, 
+    formaPagamento?: string, 
+    observacao?: string
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/admin/loans/installments/${installmentId}/settle`, {
+      valorPago,
+      formaPagamento,
+      observacao
     });
   }
 }

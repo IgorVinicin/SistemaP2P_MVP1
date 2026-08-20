@@ -1,7 +1,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
@@ -30,6 +30,7 @@ import { QuestionDto } from '../../../../core/models/question.models';
 export class ScoreFormComponent implements OnInit {
   private api = inject(ScoreService);
   private snackBar = inject(MatSnackBar);
+  private router = inject(Router);
 
   public questions: QuestionDto[] = [];
   public isLoading = false;
@@ -109,5 +110,26 @@ export class ScoreFormComponent implements OnInit {
         this.snackBar.open(msg, 'Fechar', { duration: 4000 });
       }
     });
+  }
+
+  public scrollToTop(): void {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+    document.body.scrollTo({ top: 0, behavior: 'smooth' });
+
+    const matSidenavContent = document.querySelector('mat-sidenav-content');
+    if (matSidenavContent) {
+      matSidenavContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+      mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // Se estiver em rota separada /score, navega para o dashboard
+    if (this.router.url.includes('/score')) {
+      this.router.navigate(['/dashboard']);
+    }
   }
 }

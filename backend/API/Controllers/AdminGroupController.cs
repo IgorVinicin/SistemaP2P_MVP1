@@ -30,9 +30,28 @@ namespace backend.API.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetGroups()
+        public async Task<IActionResult> GetGroups(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? search = null)
         {
-            var groups = await _context.InvestorGroups
+            var query = _context.InvestorGroups.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var term = search.Trim().ToLower();
+                query = query.Where(g => g.Nome.ToLower().Contains(term) || (g.Descricao != null && g.Descricao.ToLower().Contains(term)));
+            }
+
+            var totalCount = await query.CountAsync();
+            if (page < 1) page = 1;
+            if (pageSize < 1) pageSize = 10;
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            var items = await query
+                .OrderByDescending(g => g.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .Select(g => new
                 {
                     g.Id,
@@ -42,12 +61,21 @@ namespace backend.API.Controllers
                     InvestorsCount = g.Members.Count,
                     Investors = g.Members.Select(m => new { 
                         m.InvestorId, 
-                        Name = m.Investor.Profile.Nome ?? m.Investor.Email 
+                        Name = m.Investor!.Profile != null && !string.IsNullOrEmpty(m.Investor.Profile.Nome) ? m.Investor.Profile.Nome : m.Investor.Email,
+                        Cpf = m.Investor!.Profile != null ? m.Investor.Profile.CPF : "",
+                        SaldoDisponivel = m.Investor!.Wallet != null ? m.Investor.Wallet.SaldoDisponivel : 0
                     })
                 })
                 .ToListAsync();
 
-            return Ok(groups);
+            return Ok(new
+            {
+                items,
+                totalCount,
+                page,
+                pageSize,
+                totalPages
+            });
         }
 
         [HttpGet("{id}")]
@@ -56,7 +84,10 @@ namespace backend.API.Controllers
             var g = await _context.InvestorGroups
                 .Include(g => g.Members)
                 .ThenInclude(m => m.Investor)
-                .ThenInclude(i => i.Profile)
+                .ThenInclude(i => i!.Profile)
+                .Include(g => g.Members)
+                .ThenInclude(m => m.Investor)
+                .ThenInclude(i => i!.Wallet)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (g == null) return NotFound(new { message = "Grupo não encontrado." });
@@ -69,7 +100,8 @@ namespace backend.API.Controllers
                 g.CreatedAt,
                 Investors = g.Members.Select(m => new { 
                     m.InvestorId, 
-                    Name = m.Investor.Profile.Nome ?? m.Investor.Email 
+                    Name = m.Investor!.Profile != null ? m.Investor.Profile.Nome : m.Investor.Email,
+                    SaldoDisponivel = m.Investor!.Wallet != null ? m.Investor.Wallet.SaldoDisponivel : 0
                 })
             });
         }

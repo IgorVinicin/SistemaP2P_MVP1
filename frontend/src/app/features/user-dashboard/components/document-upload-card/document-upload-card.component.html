@@ -7,25 +7,41 @@
     <div class="status-container">
       <span class="status-label">Status:</span>
       <span class="status-badge" [ngClass]="currentStatus ? currentStatus.toLowerCase() : 'nenhum'">
-        {{ currentStatus || 'Não enviado' }}
+        {{ currentStatus === 'Pendente' ? 'Em Análise' : (currentStatus || 'Não enviado') }}
       </span>
     </div>
 
+    <!-- Preview da Imagem Selecionada -->
+    <div *ngIf="previewUrl" class="image-preview-box">
+      <img [src]="previewUrl" alt="Prévia do documento" class="preview-img" />
+      <div class="preview-overlay">
+        <button mat-mini-fab color="warn" type="button" (click)="clearSelection()" matTooltip="Remover foto">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+
     <div class="file-picker">
-      <input type="file" #fileInput (change)="onFileSelected($event)" accept=".jpg,.jpeg,.png,.pdf" style="display: none;">
+      <input type="file" #fileInput (change)="onFileSelected($event)" (click)="$event.stopPropagation()" accept="image/*,.pdf,application/pdf" style="display: none;">
       
-      <button mat-stroked-button (click)="fileInput.click()" [disabled]="isUploading || currentStatus === 'Aprovado'">
-        <mat-icon>attach_file</mat-icon>
-        {{ selectedFile ? 'Alterar Arquivo' : 'Selecionar Arquivo' }}
+      <button mat-stroked-button type="button" (click)="$event.preventDefault(); $event.stopPropagation(); fileInput.click()" [disabled]="isUploading || currentStatus === 'Aprovado'">
+        <mat-icon>photo_camera</mat-icon>
+        {{ selectedFile ? 'Substituir Arquivo' : 'Tirar Foto ou Escolher' }}
       </button>
 
-      <span class="file-name" *ngIf="selectedFile">{{ selectedFile.name }}</span>
+      <span class="file-name" *ngIf="selectedFile && !previewUrl">{{ selectedFile.name }} ({{ formatFileSize(selectedFile.size) }})</span>
+      <span class="file-name" *ngIf="selectedFile && previewUrl">{{ formatFileSize(selectedFile.size) }}</span>
+    </div>
+
+    <div *ngIf="isUploading" class="uploading-progress">
+      <mat-icon class="spinning">autorenew</mat-icon>
+      <span>Enviando com segurança...</span>
     </div>
   </mat-card-content>
 
   <mat-card-actions *ngIf="selectedFile">
-    <button mat-raised-button color="accent" (click)="upload()" [disabled]="isUploading">
-      {{ isUploading ? 'Enviando...' : 'Fazer Upload' }}
+    <button mat-flat-button color="primary" type="button" (click)="upload()" [disabled]="isUploading" class="upload-btn">
+      <mat-icon>cloud_upload</mat-icon> {{ isUploading ? 'Enviando...' : 'Confirmar e Enviar' }}
     </button>
   </mat-card-actions>
 </mat-card>

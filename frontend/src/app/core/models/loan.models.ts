@@ -15,6 +15,23 @@ export interface LoanRequest {
   observacaoAdmin?: string;
   tipoEmprestimo?: string;
   periodicidade?: string;
+  solicitaAumentoLimite?: boolean;
+  limiteNoMomentoSolicitacao?: number;
+  temParcelaAtrasada?: boolean;
+  diasAtrasoMax?: number;
+  parcelaAtrasadaFormatada?: string;
+  historicoPagamentos?: {
+    loanRequestId: string;
+    numeroParcela: number;
+    valorParcela: number;
+    valorPago?: number;
+    dataVencimento: string;
+    dataPagamento?: string;
+    diasAtraso: number;
+    status: string;
+    multa: number;
+    jurosMora: number;
+  }[];
   outrosEmprestimos?: {
     id: string;
     valorSolicitado: number;
@@ -47,4 +64,18 @@ export interface LoanEligibility {
 
 export interface AdminReproveLoan {
   observacao: string;
+}
+
+export interface LimitRequest {
+  id?: string;
+  userId?: string;
+  nome?: string;
+  cpf?: string;
+  score?: number;
+  limiteSolicitado: number;
+  limiteAtualNoMomento: number;
+  status: string; // Pendente, Aprovado, Rejeitado
+  dataCriacao: string;
+  dataAnalise?: string;
+  observacaoAdmin?: string;
 }

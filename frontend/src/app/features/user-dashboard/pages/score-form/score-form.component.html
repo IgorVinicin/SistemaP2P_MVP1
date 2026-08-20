@@ -13,12 +13,11 @@
       <h2>Questionário Concluído com Sucesso!</h2>
       <p class="result-subtitle">Suas respostas foram processadas e seu perfil de crédito foi atualizado.</p>
 
-      <div class="score-desc-box">
-        <p>Os limites disponíveis foram liberados e você já pode prosseguir com a solicitação de empréstimo.</p>
-      </div>
     </mat-card-content>
     <div class="card-actions">
-      <button mat-flat-button color="primary" routerLink="/dashboard">Ir para o Dashboard</button>
+      <button mat-flat-button color="primary" type="button" (click)="scrollToTop()">
+        <mat-icon>arrow_upward</mat-icon> Ir para o Início
+      </button>
     </div>
   </mat-card>
 
@@ -27,15 +26,15 @@
     
     <mat-card class="welcome-card primary-theme">
       <div class="card-header">
-        <h2>Análise de Score de Crédito</h2>
+        <h2>Formulário de Cadastro Complementar</h2>
       </div>
       <mat-card-content class="welcome-content">
-        <p class="intro-text">Responda às perguntas abaixo para calcular o seu limite de crédito no sistema P2P.</p>
+        <p class="intro-text">Por favor, responda às perguntas abaixo para concluir a análise do seu cadastro.</p>
         <div class="instructions">
           <ul>
-            <li>Responda todas as perguntas com sinceridade.</li>
-            <li>O score é calculado automaticamente de acordo com as respostas selecionadas.</li>
-            <li>Você poderá ver o resultado logo após o envio.</li>
+            <li>Responda todas as perguntas com atenção.</li>
+            <li>Suas informações complementares são fundamentais para a análise do seu perfil.</li>
+            <li>Após responder, seus dados serão encaminhados automaticamente para a esteira de análise.</li>
           </ul>
         </div>
       </mat-card-content>

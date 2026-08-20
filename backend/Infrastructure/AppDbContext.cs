@@ -33,10 +33,17 @@ namespace backend.Infrastructure
         public DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
         public DbSet<InvestorGroup> InvestorGroups { get; set; }
         public DbSet<InvestorGroupMember> InvestorGroupMembers { get; set; }
+        public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
+        public DbSet<LimitRequest> LimitRequests { get; set; }
+        public DbSet<InvestmentProduct> InvestmentProducts { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<IdempotencyRecord>()
+                .HasIndex(ir => ir.IdempotencyKey)
+                .IsUnique();
 
             modelBuilder.Entity<InvestorGroupMember>()
                 .HasKey(igm => new { igm.GroupId, igm.InvestorId });
@@ -239,6 +246,10 @@ namespace backend.Infrastructure
                 .Property(l => l.ValorTotal)
                 .HasPrecision(18, 2);
 
+            modelBuilder.Entity<LoanRequest>()
+                .Property(l => l.LimiteNoMomentoSolicitacao)
+                .HasPrecision(18, 2);
+
             modelBuilder.Entity<InvestorWallet>()
                 .Property(iw => iw.TotalSacado)
                 .HasPrecision(18, 2);
@@ -254,6 +265,33 @@ namespace backend.Infrastructure
             modelBuilder.Entity<InvestorTransaction>()
                 .Property(it => it.SaldoPosterior)
                 .HasPrecision(18, 2);
+
+            // Mapeamentos de LimitRequest e LimitePersonalizado
+            modelBuilder.Entity<UserProfile>()
+                .Property(up => up.LimitePersonalizado)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<LimitRequest>()
+                .Property(lr => lr.LimiteSolicitado)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<LimitRequest>()
+                .Property(lr => lr.LimiteAtualNoMomento)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<InvestmentProduct>()
+                .Property(ip => ip.RentabilidadeMensal)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<InvestmentProduct>()
+                .Property(ip => ip.ValorMinimo)
+                .HasPrecision(18, 2);
+
+            modelBuilder.Entity<LimitRequest>()
+                .HasOne(lr => lr.User)
+                .WithMany()
+                .HasForeignKey(lr => lr.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<ScoreHistory>()
                 .HasOne(sh => sh.User)

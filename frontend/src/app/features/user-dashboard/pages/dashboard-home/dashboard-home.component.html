@@ -5,8 +5,74 @@
 <div class="dashboard-container">
   
   <div class="welcome-header">
-    <h2>Olá, {{ authService.currentUser()?.email || 'Usuário' }}</h2>
+    <h2>Olá, {{ authService.currentUser()?.nome || 'Usuário' }}</h2>
     <p>Acompanhe o status da sua conta e gerencie suas ações.</p>
+  </div>
+
+  <div class="dashboard-top-grid">
+    <!-- Status Resumo da Conta -->
+    <mat-card class="status-summary-card" *ngIf="authService.userStatus() !== 'Aprovado'">
+      <mat-card-content class="status-content">
+        <div class="user-status-display">
+          <mat-icon [ngClass]="authService.userStatus().toLowerCase()" class="status-icon">
+            {{ authService.userStatus() === 'Aprovado' ? 'check_circle' : 
+               authService.userStatus() === 'Reprovado' ? 'cancel' : 
+               authService.userStatus() === 'EmAnalise' ? 'hourglass_empty' : 'info' }}
+          </mat-icon>
+          
+          <div class="status-text-details">
+            <h2>Status: {{ authService.userStatus() === 'EmAnalise' ? 'Em Análise' : authService.userStatus() }}</h2>
+            <p *ngIf="authService.userStatus() === 'Pendente'">
+              Sua conta possui pendências. Envie os documentos listados abaixo para análise.
+            </p>
+            <p *ngIf="authService.userStatus() === 'EmAnalise'">
+              Seus documentos estão em análise. Tempo estimado: até 24 horas úteis.
+            </p>
+            <p *ngIf="authService.userStatus() === 'Aprovado'">
+              Conta verificada e aprovada. Você pode utilizar todas as funcionalidades do sistema.
+            </p>
+            <p *ngIf="authService.userStatus() === 'Reprovado'">
+              Cadastro reprovado. Revise e reenvie os documentos indicados.
+            </p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Score Element (Dark Mode) -->
+    <mat-card class="score-card-dark" *ngIf="authService.userRole() === 'Cliente'">
+      <mat-card-content>
+        <div class="score-header">
+          <mat-icon>speed</mat-icon>
+          <h3>Seu Score</h3>
+        </div>
+        <div class="score-body">
+          <div class="score-gauge-container">
+            <svg viewBox="0 0 36 36" class="circular-chart">
+              <!-- Background path -->
+              <path class="circle-bg"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <!-- Progress path -->
+              <path class="circle"
+                stroke-dasharray="85, 100"
+                d="M18 2.0845
+                  a 15.9155 15.9155 0 0 1 0 31.831
+                  a 15.9155 15.9155 0 0 1 0 -31.831"
+              />
+              <text x="18" y="18" class="score-label">RATING</text>
+              <text x="18" y="24" class="score-text">A</text>
+            </svg>
+          </div>
+          <div class="score-info">
+            <span class="score-title">Excelente</span>
+            <p>Você tem acesso às melhores taxas do mercado.</p>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
   </div>
 
   <!-- Ações do Cliente Aprovado -->
@@ -80,38 +146,58 @@
     </mat-card>
   </div>
 
-  <!-- Status Resumo da Conta -->
-  <mat-card class="status-summary-card">
-    <mat-card-content class="status-content">
-      <div class="user-status-display">
-        <mat-icon [ngClass]="authService.userStatus().toLowerCase()" class="status-icon">
-          {{ authService.userStatus() === 'Aprovado' ? 'check_circle' : 
-             authService.userStatus() === 'Reprovado' ? 'cancel' : 
-             authService.userStatus() === 'EmAnalise' ? 'hourglass_empty' : 'info' }}
-        </mat-icon>
-        
-        <div class="status-text-details">
-          <h2>Status: {{ authService.userStatus() === 'EmAnalise' ? 'Em Análise' : authService.userStatus() }}</h2>
-          <p *ngIf="authService.userStatus() === 'Pendente'">
-            Sua conta possui pendências. Envie os documentos listados abaixo para análise.
-          </p>
-          <p *ngIf="authService.userStatus() === 'EmAnalise'">
-            Seus documentos estão em análise. Tempo estimado: até 24 horas úteis.
-          </p>
-          <p *ngIf="authService.userStatus() === 'Aprovado'">
-            Conta verificada e aprovada. Você pode utilizar todas as funcionalidades do sistema.
-          </p>
-          <p *ngIf="authService.userStatus() === 'Reprovado'">
-            Cadastro reprovado. Revise e reenvie os documentos indicados.
-          </p>
+  <!-- Status e Score foram movidos para o top grid logo abaixo do header -->
+
+  <!-- Guia Passo a Passo para Aprovação -->
+  <mat-card class="flow-guide-card" *ngIf="authService.userStatus() !== 'Aprovado' && authService.userRole() === 'Cliente'">
+    <mat-card-content>
+      <h3 class="flow-title">Etapas para aprovação do seu cadastro:</h3>
+      <div class="steps-flow">
+        <div class="step-item" [class.done]="allDocsUploaded" [class.active]="!allDocsUploaded">
+          <div class="step-circle">1</div>
+          <div class="step-info">
+            <span class="step-title">Enviar Documentos</span>
+            <span class="step-desc">Frente, verso e selfie</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" [class.done]="allDocsUploaded">
+          <div class="step-circle">2</div>
+          <div class="step-info">
+            <span class="step-title">Finalizar Envio</span>
+            <span class="step-desc">Confirmação dos arquivos</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" [class.active]="allDocsUploaded">
+          <div class="step-circle">3</div>
+          <div class="step-info">
+            <span class="step-title">Responder Perguntas</span>
+            <span class="step-desc">Informações cadastrais</span>
+          </div>
+        </div>
+
+        <div class="step-connector"></div>
+
+        <div class="step-item" [class.done]="authService.userStatus() === 'EmAnalise'">
+          <div class="step-circle">4</div>
+          <div class="step-info">
+            <span class="step-title">Concluir Solicitação</span>
+            <span class="step-desc">Análise do cadastro</span>
+          </div>
         </div>
       </div>
     </mat-card-content>
   </mat-card>
 
   <!-- Documentos -->
-  <div class="document-section">
-    <h3>Upload de Documentos Obrigatórios</h3>
+  <div class="document-section" *ngIf="authService.userStatus() !== 'Aprovado'">
+    <h3>Passo 1 & 2: Envio de Documentos Obrigatórios</h3>
+    <p class="section-desc">Tire uma foto nítida ou selecione os arquivos do seu documento e confirme o envio de cada um.</p>
     
     <div class="documents-grid">
       <app-document-upload-card class="grid-item"
@@ -144,10 +230,10 @@
     </div>
   </div>
 
-  <!-- Questionário de Score (Apenas para Clientes não aprovados ainda ou pendentes) -->
-  <div class="score-section" *ngIf="authService.userRole() === 'Cliente'" style="margin-top: 2rem;">
-    <h3>Questionário de Perfil de Crédito</h3>
-    <p style="color: #64748b; margin-bottom: 1rem;">Para calcular seu limite de empréstimo inicial, responda o questionário abaixo.</p>
+  <!-- Questionário Complementar (Apenas para Clientes) -->
+  <div class="score-section" *ngIf="authService.userRole() === 'Cliente' && authService.userStatus() !== 'Aprovado'" style="margin-top: 2rem;">
+    <h3>Passo 3: Perguntas Complementares</h3>
+    <p class="section-desc">Para prosseguir com a análise do seu cadastro, responda às perguntas abaixo com atenção.</p>
     <app-score-form></app-score-form>
   </div>
 </div>

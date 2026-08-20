@@ -1,15 +1,18 @@
 .upload-card {
-  padding: 10px;
+  padding: 12px;
   height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .card-content {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   margin-top: 10px;
 }
 
@@ -20,35 +23,63 @@
 }
 
 .status-label {
-  font-weight: 500;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 13px;
 }
 
 .status-badge {
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 4px 10px;
+  border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
 }
 
 .status-badge.aprovado {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: #dcfce7;
+  color: #15803d;
 }
 
 .status-badge.reprovado {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: var(--dj-danger-light);
+  color: #b91c1c;
 }
 
 .status-badge.pendente {
-  background-color: #fff8e1;
-  color: #f57f17;
+  background-color: var(--dj-warning-light);
+  color: #b45309;
 }
 
 .status-badge.nenhum {
-  background-color: #eceff1;
-  color: #37474f;
+  background-color: var(--bg-elevated);
+  color: var(--text-secondary);
+}
+
+.image-preview-box {
+  position: relative;
+  width: 100%;
+  max-height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  background-color: var(--text-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-img {
+  width: 100%;
+  height: 100%;
+  max-height: 180px;
+  object-fit: cover;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 8px;
+  right: 8px;
 }
 
 .file-picker {
@@ -60,9 +91,33 @@
 
 .file-name {
   font-size: 13px;
-  color: #666;
-  max-width: 180px;
+  color: var(--text-muted);
+  font-weight: 500;
+  max-width: 200px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.uploading-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dj-blue);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.spinning {
+  animation: spin 1.2s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.upload-btn {
+  width: 100%;
+  font-weight: 600;
 }

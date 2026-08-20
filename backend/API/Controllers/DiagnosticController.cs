@@ -20,7 +20,7 @@ namespace backend.API.Controllers
     /// </summary>
     [ApiController]
     [Route("api/diagnostic")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Administrador")]
     public class DiagnosticController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -28,6 +28,39 @@ namespace backend.API.Controllers
         public DiagnosticController(AppDbContext context)
         {
             _context = context;
+        }
+
+        [HttpGet("jose")]
+        public async Task<IActionResult> GetJose()
+        {
+            var user = await _context.Users
+                .Include(u => u.Profile)
+                .FirstOrDefaultAsync(u => u.Profile != null && (u.Profile.Nome.Contains("José") || u.Profile.Nome.Contains("Jose")));
+            
+            var rules = await _context.ScoreCreditRules.ToListAsync();
+            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+
+            if (user == null)
+            {
+                return Ok(new { message = "José não encontrado", rules, config });
+            }
+
+            var loans = await _context.LoanRequests
+                .Where(l => l.UserId == user.Id)
+                .ToListAsync();
+
+            var installments = await _context.LoanInstallments
+                .Where(i => i.LoanRequest!.UserId == user.Id)
+                .ToListAsync();
+
+            return Ok(new
+            {
+                user = new { user.Id, user.Email, user.Status, ProfileNome = user.Profile?.Nome, ProfileScore = user.Profile?.ScoreAtual },
+                loans = loans.Select(l => new { l.Id, l.ValorSolicitado, l.Status, l.DataCriacao }),
+                installments = installments.Select(i => new { i.Id, i.LoanRequestId, i.NumeroParcela, i.ValorParcela, i.ValorPago, i.Status, i.ValorPrincipal }),
+                rules,
+                config
+            });
         }
 
         /// <summary>
@@ -113,8 +146,9 @@ namespace backend.API.Controllers
                 .Include(i => i.LoanRequest)
                 .FirstOrDefaultAsync(i => i.Id == lastRevenue.InstallmentId);
 
+            var installmentIdStr = lastRevenue.InstallmentId?.ToString() ?? "";
             var investorTxs = await _context.InvestorTransactions
-                .Where(t => t.Descricao.Contains(lastRevenue.InstallmentId.ToString()) || t.DataMovimentacao >= lastRevenue.DataCriacao.AddMinutes(-1))
+                .Where(t => t.Descricao.Contains(installmentIdStr) || t.DataMovimentacao >= lastRevenue.DataCriacao.AddMinutes(-1))
                 .OrderByDescending(t => t.DataMovimentacao)
                 .Take(5)
                 .ToListAsync();
@@ -135,25 +169,21 @@ namespace backend.API.Controllers
         [HttpGet("ping")]
         public async Task<IActionResult> GetLoans()
         {
-            var loans = await _context.LoanRequests
-                .Where(l => l.Status == "Aprovado" || l.Status == "Ativo" || l.Status == "EmPagamento")
-                .OrderByDescending(l => l.DataAprovacao)
-                .Take(20)
-                .Select(l => new
-                {
-                    l.Id,
-                    l.ValorSolicitado,
-                    l.Status,
-                    l.DataCriacao,
-                    l.DataAprovacao,
-                    TotalInvestidores = _context.Investments.Count(i => i.LoanId == l.Id)
-                })
-                .ToListAsync();
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "investidor1@p2p.com");
+            var admin = await _context.Users.FirstOrDefaultAsync(u => u.Email == "admin@p2p.com");
+
+            var hasher = new Microsoft.AspNetCore.Identity.PasswordHasher<backend.Domain.Entities.User>();
+            var verifyUser = user != null ? hasher.VerifyHashedPassword(user, user.PasswordHash, "Senha123!") : Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed;
+            var verifyAdmin = admin != null ? hasher.VerifyHashedPassword(admin, admin.PasswordHash, "Senha123!") : Microsoft.AspNetCore.Identity.PasswordVerificationResult.Failed;
 
             return Ok(new
             {
-                TotalEmprestimosAprovados = loans.Count,
-                Emprestimos = loans
+                userEmail = user?.Email,
+                userHash = user?.PasswordHash,
+                userVerify = verifyUser.ToString(),
+                adminEmail = admin?.Email,
+                adminHash = admin?.PasswordHash,
+                adminVerify = verifyAdmin.ToString()
             });
         }
 

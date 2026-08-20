@@ -1,8 +1,11 @@
+/* ============================================
+   ADMIN CASHFLOW — Dinheiro a Jato Design System
+   ============================================ */
+
 .cashflow-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  padding: 24px;
+  gap: var(--space-6);
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -10,57 +13,53 @@
 .header-section {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 8px;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
 }
 
 h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: var(--space-1);
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .header-section p {
   margin: 0;
   color: var(--text-secondary);
+  font-size: 0.8125rem;
 }
 
 .filter-card {
-  margin-bottom: 24px;
+  margin-bottom: var(--space-6);
 }
 
-.period-select {
-  width: 200px;
-}
+.period-select { width: 200px; }
+.date-range-select { width: 320px; }
 
-.date-range-select {
-  width: 320px;
-}
-
+/* Summary Cards Grid */
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
 }
 
 .summary-card {
-  border-left: 4px solid #999;
+  border-left: 3px solid var(--text-muted);
+  border-radius: var(--radius-lg) !important;
 }
 
 .summary-card mat-card-content {
   display: flex;
   align-items: center;
-  padding: 24px;
-  gap: 20px;
+  padding: var(--space-5);
+  gap: var(--space-5);
 }
 
 .spinner {
@@ -68,76 +67,97 @@ h1 {
   font-size: 40px;
   width: 40px;
   height: 40px;
-  color: var(--primary-main);
+  color: var(--dj-blue);
 }
 
 @keyframes spin {
-  100% {
-    transform: rotate(360deg);
-  }
+  100% { transform: rotate(360deg); }
 }
 
 .table-header-flex {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 1.5rem;
+  margin-top: var(--space-5);
 }
 
 .table-actions {
   display: flex;
-  gap: 1rem;
+  gap: var(--space-4);
   align-items: center;
 }
 
-.search-field {
-  width: 300px;
-}
+.search-field { width: 300px; }
+.type-select { width: 200px; }
 
-.type-select {
-  width: 200px;
-}
-
+/* Stat icon */
 .stat-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
 }
 
-.stat-icon mat-icon { font-size: 28px; width: 28px; height: 28px; }
+.stat-icon mat-icon { font-size: 24px; width: 24px; height: 24px; }
 
 .stat-info { display: flex; flex-direction: column; }
-.stat-info h3 { margin: 0; font-size: 0.875rem; color: var(--text-secondary); font-weight: 600; }
-.stat-info h2 { margin: 4px 0; font-size: 1.75rem; font-weight: 700; color: var(--text-main); }
-.stat-info small { font-size: 0.75rem; color: var(--text-muted); }
+.stat-info h3 { margin: 0; font-size: 0.75rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; }
+.stat-info h2 { margin: 2px 0; font-size: 1.5rem; font-weight: 800; color: var(--text-main); font-variant-numeric: tabular-nums; }
+.stat-info small { font-size: 0.6875rem; color: var(--text-muted); }
 
-/* Cores dos Cards */
-.stat-entradas { border-left-color: #2e7d32; }
-.stat-entradas .stat-icon { background-color: #ecfdf5; color: var(--success-color); }
-.stat-entradas .stat-icon mat-icon { color: #2e7d32; }
+/* Card theme variants */
+.stat-entradas { border-left-color: var(--dj-success); }
+.stat-entradas .stat-icon { background-color: var(--dj-success-light); }
+.stat-entradas .stat-icon mat-icon { color: var(--dj-success); }
 
-.stat-saidas { border-left-color: #c62828; }
-.stat-saidas .stat-icon { background-color: #fef2f2; color: var(--danger-color); }
-.stat-saidas .stat-icon mat-icon { color: #c62828; }
+.stat-saidas { border-left-color: var(--dj-danger); }
+.stat-saidas .stat-icon { background-color: var(--dj-danger-light); }
+.stat-saidas .stat-icon mat-icon { color: var(--dj-danger); }
 
-.stat-saldo { border-left-color: #1565c0; }
-.stat-saldo .stat-icon { background-color: #e0e7ff; color: var(--primary-color); }
-.stat-saldo .stat-icon mat-icon { color: #1565c0; }
+.stat-saldo { border-left-color: var(--dj-blue); }
+.stat-saldo .stat-icon { background-color: var(--dj-blue-light); }
+.stat-saldo .stat-icon mat-icon { color: var(--dj-blue); }
 
-.stat-receita { border-left-color: #f57f17; }
-.stat-receita .stat-icon { background: #fffde7; }
-.stat-receita .stat-icon mat-icon { color: #f57f17; }
+.stat-receita { border-left-color: var(--dj-gold); }
+.stat-receita .stat-icon { background: var(--dj-gold-light); }
+.stat-receita .stat-icon mat-icon { color: var(--dj-gold); }
 
-.stat-warning { border-left-color: #fbc02d; }
-.stat-warning .stat-icon { background: #fff9c4; }
-.stat-warning .stat-icon mat-icon { color: #fbc02d; }
+.stat-warning { border-left-color: var(--dj-warning); }
+.stat-warning .stat-icon { background: var(--dj-warning-light); }
+.stat-warning .stat-icon mat-icon { color: var(--dj-warning); }
 
-.stat-saldo.negative { border-left-color: #c62828; }
-.stat-saldo.negative .stat-icon { background-color: #fef2f2; color: var(--danger-color); }
-.stat-saldo.negative .stat-icon mat-icon { color: #c62828; }
-.text-success { color: #2e7d32; font-weight: 500; }
-.text-danger { color: #c62828; font-weight: 500; }
-.text-primary { color: #1565c0; }
+.stat-saldo.negative { border-left-color: var(--dj-danger); }
+.stat-saldo.negative .stat-icon { background-color: var(--dj-danger-light); }
+.stat-saldo.negative .stat-icon mat-icon { color: var(--dj-danger); }
+
+.text-success { color: var(--dj-success); font-weight: 600; }
+.text-danger { color: var(--dj-danger); font-weight: 600; }
+.text-primary { color: var(--dj-blue); }
+
+/* Tabs */
+.cashflow-tabs ::ng-deep .mat-mdc-tab-body-wrapper {
+  padding-top: 0;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+  display: inline-block;
+}
+
+th.mat-mdc-header-cell {
+  font-weight: 600 !important;
+  color: var(--text-secondary) !important;
+  background-color: var(--bg-elevated) !important;
+}
+
+td.mat-mdc-cell {
+  color: var(--text-main);
+}

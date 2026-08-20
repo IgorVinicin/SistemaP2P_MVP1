@@ -11,6 +11,7 @@ namespace backend.Application.Services
     {
         public bool Aprovado { get; set; }
         public decimal LimiteMaximo { get; set; }
+        public decimal LimiteDisponivel { get; set; }
         public decimal TaxaJuros { get; set; }
         public string NivelRisco { get; set; } = string.Empty;
         public string Mensagem { get; set; } = string.Empty;
@@ -25,7 +26,7 @@ namespace backend.Application.Services
             _context = context;
         }
 
-        public async Task<CreditValidationResult> ValidarCreditoDoUsuario(int score)
+        public async Task<CreditValidationResult> ValidarCreditoDoUsuario(int score, Guid userId)
         {
             // 1. Validar score mínimo global
             var config = await _context.CreditConfigs.FirstOrDefaultAsync();
@@ -40,25 +41,62 @@ namespace backend.Application.Services
                 };
             }
 
-            // 2. Encontrar a regra de crédito ativa correspondente ao score
-            var rule = await _context.ScoreCreditRules
-                .FirstOrDefaultAsync(r => r.Ativo && score >= r.ScoreMin && score <= r.ScoreMax);
+            // 2. Buscar o perfil do usuário para ver se há limite personalizado
+            var profile = await _context.UserProfiles.FindAsync(userId);
+            decimal limiteMaximo = 0;
+            decimal taxaJuros = 0;
+            string nivelRisco = "Médio";
 
-            if (rule == null)
+            if (profile != null && profile.LimitePersonalizado.HasValue && profile.LimitePersonalizado.Value > 0)
             {
-                return new CreditValidationResult
-                {
-                    Aprovado = false,
-                    Mensagem = "Nenhuma regra de crédito configurada para a sua faixa de score atual."
-                };
+                limiteMaximo = profile.LimitePersonalizado.Value;
+                // Busca a taxa de juros e risco padrão baseado no score
+                var ruleForScore = await _context.ScoreCreditRules
+                    .FirstOrDefaultAsync(r => r.Ativo && score >= r.ScoreMin && score <= r.ScoreMax);
+                taxaJuros = ruleForScore?.TaxaJuros ?? 5.00m;
+                nivelRisco = ruleForScore?.NivelRisco ?? "Médio";
             }
+            else
+            {
+                // Encontrar a regra de crédito ativa correspondente ao score
+                var rule = await _context.ScoreCreditRules
+                    .FirstOrDefaultAsync(r => r.Ativo && score >= r.ScoreMin && score <= r.ScoreMax);
+
+                if (rule == null)
+                {
+                    return new CreditValidationResult
+                    {
+                        Aprovado = false,
+                        Mensagem = "Nenhuma regra de crédito configurada para a sua faixa de score atual."
+                    };
+                }
+                limiteMaximo = rule.LimiteEmprestimo;
+                taxaJuros = rule.TaxaJuros;
+                nivelRisco = rule.NivelRisco;
+            }
+
+            // Calcular principal comprometido (parcelas não pagas de empréstimos já aprovados ou em andamento)
+            var principalComprometido = await _context.LoanInstallments
+                .Where(i => i.LoanRequest!.UserId == userId && i.Status != "Paga" &&
+                            (i.LoanRequest!.Status == "Aprovado" || i.LoanRequest!.Status == "EmCaptacao" || i.LoanRequest!.Status == "Financiado" ||
+                             i.LoanRequest!.Status == "Ativo" || i.LoanRequest!.Status == "EmPagamento" || i.LoanRequest!.Status == "Inadimplente"))
+                .SumAsync(i => i.ValorPrincipal);
+
+            // Calcular solicitações que ainda estão apenas em análise inicial e não possuem parcelas (desconsiderando solicitações de aumento de limite pendentes)
+            var solicitacoesPendentes = await _context.LoanRequests
+                .Where(l => l.UserId == userId && (l.Status == "Pendente" || l.Status == "EmAnalise") && !l.SolicitaAumentoLimite)
+                .SumAsync(l => l.ValorSolicitado);
+
+            decimal totalComprometido = principalComprometido + solicitacoesPendentes;
+            decimal limiteDisponivel = Math.Max(0, limiteMaximo - totalComprometido);
 
             return new CreditValidationResult
             {
                 Aprovado = true,
-                LimiteMaximo = rule.LimiteEmprestimo,
-                TaxaJuros = rule.TaxaJuros,
-                NivelRisco = rule.NivelRisco,
+                LimiteMaximo = limiteMaximo,
+                LimiteDisponivel = limiteDisponivel,
+                TaxaJuros = taxaJuros,
+                NivelRisco = nivelRisco,
                 Mensagem = "Crédito pré-aprovado com sucesso."
             };
         }
