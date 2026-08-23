@@ -60,6 +60,6 @@ retirar esse histórico de movimentações na aba do investidor (ele não deve s
 
 //FINAL
 
-Colocar a gateway de pagamento assas no sistema e sincronizar todas as funções que antes eram simuladas.
+Colocar a gateway de pagamento asaas no sistema e sincronizar todas as funções que antes eram simuladas. (PLANO CONCLUÍDO E DOCUMENTADO EM plano_integracao_asaas.md)
 
 transformar em app.
