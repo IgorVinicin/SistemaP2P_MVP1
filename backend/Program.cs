@@ -1,5 +1,6 @@
 using backend.API.Middleware;
 using backend.Application.Services;
+using backend.Application.Services.Asaas;
 using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -61,6 +62,7 @@ builder.Services.AddScoped<CashFlowService>();
 builder.Services.AddScoped<WalletDistributionService>();
 builder.Services.AddScoped<InvestorYieldService>();
 builder.Services.AddScoped<ITreasuryService, TreasuryService>();
+builder.Services.AddScoped<IAsaasService, AsaasService>();
 builder.Services.AddHostedService<DailyYieldBackgroundService>();
 
 // Configuração JWT (prioriza Variável de Ambiente JWT_KEY para produção segura)
