@@ -196,8 +196,11 @@ namespace backend.API.Controllers
 
         // POST /api/loans/request
         [HttpPost("request")]
+        [Authorize(Roles = "Cliente")]
         public async Task<IActionResult> RequestLoan([FromBody] RequestLoanDto dto)
         {
+            if (dto.ValorSolicitado <= 0 || decimal.Round(dto.ValorSolicitado, 2) != dto.ValorSolicitado)
+                return BadRequest(new { message = "Informe um valor positivo com no máximo duas casas decimais." });
             try
             {
                 var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;

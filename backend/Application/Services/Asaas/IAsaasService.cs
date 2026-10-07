@@ -15,10 +15,11 @@ namespace backend.Application.Services.Asaas
 
         Task<string> GetOrCreateCustomerAsync(User user);
 
-        Task<PixPaymentDetailsDto> CreatePixDepositAsync(DepositRequest deposit, User user);
-
-        Task<PixPaymentDetailsDto> CreatePixInstallmentPaymentAsync(LoanInstallment installment, User borrower);
-
-        Task<AsaasTransferResponseDto> CreatePixTransferAsync(WithdrawalRequest withdrawal);
+        Task<AsaasPaymentResponseDto> CreatePaymentAsync(GatewayCharge charge, User user, DateTime dueDate);
+        Task<AsaasPaymentResponseDto?> FindPaymentAsync(string externalReference);
+        Task<PixPaymentDetailsDto> GetPixDetailsAsync(string paymentId);
+        Task<AsaasTransferResponseDto> CreateTransferAsync(GatewayTransfer transfer);
+        Task<AsaasTransferResponseDto?> FindTransferAsync(string externalReference);
+        Task CancelPaymentAsync(string paymentId);
     }
 }

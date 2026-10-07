@@ -1,6 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { PixPayment } from '../models/pix-payment.models';
 import { InvestorWalletDto, InvestorTransactionDto } from '../models/investor.models';
 import { environment } from '../../../environments/environment';
 
@@ -19,8 +20,12 @@ export class InvestorService {
     return this.http.get<{ rendimentoDiarioEstimado: number, totalRendimentosPagos?: number }>(`${this.apiUrl}/yield/preview`);
   }
 
-  public makeDeposit(valor: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/deposit`, { valor });
+  public makeDeposit(valor: number): Observable<PixPayment> {
+    return this.http.post<PixPayment>(`${this.apiUrl}/treasury/deposit-pix`, { valor });
+  }
+
+  public getDepositStatus(id: string): Observable<PixPayment> {
+    return this.http.get<PixPayment>(`${this.apiUrl}/treasury/deposits/${id}/status`);
   }
 
   public makeWithdraw(valor: number, chavePix?: string, tipoChavePix?: string): Observable<any> {

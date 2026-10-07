@@ -55,45 +55,8 @@
       </div>
     </div>
 
+    <p *ngIf="valorDigitado > 0 && valorDigitado < totalDevido">Se já houver PIX da próxima parcela, ele poderá ser cancelado para atualizar o saldo restante. Gere o PIX atualizado antes de pagar a próxima parcela.</p>
     <!-- Seção de agrupamento de parcelas (Lote) -->
-    <div *ngIf="otherPending.length > 0" class="batch-pay-section" style="margin-top: 1.5rem; border-top: 1px dashed #cbd5e1; padding-top: 1rem;">
-      <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--text-main); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 6px; line-height: 1.35;">
-        <mat-icon style="color: var(--dj-warning); font-size: 1.25rem; height: 22px; width: 22px;">account_balance_wallet</mat-icon> Existem outros contratos pendentes e parcelas que vencem hoje, gostaria de pagar?
-      </h3>
-
-      <div class="pending-list" style="display: flex; flex-direction: column; gap: 0.75rem; max-height: 180px; overflow-y: auto; padding-right: 4px;">
-        <div *ngFor="let item of otherPending" 
-             style="display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem 0.75rem;">
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <mat-checkbox [(ngModel)]="selectedAdditional[item.id]" color="primary"></mat-checkbox>
-            <div style="display: flex; flex-direction: column;">
-              <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">
-                Parcela {{ item.numeroParcela }} — {{ item.emprestimoTipo }}
-              </span>
-              <span style="font-size: 0.75rem; color: var(--text-secondary);">
-                Vence em: {{ item.dataVencimento | date:'dd/MM/yyyy':'UTC' }}
-              </span>
-            </div>
-          </div>
-          <div style="text-align: right;">
-            <strong style="color: var(--text-muted); font-size: 0.9rem;">{{ item.totalDevido | currency:'BRL' }}</strong>
-            <span *ngIf="item.diasAtraso > 0" style="display: block; font-size: 0.7rem; color: var(--dj-danger); font-weight: 500;">
-              Atrasada ({{ item.diasAtraso }} dias)
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Botões de marcar/limpar lote -->
-      <div style="margin-top: 0.75rem; display: flex; justify-content: flex-end; gap: 8px;">
-        <button mat-stroked-button type="button" (click)="toggleAllAdditional(true)" style="font-size: 0.75rem; height: 30px; padding: 0 10px; min-width: 80px; line-height: 28px;">
-          Selecionar todas
-        </button>
-        <button mat-stroked-button type="button" (click)="toggleAllAdditional(false)" style="font-size: 0.75rem; height: 30px; padding: 0 10px; min-width: 80px; line-height: 28px;">
-          Limpar seleção
-        </button>
-      </div>
-    </div>
   </mat-dialog-content>
 
   <mat-dialog-actions align="end" style="border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
@@ -104,7 +67,7 @@
             type="button"
             style="background-color: var(--dj-success); color: white;">
       <mat-icon>pix</mat-icon>
-      Gerar Pix: {{ totalGeral | currency:'BRL' }}
+      Gerar Pix: {{ valorDigitado | currency:'BRL' }}
     </button>
   </mat-dialog-actions>
 </div>

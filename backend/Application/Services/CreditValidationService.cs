@@ -76,11 +76,31 @@ namespace backend.Application.Services
             }
 
             // Calcular principal comprometido (parcelas não pagas de empréstimos já aprovados ou em andamento)
-            var principalComprometido = await _context.LoanInstallments
-                .Where(i => i.LoanRequest!.UserId == userId && i.Status != "Paga" &&
-                            (i.LoanRequest!.Status == "Aprovado" || i.LoanRequest!.Status == "EmCaptacao" || i.LoanRequest!.Status == "Financiado" ||
-                             i.LoanRequest!.Status == "Ativo" || i.LoanRequest!.Status == "EmPagamento" || i.LoanRequest!.Status == "Inadimplente"))
-                .SumAsync(i => i.ValorPrincipal);
+            var committedLoans = await _context.LoanRequests.AsNoTracking()
+                .Where(l => l.UserId == userId && (l.Status == "Aprovado" || l.Status == "EmCaptacao" ||
+                    l.Status == "Financiado" || l.Status == "Ativo" || l.Status == "EmPagamento" || l.Status == "Inadimplente"))
+                .ToListAsync();
+            var loanIds = committedLoans.Select(l => l.Id).ToList();
+            var installments = await _context.LoanInstallments.AsNoTracking()
+                .Where(i => loanIds.Contains(i.LoanRequestId)).ToListAsync();
+            decimal principalComprometido = 0;
+            foreach (var loan in committedLoans)
+            {
+                var schedule = installments.Where(i => i.LoanRequestId == loan.Id).ToList();
+                if (schedule.Count == 0)
+                {
+                    // An approved commitment still consumes credit before its schedule is generated.
+                    principalComprometido += loan.ValorSolicitado;
+                    continue;
+                }
+                foreach (var installment in schedule.Where(i => i.Status != "Paga" && i.Status != "Cancelada"))
+                {
+                    decimal due = installment.ValorParcela + installment.Multa + installment.JurosMora;
+                    decimal paidPrincipal = installment.PrincipalPago + installment.JurosPagos + installment.MultaPaga + installment.JurosMoraPagos > 0 ? installment.PrincipalPago : due > 0
+                        ? Math.Round(installment.ValorPrincipal * Math.Clamp(installment.ValorPago / due, 0, 1), 2, MidpointRounding.AwayFromZero) : 0;
+                    principalComprometido += Math.Max(0, installment.ValorPrincipal - paidPrincipal);
+                }
+            }
 
             // Calcular solicitações que ainda estão apenas em análise inicial e não possuem parcelas (desconsiderando solicitações de aumento de limite pendentes)
             var solicitacoesPendentes = await _context.LoanRequests
@@ -103,7 +123,7 @@ namespace backend.Application.Services
 
         public async Task<bool> PossuiEmprestimoAtivo(Guid userId)
         {
-            var statusAtivos = new[] { "pendente", "emanalise", "aprovado", "ativo" };
+            var statusAtivos = new[] { "pendente", "emanalise", "aprovado", "emcaptacao", "financiado", "ativo", "empagamento", "inadimplente" };
             return await _context.LoanRequests
                 .AnyAsync(l => l.UserId == userId && statusAtivos.Contains(l.Status.ToLower()));
         }
@@ -119,6 +139,8 @@ namespace backend.Application.Services
                             (l.Status == "Pendente" ||
                              l.Status == "EmAnalise" ||
                              l.Status == "Aprovado" ||
+                             l.Status == "EmCaptacao" ||
+                             l.Status == "Financiado" ||
                              l.Status == "Ativo" ||
                              l.Status == "EmPagamento" ||
                              l.Status == "Inadimplente"))

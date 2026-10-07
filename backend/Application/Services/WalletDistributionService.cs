@@ -1,274 +1,107 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Data;
 using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
-namespace backend.Application.Services
+namespace backend.Application.Services;
+
+public class WalletDistributionService
 {
-    public class WalletDistributionService
+    private readonly AppDbContext _context;
+    public WalletDistributionService(AppDbContext context, PlatformRevenueService? revenueService = null, LedgerService? ledgerService = null) => _context = context;
+
+    public async Task DistributeInstallmentPaymentAsync(Guid loanInstallmentId, string usuarioResponsavel = "Sistema", LedgerAccount paymentSource = LedgerAccount.BorrowerAccount)
     {
-        private readonly AppDbContext _context;
-        private readonly PlatformRevenueService _revenueService;
-        private readonly LedgerService _ledgerService;
-
-        public WalletDistributionService(AppDbContext context, PlatformRevenueService? revenueService = null, LedgerService? ledgerService = null)
+        await using var transaction = _context.Database.IsRelational() && _context.Database.CurrentTransaction == null
+            ? await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+        var installment = await _context.LoanInstallments.Include(i => i.LoanRequest).FirstOrDefaultAsync(i => i.Id == loanInstallmentId);
+        if (installment?.LoanRequest == null || installment.ValorPago <= 0) return;
+        var loan = installment.LoanRequest;
+        decimal due = installment.ValorParcela + installment.Multa + installment.JurosMora;
+        if (due <= 0 || loan.ValorSolicitado <= 0 || installment.ValorPago > due)
+            throw new InvalidOperationException("Pagamento incompatível com os valores do contrato.");
+        var entries = await _context.LedgerTransactions.Where(t => t.InstallmentId == installment.Id).ToListAsync();
+        decimal accounted = entries.Where(t => t.TipoMovimentacao == LedgerTransactionType.InstallmentPayment || t.TipoMovimentacao == LedgerTransactionType.ProtectionFundDebit).Sum(t => t.Valor);
+        decimal received = installment.ValorPago - accounted;
+        if (received <= 0) return;
+        var investments = await _context.Investments.Where(i => i.LoanId == loan.Id).OrderBy(i => i.Id).ToListAsync();
+        if (investments.Sum(i => i.ValorInvestido) > loan.ValorSolicitado)
+            throw new InvalidOperationException("Capital investido excede o principal do empréstimo.");
+        decimal principalTarget = installment.PrincipalPago + installment.JurosPagos + installment.MultaPaga + installment.JurosMoraPagos > 0
+            ? installment.PrincipalPago : Math.Round(installment.ValorPrincipal * installment.ValorPago / due, 2, MidpointRounding.AwayFromZero);
+        decimal previousPrincipal = installment.PrincipalDistribuido;
+        if (previousPrincipal == 0 && accounted > 0) previousPrincipal = Math.Round(installment.ValorPrincipal * accounted / due, 2, MidpointRounding.AwayFromZero);
+        decimal principalBudget = Math.Min(received, Math.Max(0, principalTarget - previousPrincipal));
+        if (paymentSource is not (LedgerAccount.BorrowerAccount or LedgerAccount.ProtectionFund or LedgerAccount.ExternalGateway))
+            throw new InvalidOperationException("Origem de pagamento inválida.");
+        AddLedger(paymentSource, LedgerAccount.PlatformCash, received,
+            paymentSource == LedgerAccount.ProtectionFund ? LedgerTransactionType.ProtectionFundDebit : LedgerTransactionType.InstallmentPayment, loan.UserId);
+        var shares = investments.GroupBy(i => i.InvestorId).Select(g => new {
+            InvestorId = g.Key,
+            Exact = principalTarget * g.Sum(i => i.ValorInvestido) / loan.ValorSolicitado
+        }).ToList();
+        var targets = shares.ToDictionary(s => s.InvestorId, s => Math.Floor(s.Exact * 100m) / 100m);
+        decimal fundedTarget = Math.Round(principalTarget * investments.Sum(i => i.ValorInvestido) / loan.ValorSolicitado, 2, MidpointRounding.AwayFromZero);
+        int cents = (int)Math.Round((fundedTarget - targets.Values.Sum()) * 100m);
+        foreach (var share in shares.OrderByDescending(s => s.Exact - targets[s.InvestorId]).ThenBy(s => s.InvestorId).Take(cents))
+            targets[share.InvestorId] += 0.01m;
+        decimal contractualPrincipal = await _context.LoanInstallments.Where(i => i.LoanRequestId == loan.Id && i.Status != "Cancelada").SumAsync(i => i.ValorPrincipal);
+        bool finalPayment = contractualPrincipal == loan.ValorSolicitado && installment.ValorPago == due && principalBudget >= investments.Sum(i => i.SaldoPrincipalPendente) && !await _context.LoanInstallments.AnyAsync(i =>
+            i.LoanRequestId == loan.Id && i.Id != installment.Id && i.Status != "Paga" && i.Status != "Cancelada");
+        decimal allocated = 0;
+        foreach (var inv in investments)
         {
-            _context = context;
-            _revenueService = revenueService ?? new PlatformRevenueService(context);
-            _ledgerService = ledgerService ?? new LedgerService(context);
+            decimal prior = entries.Where(t => t.ContaDestino == LedgerAccount.InvestorWallet && t.UserId == inv.InvestorId).Sum(t => t.Valor);
+            // Allocate by investor rather than investment so multiple positions cannot duplicate prior credits.
+            var firstForInvestor = investments.First(i => i.InvestorId == inv.InvestorId);
+            if (firstForInvestor.Id != inv.Id) continue;
+            var positions = investments.Where(i => i.InvestorId == inv.InvestorId).ToList();
+            decimal target = targets[inv.InvestorId];
+            if (finalPayment) target = prior + positions.Sum(i => i.SaldoPrincipalPendente);
+            decimal amount = Math.Min(Math.Max(0, target - prior), Math.Min(principalBudget - allocated, positions.Sum(i => i.SaldoPrincipalPendente)));
+            if (amount <= 0) continue;
+            var wallet = await _context.InvestorWallets.FindAsync(inv.InvestorId)
+                ?? throw new InvalidOperationException("Carteira do investidor não encontrada.");
+            foreach (var position in positions.Where(i => i.Status == "Comprometido"))
+            {
+                if (wallet.SaldoComprometido < position.ValorInvestido) throw new InvalidOperationException("Saldo comprometido inconsistente.");
+                wallet.SaldoComprometido -= position.ValorInvestido;
+                wallet.SaldoInvestido += position.ValorInvestido;
+                position.Status = "Ativo";
+            }
+            if (wallet.SaldoInvestido < amount) throw new InvalidOperationException("Saldo investido inconsistente.");
+            decimal old = wallet.SaldoDisponivel;
+            wallet.SaldoDisponivel += amount;
+            wallet.SaldoInvestido -= amount;
+            wallet.DataAtualizacao = DateTime.UtcNow;
+            decimal remaining = amount;
+            foreach (var position in positions)
+            {
+                decimal part = Math.Min(remaining, position.SaldoPrincipalPendente);
+                position.SaldoPrincipalPendente -= part;
+                remaining -= part;
+            }
+            allocated += amount;
+            _context.InvestorTransactions.Add(new InvestorTransaction { Id = Guid.NewGuid(), InvestorId = inv.InvestorId, Tipo = "RECEBIMENTO_PARCELA", Valor = amount, SaldoAnterior = old, SaldoPosterior = wallet.SaldoDisponivel, DataMovimentacao = DateTime.UtcNow, Descricao = $"Retorno de capital da parcela {installment.NumeroParcela}", UsuarioResponsavel = usuarioResponsavel });
+            _context.FinancialEventHistories.Add(new FinancialEventHistory { Id = Guid.NewGuid(), Data = DateTime.UtcNow, UsuarioResponsavel = usuarioResponsavel, EventoExecutado = "RETORNO_CAPITAL_POOL", LoanRequestId = loan.Id, Valor = amount, Observacao = $"Retorno de principal para {inv.InvestorId}" });
+            AddLedger(LedgerAccount.PlatformCash, LedgerAccount.InvestorWallet, amount, LedgerTransactionType.RevenueDistribution, inv.InvestorId);
         }
-
-        public async Task DistributeInstallmentPaymentAsync(Guid loanInstallmentId, string usuarioResponsavel = "Sistema")
+        // Principal financed by the platform and cent rounding stay in cash; only earned interest is revenue.
+        decimal revenueTarget = installment.ValorPago - principalTarget;
+        decimal previousRevenue = entries.Where(t => t.ContaDestino == LedgerAccount.PlatformRevenue).Sum(t => t.Valor);
+        decimal revenue = Math.Min(received - allocated, Math.Max(0, revenueTarget - previousRevenue));
+        if (revenue > 0)
         {
-            var installment = await _context.LoanInstallments
-                .Include(i => i.LoanRequest)
-                .FirstOrDefaultAsync(i => i.Id == loanInstallmentId);
+            _context.PlatformRevenues.Add(new PlatformRevenue { Id = Guid.NewGuid(), DataCriacao = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, TipoReceita = PlatformRevenueType.TarifaOperacional, Valor = revenue, LoanId = loan.Id, InstallmentId = installment.Id, UserId = loan.UserId, CreatedBy = usuarioResponsavel, Observacao = "Juros e encargos efetivamente recebidos" });
+            AddLedger(LedgerAccount.PlatformCash, LedgerAccount.PlatformRevenue, revenue, LedgerTransactionType.RevenueDistribution, loan.UserId);
+        }
+        installment.PrincipalDistribuido = principalTarget;
+        await _context.SaveChangesAsync();
+        if (transaction != null) await transaction.CommitAsync();
 
-            if (installment == null || installment.LoanRequest == null) return;
-            if (installment.ValorPago <= 0) return; // Evita distribuição zerada ou indevida se a parcela não possuir pagamento efetuado.
-
-            var loan = installment.LoanRequest;
-
-            // Find all investments for this loan
-            var investments = await _context.Investments
-                .Where(inv => inv.LoanId == loan.Id)
-                .ToListAsync();
-
-            // Registrar entrada principal da parcela no Ledger: BorrowerAccount -> PlatformCash
-            if (_ledgerService != null && installment.ValorPago > 0)
-            {
-                await _ledgerService.AddTransactionAsync(
-                    source: LedgerAccount.BorrowerAccount,
-                    destination: LedgerAccount.PlatformCash,
-                    amount: installment.ValorPago,
-                    type: LedgerTransactionType.InstallmentPayment,
-                    referenceType: "Installment",
-                    referenceId: installment.Id,
-                    loanId: loan.Id,
-                    installmentId: installment.Id,
-                    userId: loan.UserId,
-                    observacao: $"Pagamento da parcela {installment.NumeroParcela} pelo tomador",
-                    createdBy: usuarioResponsavel
-                );
-            }
-
-            if (!investments.Any())
-            {
-                // Empréstimo financiado com recursos próprios da administração:
-                // Toda a parcela (principal + juros + multas) pertence integralmente à plataforma
-                decimal totalJurosEMultas = installment.ValorJuros + installment.Multa + installment.JurosMora;
-                if (totalJurosEMultas > 0 && _revenueService != null)
-                {
-                    await _revenueService.RegisterRevenueAsync(
-                        PlatformRevenueType.TarifaOperacional,
-                        totalJurosEMultas,
-                        loan.Id,
-                        installment.Id,
-                        loan.UserId,
-                        $"Receita de juros/multas de empréstimo próprio - parcela {installment.NumeroParcela}",
-                        usuarioResponsavel);
-
-                    if (_ledgerService != null)
-                    {
-                        await _ledgerService.AddTransactionAsync(
-                            source: LedgerAccount.PlatformCash,
-                            destination: LedgerAccount.PlatformRevenue,
-                            amount: totalJurosEMultas,
-                            type: LedgerTransactionType.RevenueDistribution,
-                            referenceType: "Installment",
-                            referenceId: installment.Id,
-                            loanId: loan.Id,
-                            installmentId: installment.Id,
-                            userId: loan.UserId,
-                            observacao: $"Receita própria retida da parcela {installment.NumeroParcela}",
-                            createdBy: usuarioResponsavel
-                        );
-                    }
-                }
-                await _context.SaveChangesAsync();
-                return;
-            }
-
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    decimal totalPrincipalPaid = 0;
-                    decimal totalInterestPaid = 0;
-
-                    foreach (var inv in investments)
-                    {
-                        var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == inv.InvestorId);
-                        if (wallet == null) continue;
-
-                        // If investment is still committed, move to active invested balance
-                        if (inv.Status == "Comprometido")
-                        {
-                            wallet.SaldoComprometido = Math.Max(0, wallet.SaldoComprometido - inv.ValorInvestido);
-                            wallet.SaldoInvestido += inv.ValorInvestido;
-                            inv.Status = "Ativo";
-                        }
-
-                        // Calculate participation fraction
-                        decimal fraction = inv.ValorInvestido / loan.ValorSolicitado;
-
-                        // Proportional principal paid
-                        decimal valorPrincipalRecebido = Math.Round(installment.ValorPrincipal * fraction, 2);
-
-                        // No novo modelo de Pool de Liquidez, o investidor não recebe o juros da parcela do tomador.
-                        // O juros do investidor será calculado globalmente por um serviço separado.
-                        decimal valorRecebido = valorPrincipalRecebido; // Apenas principal retorna
-
-                        decimal saldoAnterior = wallet.SaldoDisponivel;
-                        wallet.SaldoDisponivel += valorRecebido;
-                        wallet.SaldoInvestido = Math.Max(0, wallet.SaldoInvestido - valorPrincipalRecebido);
-                        inv.SaldoPrincipalPendente = Math.Max(0, inv.SaldoPrincipalPendente - valorPrincipalRecebido);
-                        wallet.DataAtualizacao = DateTime.UtcNow;
-
-                        totalPrincipalPaid += valorPrincipalRecebido;
-                        totalInterestPaid += 0;
-
-                        // Record Investor Transaction
-                        var investorTx = new InvestorTransaction
-                        {
-                            Id = Guid.NewGuid(),
-                            InvestorId = inv.InvestorId,
-                            Tipo = "RECEBIMENTO_PARCELA",
-                            Valor = valorRecebido,
-                            SaldoAnterior = saldoAnterior,
-                            SaldoPosterior = wallet.SaldoDisponivel,
-                            DataMovimentacao = DateTime.UtcNow,
-                            Descricao = $"Retorno de capital da parcela {installment.NumeroParcela} do empréstimo {loan.Id} (Principal: {valorPrincipalRecebido:C2}).",
-                            UsuarioResponsavel = usuarioResponsavel
-                        };
-                        _context.InvestorTransactions.Add(investorTx);
-
-                        // Add to financial history event
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = usuarioResponsavel,
-                            EventoExecutado = "RETORNO_CAPITAL_POOL",
-                            Observacao = $"Investidor {inv.InvestorId} recebeu retorno de {valorRecebido:C2} referente ao principal da parcela {installment.NumeroParcela}.",
-                            LoanRequestId = loan.Id,
-                            Valor = valorRecebido
-                        });
-
-                        // Registrar no Ledger: PlatformCash -> InvestorWallet
-                        if (_ledgerService != null && valorRecebido > 0)
-                        {
-                            await _ledgerService.AddTransactionAsync(
-                                source: LedgerAccount.PlatformCash,
-                                destination: LedgerAccount.InvestorWallet,
-                                amount: valorRecebido,
-                                type: LedgerTransactionType.RevenueDistribution,
-                                referenceType: "Installment",
-                                referenceId: installment.Id,
-                                loanId: loan.Id,
-                                installmentId: installment.Id,
-                                userId: inv.InvestorId,
-                                observacao: $"Repasse da parcela {installment.NumeroParcela} para o investidor",
-                                createdBy: usuarioResponsavel
-                            );
-                        }
-                    }
-
-                    // Platform spread & fines go to PlatformRevenue
-                    decimal totalFinesAndLateInterest = installment.Multa + installment.JurosMora;
-                    decimal remainingAmount = installment.ValorPago - totalPrincipalPaid - totalInterestPaid - totalFinesAndLateInterest;
-                    
-                    // Registrar multas e juros de atraso
-                    if (totalFinesAndLateInterest > 0 && _revenueService != null)
-                    {
-                        await _revenueService.RegisterRevenueAsync(
-                            PlatformRevenueType.MultaAtraso, 
-                            totalFinesAndLateInterest, 
-                            loan.Id, 
-                            installment.Id, 
-                            loan.UserId, 
-                            $"Multas e juros de atraso da parcela {installment.NumeroParcela}", 
-                            usuarioResponsavel);
-
-                        if (_ledgerService != null)
-                        {
-                            await _ledgerService.AddTransactionAsync(
-                                source: LedgerAccount.PlatformCash,
-                                destination: LedgerAccount.PlatformRevenue,
-                                amount: totalFinesAndLateInterest,
-                                type: LedgerTransactionType.RevenueDistribution,
-                                referenceType: "Installment",
-                                referenceId: installment.Id,
-                                loanId: loan.Id,
-                                installmentId: installment.Id,
-                                userId: loan.UserId,
-                                observacao: $"Multas e juros de atraso repassados da parcela {installment.NumeroParcela}",
-                                createdBy: usuarioResponsavel
-                            );
-                        }
-                    }
-
-                    // Registrar spread da plataforma
-                    if (remainingAmount > 0 && _revenueService != null)
-                    {
-                        await _revenueService.RegisterRevenueAsync(
-                            PlatformRevenueType.TarifaOperacional, 
-                            remainingAmount, 
-                            loan.Id, 
-                            installment.Id, 
-                            loan.UserId, 
-                            $"Spread retido da parcela {installment.NumeroParcela}", 
-                            usuarioResponsavel);
-                            
-                        if (_ledgerService != null)
-                        {
-                            await _ledgerService.AddTransactionAsync(
-                                source: LedgerAccount.PlatformCash,
-                                destination: LedgerAccount.PlatformRevenue,
-                                amount: remainingAmount,
-                                type: LedgerTransactionType.RevenueDistribution,
-                                referenceType: "Installment",
-                                referenceId: installment.Id,
-                                loanId: loan.Id,
-                                installmentId: installment.Id,
-                                userId: loan.UserId,
-                                observacao: $"Spread da plataforma repassado da parcela {installment.NumeroParcela}",
-                                createdBy: usuarioResponsavel
-                            );
-                        }
-                    }
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    
-                    // Sucesso, quebra o loop de retry
-                    break;
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    if (attempt == maxRetries)
-                    {
-                        throw new Exception("Falha ao distribuir pagamentos devido a intensa concorrência de acesso. Tente novamente mais tarde.");
-                    }
-                    
-                    // Recarrega as carteiras alteradas para a versão do banco
-                    foreach (var entry in _context.ChangeTracker.Entries().Where(e => e.Entity is InvestorWallet))
-                    {
-                        await entry.ReloadAsync();
-                    }
-                    await Task.Delay(100);
-                }
-                catch (Exception)
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
+        void AddLedger(LedgerAccount source, LedgerAccount destination, decimal amount, LedgerTransactionType type, Guid userId)
+        {
+            _context.LedgerTransactions.Add(new LedgerTransaction { Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, TransactionDate = DateTime.UtcNow, TipoMovimentacao = type, ContaOrigem = source, ContaDestino = destination, Valor = amount, ReferenceType = "Installment", ReferenceId = installment.Id, LoanId = loan.Id, InstallmentId = installment.Id, UserId = userId, CreatedBy = usuarioResponsavel });
         }
     }
 }

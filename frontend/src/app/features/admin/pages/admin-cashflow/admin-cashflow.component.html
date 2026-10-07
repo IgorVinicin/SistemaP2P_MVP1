@@ -318,6 +318,8 @@
                   <mat-option value="">Todos</mat-option>
                   <mat-option value="Pending">Pendente</mat-option>
                   <mat-option value="Approved">Aprovado</mat-option>
+                  <mat-option value="Processing">Em processamento</mat-option>
+                  <mat-option value="Failed">Falhou</mat-option>
                   <mat-option value="Completed">Concluído</mat-option>
                   <mat-option value="Rejected">Rejeitado</mat-option>
                 </mat-select>
@@ -357,9 +359,10 @@
 
                 <!-- Valor -->
                 <ng-container matColumnDef="valor">
-                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Valor Solicitado </th>
+                  <th mat-header-cell *matHeaderCellDef style="padding: 0.75rem 1rem; font-weight: 600; color: var(--text-muted); background: var(--bg-elevated); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);"> Valores do saque </th>
                   <td mat-cell *matCellDef="let element" style="padding: 0.75rem 1rem; font-weight: 700; color: var(--dj-danger); font-size: 0.85rem; border-bottom: 1px solid var(--border-color);">
-                    {{ element.valor | currency:'BRL' }}
+                    <div>Solicitado: {{ (element.valorSolicitado ?? element.valor) | currency:'BRL' }}</div>
+                    <div *ngIf="element.valorAprovado != null">Aprovado: {{ element.valorAprovado | currency:'BRL' }}</div>
                   </td>
                 </ng-container>
 
@@ -382,7 +385,7 @@
                     <span [style.background-color]="element.status === 'Pending' ? '#fef3c7' : (element.status === 'Approved' ? '#dbeafe' : (element.status === 'Completed' ? '#d1fae5' : '#fee2e2'))"
                           [style.color]="element.status === 'Pending' ? '#92400e' : (element.status === 'Approved' ? '#1e40af' : (element.status === 'Completed' ? '#065f46' : '#991b1b'))"
                           style="font-size: 0.75rem; font-weight: 600; padding: 3px 8px; border-radius: 9999px;">
-                      {{ element.status === 'Pending' ? 'Pendente' : (element.status === 'Approved' ? 'Aprovado' : (element.status === 'Completed' ? 'Concluído' : 'Rejeitado')) }}
+                      {{ element.status === 'Pending' ? 'Pendente' : (element.status === 'Approved' ? 'Aprovado' : (element.status === 'Completed' ? 'Concluído' : (element.status === 'Processing' ? 'Em processamento' : (element.status === 'Failed' ? 'Falhou' : (element.status === 'Rejected' ? 'Rejeitado' : element.status))))) }}
                     </span>
                   </td>
                 </ng-container>
@@ -394,20 +397,20 @@
                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
                       <!-- Se pendente, aprovar ou rejeitar -->
                       <ng-container *ngIf="element.status === 'Pending'">
-                        <button mat-flat-button color="primary" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="approveWithdraw(element.id)">
+                        <button mat-flat-button color="primary" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="approveWithdraw(element.id)" [disabled]="isApprovingWithdrawal">
                           <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">check</mat-icon> Aprovar
                         </button>
-                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)">
+                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)" [disabled]="isApprovingWithdrawal">
                           <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">close</mat-icon> Rejeitar
                         </button>
                       </ng-container>
 
                       <!-- Se aprovado, dar baixa manual de PIX concluído -->
                       <ng-container *ngIf="element.status === 'Approved'">
-                        <button mat-flat-button color="accent" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="confirmWithdrawManual(element.id)">
-                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">payments</mat-icon> Baixa Manual (PIX Realizado)
+                        <button mat-flat-button color="accent" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="confirmWithdrawManual(element.id)" [disabled]="isApprovingWithdrawal">
+                          <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">payments</mat-icon> Enviar PIX
                         </button>
-                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)">
+                        <button mat-button color="warn" size="small" style="border-radius: 4px; font-size: 0.75rem; line-height: 28px; height: 28px; padding: 0 10px;" (click)="rejectWithdraw(element.id)" [disabled]="isApprovingWithdrawal">
                           <mat-icon style="font-size: 14px; width: 14px; height: 14px; margin-right: 4px;">close</mat-icon> Rejeitar
                         </button>
                       </ng-container>
@@ -713,5 +716,24 @@
 
   <mat-dialog-actions align="end" style="padding: 1.25rem 1.5rem; border-top: 1px solid var(--border-color); background-color: var(--bg-elevated);">
     <button mat-raised-button color="primary" (click)="snapshotDetailDialogRef?.close()">Fechar</button>
+  </mat-dialog-actions>
+</ng-template>
+
+<ng-template #approveWithdrawalDialog>
+  <h2 mat-dialog-title>Analisar solicitação de saque</h2>
+  <mat-dialog-content>
+    <p>Investidor: {{ selectedWithdrawal?.investor?.nome || selectedWithdrawal?.investor?.email }}</p>
+    <p>Valor solicitado e máximo aprovável: <strong>{{ requestedWithdrawalAmount | currency:'BRL' }}</strong></p>
+    <mat-form-field appearance="outline" style="width:100%">
+      <mat-label>Valor aprovado (R$)</mat-label>
+      <input matInput type="number" min="0.01" step="0.01" [max]="requestedWithdrawalAmount" [(ngModel)]="approvedWithdrawalAmount" [disabled]="isApprovingWithdrawal" required>
+      <mat-hint>Aprove o total solicitado ou um valor menor.</mat-hint>
+    </mat-form-field>
+    <p>O valor aprovado permanecerá reservado até a confirmação da transferência. A diferença não aprovada será liberada ao investidor.</p>
+    <p *ngIf="withdrawalApprovalError" role="alert">{{ withdrawalApprovalError }}</p>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close [disabled]="isApprovingWithdrawal">Cancelar</button>
+    <button mat-flat-button color="primary" (click)="confirmWithdrawalApproval()" [disabled]="isApprovingWithdrawal || !validWithdrawalApproval">{{ isApprovingWithdrawal ? 'Aprovando...' : 'Confirmar valor aprovado' }}</button>
   </mat-dialog-actions>
 </ng-template>

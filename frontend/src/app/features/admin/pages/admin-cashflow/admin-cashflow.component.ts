@@ -18,7 +18,8 @@ import {
   AdminCashFlowService, 
   CashFlowSnapshot, 
   CashFlowTransactionDto,
-  CashFlowClosingConferenceDto
+  CashFlowClosingConferenceDto,
+  AdminWithdrawalRequestDto
 } from '../../../../core/services/admin-cashflow.service';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
@@ -93,7 +94,23 @@ export class AdminCashFlowComponent implements OnInit {
   };
 
   // Withdrawals (Resgates) state
-  withdrawals: any[] = [];
+  @ViewChild('approveWithdrawalDialog') approveWithdrawalDialogTpl!: TemplateRef<any>;
+  public selectedWithdrawal: AdminWithdrawalRequestDto | null = null;
+  public approvedWithdrawalAmount: number | null = null;
+  public isApprovingWithdrawal = false;
+  public withdrawalApprovalError = '';
+  private withdrawalApprovalDialogRef?: MatDialogRef<any>;
+
+  public get requestedWithdrawalAmount(): number {
+    return this.selectedWithdrawal?.valorSolicitado ?? this.selectedWithdrawal?.valor ?? 0;
+  }
+  public get validWithdrawalApproval(): boolean {
+    const amount = this.approvedWithdrawalAmount;
+    return amount !== null && Number.isFinite(amount) && amount > 0 && amount <= this.requestedWithdrawalAmount
+      && Math.abs(amount * 100 - Math.round(amount * 100)) < 0.000001;
+  }
+
+  withdrawals: AdminWithdrawalRequestDto[] = [];
   loadingWithdrawals = false;
   displayedWithdrawalColumns: string[] = ['data', 'investidor', 'valor', 'pix', 'status', 'acoes'];
   withdrawalStatusFilter = '';
@@ -381,21 +398,38 @@ export class AdminCashFlowComponent implements OnInit {
   }
 
   approveWithdraw(id: string): void {
-    if (confirm('Deseja realmente aprovar esta solicitação de saque? O valor correspondente continuará bloqueado até a baixa manual ser confirmada.')) {
-      this.cashFlowService.approveWithdrawal(id).subscribe({
-        next: (res) => {
-          this.snackBar.open(res.message || 'Saque aprovado com sucesso!', 'Fechar', { duration: 3000 });
-          this.loadWithdrawals();
-          this.loadData();
-        },
-        error: (err) => {
-          this.snackBar.open(err.error?.message || 'Erro ao aprovar saque.', 'Fechar', { duration: 4000 });
-        }
-      });
-    }
+    if (this.isApprovingWithdrawal) return;
+    const withdrawal = this.withdrawals.find(item => item.id === id && item.status === 'Pending');
+    if (!withdrawal) return;
+    this.selectedWithdrawal = withdrawal;
+    this.approvedWithdrawalAmount = this.requestedWithdrawalAmount;
+    this.withdrawalApprovalError = '';
+    this.withdrawalApprovalDialogRef = this.dialog.open(this.approveWithdrawalDialogTpl, { width: '480px', maxWidth: '95vw', disableClose: true });
+  }
+
+  confirmWithdrawalApproval(): void {
+    if (this.isApprovingWithdrawal || !this.selectedWithdrawal || this.selectedWithdrawal.status !== 'Pending' || !this.validWithdrawalApproval) return;
+    this.isApprovingWithdrawal = true;
+    this.withdrawalApprovalError = '';
+    this.cashFlowService.approveWithdrawal(this.selectedWithdrawal.id, this.approvedWithdrawalAmount!).subscribe({
+      next: res => {
+        this.isApprovingWithdrawal = false;
+        this.selectedWithdrawal!.status = 'Approved';
+        this.selectedWithdrawal!.valorAprovado = this.approvedWithdrawalAmount;
+        this.withdrawalApprovalDialogRef?.close();
+        this.snackBar.open(res.message || 'Saque aprovado. A diferença não aprovada foi liberada ao investidor.', 'Fechar', { duration: 4000 });
+        this.loadWithdrawals();
+        this.loadData();
+      },
+      error: err => {
+        this.isApprovingWithdrawal = false;
+        this.withdrawalApprovalError = err.error?.message || 'Não foi possível aprovar o saque.';
+      }
+    });
   }
 
   rejectWithdraw(id: string): void {
+    if (this.isApprovingWithdrawal) return;
     const motivo = prompt('Por favor, informe o motivo da rejeição do saque:');
     if (motivo === null) return; // Cancelled
     if (motivo.trim() === '') {
@@ -416,19 +450,15 @@ export class AdminCashFlowComponent implements OnInit {
   }
 
   confirmWithdrawManual(id: string): void {
-    const ref = prompt('Informe a referência de transação bancária (ou Pix EndToEnd ID) para a baixa manual:');
-    if (ref === null) return; // Cancelled
-    const finalRef = ref.trim() === '' ? 'MANUAL-PIX' : ref.trim();
-
-    this.cashFlowService.confirmWithdrawal(id, finalRef).subscribe({
-      next: (res) => {
-        this.snackBar.open(res.message || 'Saque liquidado com sucesso!', 'Fechar', { duration: 3000 });
+    if (this.isApprovingWithdrawal) return;
+    if (!confirm('Enviar este saque por PIX? O valor permanece bloqueado até a confirmação da transferência.')) return;
+    this.cashFlowService.confirmWithdrawal(id).subscribe({
+      next: res => {
+        this.snackBar.open(res.message || 'Transferência enviada. Aguardando confirmação.', 'Fechar', { duration: 4000 });
         this.loadWithdrawals();
         this.loadData();
       },
-      error: (err) => {
-        this.snackBar.open(err.error?.message || 'Erro ao confirmar saque.', 'Fechar', { duration: 4000 });
-      }
+      error: err => this.snackBar.open(err.error?.message || 'Erro ao enviar saque.', 'Fechar', { duration: 4000 })
     });
   }
 }

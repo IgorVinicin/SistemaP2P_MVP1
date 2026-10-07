@@ -24,6 +24,7 @@ namespace backend.API.Controllers
 
         // POST /api/limits/request
         [HttpPost("request")]
+        [Authorize(Roles = "Cliente")]
         public async Task<IActionResult> RequestLimit([FromBody] LimitRequestDto dto)
         {
             var userIdStr = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -36,6 +37,12 @@ namespace backend.API.Controllers
             {
                 return BadRequest(new { message = "Valor do limite solicitado inválido." });
             }
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId);
+            if (user?.Status != "Aprovado") return StatusCode(403, new { message = "Seu cadastro precisa estar aprovado para solicitar aumento de limite." });
+            if (!await _context.LoanRequests.AnyAsync(l => l.UserId == userId && l.Status == "Finalizado"))
+                return BadRequest(new { message = "Quite um empréstimo antes de solicitar aumento de limite." });
+            if (decimal.Round(dto.LimiteSolicitado, 2) != dto.LimiteSolicitado)
+                return BadRequest(new { message = "O limite deve possuir no máximo duas casas decimais." });
 
             // Verificar se o tomador tem solicitação de limite pendente
             var temPendente = await _context.LimitRequests
@@ -142,6 +149,8 @@ namespace backend.API.Controllers
             }
 
             var totalCount = await query.CountAsync();
+            page = Math.Max(1, page);
+            pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var items = await query

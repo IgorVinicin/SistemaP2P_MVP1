@@ -14,7 +14,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatExpansionModule } from '@angular/material/expansion';
 
 import { LoanService } from '../../../../core/services/loan.service';
-import { LoanRequest } from '../../../../core/models/loan.models';
+import { LoanRequest, LoanTransferStatus } from '../../../../core/models/loan.models';
 import { LoanInstallmentService } from '../../../../core/services/loan-installment.service';
 import { AdminGroupService, InvestorGroup } from '../../../../core/services/admin-group.service';
 
@@ -51,6 +51,82 @@ export class AdminLoansComponent implements OnInit {
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
   private route = inject(ActivatedRoute);
+
+  @ViewChild('disburseDialog') disburseDialogTpl!: TemplateRef<any>;
+  public transfer: LoanTransferStatus | null = null;
+  public isCheckingTransfer = false;
+  public transferChecked = false;
+  public transferError = '';
+  public destinationConfirmed = false;
+  private disburseDialogRef?: MatDialogRef<any>;
+
+  public get borrowerCpf(): string { return (this.selectedLoan?.userProfile?.cpf ?? this.selectedLoan?.cpf ?? '').replace(/\D/g, ''); }
+  public get canSendLoan(): boolean {
+    return !!this.selectedLoan?.id && ['Aprovado', 'Financiado', 'FalhaDesembolso'].includes(this.selectedLoan.status)
+      && this.transferChecked && !this.isCheckingTransfer && !this.isActionProcessing
+      && (!this.transfer || (!this.transfer.settledAt && ['FAILED', 'CANCELLED'].includes(this.transfer.status)));
+  }
+  public get canReconcileLoan(): boolean {
+    return this.selectedLoan?.status === 'DesembolsoPendente' && this.transferChecked && !this.isActionProcessing && !this.isCheckingTransfer
+      && !!this.transfer && this.transfer.status !== 'DONE' && !this.transfer.settledAt;
+  }
+  public transferLabel(): string {
+    const labels: Record<string, string> = { Creating: 'Envio em conciliação', PENDING: 'Aguardando confirmação', DONE: 'Transferência concluída', FAILED: 'Envio falhou', CANCELLED: 'Transferência cancelada' };
+    return this.transfer ? (labels[this.transfer.status] ?? this.transfer.status) : 'Nenhum envio registrado';
+  }
+  public refreshTransferStatus(): void {
+    if (!this.selectedLoan?.id || this.isCheckingTransfer) return;
+    const id = this.selectedLoan.id;
+    this.isCheckingTransfer = true;
+    this.transferChecked = false;
+    this.api.getLoanTransferStatus(id).subscribe({
+      next: transfer => {
+        if (this.selectedLoan?.id !== id) return;
+        this.transfer = transfer; this.transferChecked = true; this.isCheckingTransfer = false; this.transferError = '';
+        if (['Aprovado', 'Financiado', 'FalhaDesembolso', 'DesembolsoPendente'].includes(this.selectedLoan.status)) {
+          if (transfer.status === 'DONE' || transfer.settledAt) this.selectedLoan.status = 'EmPagamento';
+          else if (['FAILED', 'CANCELLED'].includes(transfer.status)) this.selectedLoan.status = 'FalhaDesembolso';
+          else this.selectedLoan.status = 'DesembolsoPendente';
+        }
+      },
+      error: err => {
+        if (this.selectedLoan?.id !== id) return;
+        this.isCheckingTransfer = false;
+        if (err.status === 404) { this.transfer = null; this.transferChecked = true; this.transferError = ''; }
+        else { this.transferError = 'Não foi possível consultar o envio. Atualize o status antes de tentar.'; }
+      }
+    });
+  }
+  public openDisburseDialog(): void {
+    if ((!this.canSendLoan && !this.canReconcileLoan) || this.borrowerCpf.length !== 11) return;
+    this.destinationConfirmed = false;
+    this.transferError = '';
+    this.disburseDialogRef = this.dialog.open(this.disburseDialogTpl, { width: '480px', maxWidth: '95vw', disableClose: true });
+  }
+  public submitDisbursement(): void {
+    if ((!this.canSendLoan && !this.canReconcileLoan) || !this.destinationConfirmed || this.borrowerCpf.length !== 11 || !this.selectedLoan?.id) return;
+    const id = this.selectedLoan.id;
+    this.isActionProcessing = true;
+    this.api.disburseLoan(id, { chavePix: this.borrowerCpf, tipoChavePix: 'CPF', confirmacaoDestino: true, valorConfirmado: this.selectedLoan.valorSolicitado }).subscribe({
+      next: transfer => {
+        this.isActionProcessing = false;
+        this.destinationConfirmed = false;
+        if (this.selectedLoan?.id !== id) return;
+        this.transfer = transfer;
+        this.selectedLoan.status = transfer.status === 'DONE' || transfer.settledAt ? 'EmPagamento' : 'DesembolsoPendente';
+        this.disburseDialogRef?.close();
+        this.snackBar.open(transfer.message || 'Envio registrado. Aguarde a confirmação bancária.', 'Fechar', { duration: 5000 });
+        this.loadActiveLoans();
+      },
+      error: err => {
+        this.isActionProcessing = false;
+        this.transferError = err.error?.message || 'Envio não confirmado. Consulte o status antes de tentar novamente.';
+        this.snackBar.open(this.transferError, 'Fechar', { duration: 6000 });
+        this.destinationConfirmed = false;
+        this.refreshTransferStatus();
+      }
+    });
+  }
 
   public availableGroups: InvestorGroup[] = [];
 
@@ -257,13 +333,18 @@ export class AdminLoansComponent implements OnInit {
   }
 
   public openDetailDialog(loanId: string): void {
+    if (this.isActionProcessing) return;
     this.selectedLoan = null;
-    this.isActionProcessing = false;
+    this.transfer = null;
+    this.transferChecked = false;
+    this.transferError = '';
+    this.isCheckingTransfer = false;
 
     // Busca detalhes completos antes de abrir
     this.api.getLoanDetails(loanId).subscribe({
       next: (data) => {
         this.selectedLoan = data;
+        this.refreshTransferStatus();
         this.mainDialogRef = this.dialog.open(this.detailDialogTpl, {
           width: '750px',
           disableClose: true
@@ -463,52 +544,11 @@ export class AdminLoansComponent implements OnInit {
     });
   }
 
-  public finishLoan(loanId: string): void {
-    if (confirm('Deseja realmente finalizar/quitar este empréstimo?')) {
-      this.isActionProcessing = true;
-      this.api.finishLoan(loanId).subscribe({
-        next: () => {
-          this.isActionProcessing = false;
-          this.snackBar.open('Empréstimo finalizado/quitado com sucesso!', 'Fechar', { duration: 3000 });
-          this.mainDialogRef?.close();
-          this.loadPendingLoans();
-          this.loadActiveLoans();
-          this.loadAdminInstallments();
-        },
-        error: (err) => {
-          this.isActionProcessing = false;
-          const msg = err.error?.message || 'Erro ao finalizar empréstimo.';
-          this.snackBar.open(msg, 'Fechar', { duration: 4500 });
-        }
-      });
-    }
-  }
-
-  public payInstallment(installmentId: string): void {
-    if (confirm('Deseja realmente quitar esta parcela administrativamente?')) {
-      this.isActionProcessing = true;
-      this.installmentService.payInstallment(installmentId).subscribe({
-        next: (res) => {
-          this.isActionProcessing = false;
-          this.snackBar.open(res.message || 'Parcela quitada com sucesso!', 'Fechar', { duration: 3000 });
-          this.loadPendingLoans();
-          this.loadActiveLoans();
-          this.loadAdminInstallments();
-        },
-        error: (err) => {
-          this.isActionProcessing = false;
-          const msg = err.error?.message || 'Erro ao quitar parcela.';
-          this.snackBar.open(msg, 'Fechar', { duration: 4500 });
-        }
-      });
-    }
-  }
-
   public openSettleInstallmentDialog(installment: any, fallbackNome?: string): void {
     const valorBase = installment.valorParcela || 0;
     const multa = installment.multa || 0;
     const jurosMora = installment.jurosMora || 0;
-    const totalDevido = valorBase + multa + jurosMora;
+    const totalDevido = Math.max(0, +(valorBase + multa + jurosMora - (installment.valorPago ?? 0)).toFixed(2));
 
     this.settleForm = {
       installmentId: installment.id,
@@ -528,7 +568,7 @@ export class AdminLoansComponent implements OnInit {
   }
 
   public confirmSettleInstallment(): void {
-    if (!this.settleForm.installmentId) return;
+    if (this.isActionProcessing || !this.settleForm.installmentId || !this.settleForm.observacao.trim()) return;
 
     this.isActionProcessing = true;
     this.installmentService.settleInstallment(

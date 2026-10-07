@@ -49,12 +49,12 @@ namespace backend.Application.Services
             // Se não houver chave de API configurada, valida via algoritmo com aviso de mock
             if (!enabled || string.IsNullOrWhiteSpace(activeKey))
             {
-                _logger.LogInformation("Consulta externa de CPF na Receita Federal está em modo simulado. Configure 'CpfConsultation:Token' no appsettings.json para habilitar a consulta real.");
+                _logger.LogInformation("CPF validado pelos dígitos verificadores. Consulta cadastral externa não configurada.");
                 return new CpfValidationResult
                 {
                     IsValid = true,
                     Cpf = cleanCpf,
-                    SituacaoCadastral = "REGULAR (Simulação/Algoritmo Módulo 11)",
+                    SituacaoCadastral = "NÃO CONSULTADO (Dígitos verificadores válidos)",
                     NomeReceita = nome,
                     DataNascimentoReceita = dataNascimento,
                     ConsultouReceitaFederal = false
@@ -79,15 +79,15 @@ namespace backend.Application.Services
                 // Default genérico
                 return new CpfValidationResult
                 {
-                    IsValid = true,
+                    IsValid = false,
                     Cpf = cleanCpf,
-                    SituacaoCadastral = "REGULAR",
+                    ErrorMessage = "Provedor de consulta de CPF não reconhecido.",
                     ConsultouReceitaFederal = false
                 };
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Erro ao consultar CPF {Cpf} na API externa da Receita Federal ({Provider}).", cleanCpf, provider);
+                _logger.LogError(ex, "Erro ao consultar cadastro na API externa ({Provider}).", provider);
                 
                 // Em caso de falha de conexão na API de terceiros, se o CPF for válido pelo algoritmo, podemos permitir ou retornar erro configurável
                 var allowOnApiError = _configuration.GetValue<bool>("CpfConsultation:AllowFallbackOnApiError", true);
@@ -97,7 +97,7 @@ namespace backend.Application.Services
                     {
                         IsValid = true,
                         Cpf = cleanCpf,
-                        SituacaoCadastral = "REGULAR (Fallback de Conexão)",
+                        SituacaoCadastral = "NÃO CONSULTADO (Falha na consulta externa)",
                         ConsultouReceitaFederal = false
                     };
                 }

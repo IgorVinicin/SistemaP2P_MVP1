@@ -14,6 +14,7 @@ import { InvestorService } from '../../../../core/services/investor.service';
 import { AuthService } from '../../../../core/services/auth.service';
 import { InvestmentProductService } from '../../../../core/services/investment-product.service';
 import { InvestorWalletDto } from '../../../../core/models/investor.models';
+import { PixPaymentDialogComponent } from '../../../../shared/components/pix-payment-dialog/pix-payment-dialog.component';
 import { InvestmentProduct } from '../../../../core/models/investment-product.models';
 
 @Component({
@@ -72,9 +73,13 @@ export class InvestorDashboardComponent implements OnInit {
   public selectedDetailProduct: InvestmentProduct | null = null;
   public saqueValor: number | null = null;
 
+  public get saldoSacavel(): number {
+    return Math.max(0, Math.min(this.wallet?.saldoDisponivel ?? 0, this.wallet?.saldoSacavel ?? 0));
+  }
+
   public get saldoTotal(): number {
     if (!this.wallet) return 0;
-    return (this.wallet.saldoDisponivel ?? 0) + (this.wallet.saldoComprometido ?? 0) + (this.wallet.saldoInvestido ?? 0);
+    return (this.wallet.saldoDisponivel ?? 0) + (this.wallet.saldoComprometido ?? 0) + (this.wallet.saldoInvestido ?? 0) + (this.wallet.saldoBloqueado ?? 0);
   }
 
   ngOnInit(): void {
@@ -193,6 +198,7 @@ export class InvestorDashboardComponent implements OnInit {
   }
 
   public makeDeposit(): void {
+    if (this.isProcessing) return;
     if (!this.aporteValor || this.aporteValor <= 0) {
       this.snackBar.open('Por favor, informe um valor de aporte maior que zero.', 'Fechar', { duration: 4000 });
       return;
@@ -205,13 +211,14 @@ export class InvestorDashboardComponent implements OnInit {
 
     this.isProcessing = true;
     this.investorService.makeDeposit(this.aporteValor).subscribe({
-      next: () => {
+      next: (payment) => {
         this.isProcessing = false;
-        this.snackBar.open('Depósito confirmado com sucesso! Saldo adicionado à sua carteira.', 'Fechar', { duration: 3500 });
-        this.aporteValor = null;
-        this.selectedProduct = null;
         this.dialogRef?.close();
-        this.loadWallet();
+        const ref = this.dialog.open(PixPaymentDialogComponent, {
+          width: '480px', maxWidth: '95vw',
+          data: { payment, loadStatus: () => this.investorService.getDepositStatus(payment.depositId!) }
+        });
+        ref.afterClosed().subscribe(() => this.loadWallet());
       },
       error: (err) => {
         this.isProcessing = false;
@@ -230,13 +237,14 @@ export class InvestorDashboardComponent implements OnInit {
   }
 
   public makeWithdraw(): void {
+    if (this.isProcessing) return;
     if (!this.saqueValor || this.saqueValor <= 0) {
       this.snackBar.open('Por favor, informe um valor de saque maior que zero.', 'Fechar', { duration: 4000 });
       return;
     }
 
-    if (this.wallet && this.saqueValor > this.wallet.saldoDisponivel) {
-      this.snackBar.open('Saldo disponível insuficiente para o valor solicitado.', 'Fechar', { duration: 4000 });
+    if (!this.wallet || this.saqueValor > this.saldoSacavel) {
+      this.snackBar.open('O valor excede o saldo liberado para saque. Depósitos confirmados têm carência de 72 horas.', 'Fechar', { duration: 4000 });
       return;
     }
 
@@ -246,7 +254,7 @@ export class InvestorDashboardComponent implements OnInit {
     }
 
     this.isProcessing = true;
-    this.investorService.makeWithdraw(this.saqueValor, this.chavePix, this.tipoChavePix).subscribe({
+    this.investorService.makeWithdraw(this.saqueValor, this.chavePix.trim(), this.tipoChavePix).subscribe({
       next: (res: any) => {
         this.isProcessing = false;
         this.snackBar.open(res.message || 'Solicitação de saque enviada com sucesso e aguardando aprovação!', 'Fechar', { duration: 3500 });

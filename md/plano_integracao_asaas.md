@@ -1,6 +1,6 @@
 # Planejamento Técnico — Integração com Gateway de Pagamento Asaas
 
-**Status:** Pronto para Implementação  
+**Status atualizado em 07/10/2026:** camada de integração implementada; configuração, decisões finais e homologação pendentes. Consulte [validação atual](validacao_atual_2026-10-07.md) e [fluxos implementados](asaas_fluxos_e_homologacao.md). O restante deste documento registra o planejamento original e não descreve integralmente o código atual.  
 **Ambiente Inicial:** Asaas Sandbox (`https://sandbox.asaas.com/api/v3`)  
 **Data do Planejamento:** 23 de Agosto de 2026  
 

@@ -9,6 +9,33 @@ namespace backend.Infrastructure
         {
         }
 
+        // Existing application-managed tokens must advance on each write to detect stale balances.
+        private void AdvanceConcurrencyTokens()
+        {
+            ChangeTracker.DetectChanges();
+            foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Modified))
+            {
+                var token = entry.Metadata.FindProperty("Version");
+                if (token?.IsConcurrencyToken == true && token.ClrType == typeof(uint))
+                {
+                    var property = entry.Property("Version");
+                    property.CurrentValue = checked((uint)property.OriginalValue! + 1);
+                }
+            }
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            AdvanceConcurrencyTokens();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+        {
+            AdvanceConcurrencyTokens();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
         public DbSet<User> Users { get; set; }
         public DbSet<UserProfile> UserProfiles { get; set; }
         public DbSet<CompanyProfile> CompanyProfiles { get; set; }
@@ -36,6 +63,10 @@ namespace backend.Infrastructure
         public DbSet<IdempotencyRecord> IdempotencyRecords { get; set; }
         public DbSet<LimitRequest> LimitRequests { get; set; }
         public DbSet<InvestmentProduct> InvestmentProducts { get; set; }
+        public DbSet<GatewayCharge> GatewayCharges { get; set; }
+        public DbSet<GatewayWebhookEvent> GatewayWebhookEvents { get; set; }
+        public DbSet<GatewayTransfer> GatewayTransfers { get; set; }
+        public DbSet<DebtRollover> DebtRollovers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -388,6 +419,33 @@ namespace backend.Infrastructure
             // Índices em CashFlowSnapshot
             modelBuilder.Entity<CashFlowSnapshot>()
                 .HasIndex(c => c.SnapshotDate);
+
+            modelBuilder.Entity<GatewayCharge>().Property(c => c.Value).HasPrecision(18, 2);
+            modelBuilder.Entity<GatewayCharge>().Property(c => c.NetValue).HasPrecision(18, 2);
+            modelBuilder.Entity<GatewayCharge>().HasIndex(c => c.PaymentId).IsUnique();
+            modelBuilder.Entity<GatewayCharge>().HasIndex(c => new { c.Kind, c.ReferenceId, c.Status });
+            modelBuilder.Entity<GatewayCharge>().HasIndex(c => new { c.Kind, c.ReferenceId }).IsUnique().HasFilter("\"IsActive\" = TRUE");
+            modelBuilder.Entity<GatewayWebhookEvent>().Property(e => e.EventId).HasMaxLength(150);
+            modelBuilder.Entity<GatewayTransfer>().Property(t => t.Value).HasPrecision(18, 2);
+            modelBuilder.Entity<GatewayTransfer>().Property(t => t.Fee).HasPrecision(18, 2);
+            modelBuilder.Entity<GatewayTransfer>().HasIndex(t => t.TransferId).IsUnique();
+            modelBuilder.Entity<GatewayTransfer>().HasIndex(t => new { t.Kind, t.ReferenceId }).IsUnique().HasFilter("\"IsActive\" = TRUE");
+            modelBuilder.Entity<DebtRollover>().Property(r => r.Principal).HasPrecision(18, 2);
+            modelBuilder.Entity<DebtRollover>().Property(r => r.Interest).HasPrecision(18, 2);
+            modelBuilder.Entity<DebtRollover>().Property(r => r.Penalty).HasPrecision(18, 2);
+            modelBuilder.Entity<DebtRollover>().Property(r => r.LateInterest).HasPrecision(18, 2);
+            modelBuilder.Entity<DebtRollover>().HasIndex(r => r.SourceInstallmentId);
+            modelBuilder.Entity<DebtRollover>().HasIndex(r => r.TargetInstallmentId);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.PrincipalPago).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.JurosPagos).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.MultaPaga).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.JurosMoraPagos).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.PrincipalDistribuido).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.MultaCarregada).HasPrecision(18, 2);
+            modelBuilder.Entity<LoanInstallment>().Property(i => i.JurosMoraCarregados).HasPrecision(18, 2);
+            modelBuilder.Entity<InvestorWallet>().Property(w => w.RentabilidadeSaldoDisponivel).HasPrecision(18, 2);
+            modelBuilder.Entity<InvestorWallet>().Property(w => w.RentabilidadeSaldoComprometido).HasPrecision(18, 2);
+            modelBuilder.Entity<WithdrawalRequest>().Property(w => w.ValorSolicitado).HasPrecision(18, 2);
         }
     }
 }

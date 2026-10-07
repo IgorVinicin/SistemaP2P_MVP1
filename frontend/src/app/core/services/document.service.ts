@@ -20,6 +20,10 @@ export class DocumentService {
     return this.http.post<UploadResponseDto>(`${this.apiUrl}/upload`, formData);
   }
 
+  public getDocumentFile(id: string): Observable<Blob> {
+    return this.http.get(`${this.apiUrl}/${id}/file`, { responseType: 'blob' });
+  }
+
   public getDocumentsStatus(): Observable<DocumentStatusDto[]> {
     return this.http.get<DocumentStatusDto[]>(`${this.apiUrl}/status`);
   }

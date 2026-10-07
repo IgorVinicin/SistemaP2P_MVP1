@@ -1,4 +1,5 @@
-import { Component, Input, Output, EventEmitter, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, OnDestroy, OnChanges, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,9 +20,37 @@ import { DocumentService } from '../../../../core/services/document.service';
   templateUrl: './document-upload-card.component.html',
   styleUrl: './document-upload-card.component.css'
 })
-export class DocumentUploadCardComponent {
+export class DocumentUploadCardComponent implements OnDestroy, OnChanges {
+  private destroyRef = inject(DestroyRef);
   private documentService = inject(DocumentService);
   private snackBar = inject(MatSnackBar);
+
+  @Input() public documentId: string | null = null;
+  public savedPreviewUrl: string | null = null;
+  public savedFileUrl: string | null = null;
+  public previewError = '';
+
+  ngOnChanges(): void {
+    this.releaseSavedPreview();
+    this.previewError = '';
+    const id = this.documentId;
+    if (!id) return;
+    this.documentService.getDocumentFile(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+      next: blob => {
+        if (this.documentId !== id) return;
+        this.releaseSavedPreview();
+        this.savedFileUrl = URL.createObjectURL(blob);
+        if (blob.type.startsWith('image/')) this.savedPreviewUrl = this.savedFileUrl;
+      },
+      error: () => this.previewError = 'Prévia indisponível. O status do envio permanece registrado.'
+    });
+  }
+
+  private releaseSavedPreview(): void {
+    if (this.savedFileUrl) URL.revokeObjectURL(this.savedFileUrl);
+    this.savedFileUrl = null;
+    this.savedPreviewUrl = null;
+  }
 
   @Input() public tipoDocumento!: string;
   @Input() public label!: string;
@@ -40,6 +69,11 @@ export class DocumentUploadCardComponent {
     // Resetar o input para permitir selecionar novamente o mesmo arquivo se desejar
     event.target.value = '';
 
+    this.clearSelection();
+    if (file.size > 10 * 1024 * 1024) {
+      this.snackBar.open('O arquivo deve ter no máximo 10 MB.', 'Fechar', { duration: 4000 });
+      return;
+    }
     const fileName = file.name.toLowerCase();
     const fileType = (file.type || '').toLowerCase();
 
@@ -76,6 +110,8 @@ export class DocumentUploadCardComponent {
     this.selectedFile = null;
     this.previewUrl = null;
   }
+
+  ngOnDestroy(): void { this.clearSelection(); this.releaseSavedPreview(); }
 
   public formatFileSize(bytes: number): string {
     if (bytes === 0) return '0 B';
@@ -142,13 +178,13 @@ export class DocumentUploadCardComponent {
   }
 
   public upload(): void {
-    if (!this.selectedFile) return;
+    if (this.isUploading || !this.selectedFile) return;
 
     this.isUploading = true;
     this.documentService.uploadDocument(this.selectedFile, this.tipoDocumento).subscribe({
       next: (res) => {
         this.isUploading = false;
-        this.selectedFile = null;
+        this.clearSelection();
         this.currentStatus = 'Pendente'; // backend reseta para Pendente após re-upload
         this.snackBar.open(`Documento "${this.label}" enviado com sucesso!`, 'Fechar', { duration: 3000 });
         this.uploadSuccess.emit(res.userStatus);

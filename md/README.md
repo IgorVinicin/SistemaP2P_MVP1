@@ -1,5 +1,9 @@
 # Sistema P2P Lending - MVP V1
 
+## Revisão de 07/10/2026
+
+Consulte o [mapa funcional](estrutura_funcional_sistema.md), a [validação e pendências atuais](validacao_atual_2026-10-07.md) e os [fluxos Asaas e homologação](asaas_fluxos_e_homologacao.md). O diagnóstico inicial e os relatórios de sprints registram estados anteriores às correções.
+
 Plataforma de empréstimos Peer-to-Peer (P2P) Lending de ponta a ponta, permitindo que tomadores de empréstimos solicitem recursos e investidores aportem valores em solicitações disponíveis, assegurados por regras de score de crédito e um fundo de proteção contra inadimplência.
 
 ---
@@ -36,7 +40,7 @@ Plataforma de empréstimos Peer-to-Peer (P2P) Lending de ponta a ponta, permitin
    cd backend
    ```
 2. Configure a string de conexão do PostgreSQL no arquivo `appsettings.json`.
-3. Execute a aplicação (a migração e carga de dados de seed ocorrerão automaticamente na inicialização):
+3. Configure os segredos conforme `backend/.env.example` e `backend/appsettings.example.json`. Execute a aplicação (migrações ocorrem na inicialização; dados de demonstração exigem ambiente Development e `Seed:DemoData=true`):
    ```bash
    dotnet run
    ```

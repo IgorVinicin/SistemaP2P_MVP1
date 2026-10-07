@@ -8,6 +8,7 @@ namespace backend.Domain.Entities
         public Guid Id { get; set; }
         public Guid InvestorId { get; set; }
         public decimal Valor { get; set; }
+        public decimal? ValorSolicitado { get; set; }
         public string Status { get; set; } = "Pending"; // Pending, Approved, Rejected, Processing, Completed, Failed
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? ProcessedAt { get; set; }

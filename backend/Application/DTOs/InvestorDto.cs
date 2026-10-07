@@ -5,6 +5,10 @@ namespace backend.Application.DTOs
     public class InvestorWalletDto
     {
         public decimal SaldoDisponivel { get; set; }
+        public decimal SaldoSacavel { get; set; }
+        public decimal SaldoEmCarencia { get; set; }
+        public DateTime? ProximaLiberacaoSaque { get; set; }
+        public decimal SaldoBloqueado { get; set; }
         public decimal SaldoComprometido { get; set; }
         public decimal SaldoInvestido { get; set; }
         public decimal Rendimentos { get; set; }
@@ -35,11 +39,6 @@ namespace backend.Application.DTOs
     public class SelectInvestmentProductDto
     {
         public Guid ProductId { get; set; }
-    }
-
-    public class MakeDepositDto
-    {
-        public decimal Valor { get; set; }
     }
 
     public class MakeWithdrawDto

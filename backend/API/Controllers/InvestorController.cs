@@ -112,9 +112,14 @@ namespace backend.API.Controllers
                             t.Tipo.Equals("COBERTURA_CONTRATO_FUNDO", StringComparison.OrdinalIgnoreCase))
                 .Sum(t => t.Valor);
 
+            var availability = await new WithdrawalAvailabilityService(_context).GetAsync(wallet);
             return Ok(new InvestorWalletDto
             {
                 SaldoDisponivel = wallet.SaldoDisponivel,
+                SaldoSacavel = availability.SaldoSacavel,
+                SaldoEmCarencia = availability.SaldoEmCarencia,
+                ProximaLiberacaoSaque = availability.ProximaLiberacaoSaque,
+                SaldoBloqueado = wallet.SaldoBloqueado,
                 SaldoComprometido = wallet.SaldoComprometido,
                 SaldoInvestido = wallet.SaldoInvestido,
                 Rendimentos = wallet.Rendimentos,
@@ -183,59 +188,6 @@ namespace backend.API.Controllers
             });
         }
 
-        // POST /api/investor/deposit
-        [HttpPost("deposit")]
-        public async Task<IActionResult> MakeDeposit([FromBody] MakeDepositDto dto)
-        {
-            if (dto.Valor <= 0)
-            {
-                return BadRequest(new { message = "O valor do aporte deve ser maior que zero." });
-            }
-
-            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-            decimal minInvestimento = config?.ValorMinimoInvestimento ?? 5000.00m;
-            if (dto.Valor < minInvestimento)
-            {
-                return BadRequest(new { message = $"O valor do aporte mínimo permitido é de R$ {minInvestimento:N2}." });
-            }
-
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
-            {
-                return Unauthorized(new { message = "Investidor não autenticado." });
-            }
-
-            var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == userId);
-            if (wallet == null)
-            {
-                return BadRequest(new { message = "Carteira não encontrada." });
-            }
-
-            decimal saldoAnterior = wallet.SaldoDisponivel;
-            wallet.SaldoDisponivel += dto.Valor;
-            wallet.TotalAportado += dto.Valor;
-            wallet.DataAtualizacao = DateTime.UtcNow;
-
-            var transaction = new InvestorTransaction
-            {
-                Id = Guid.NewGuid(),
-                InvestorId = userId,
-                Tipo = "APORTE",
-                Valor = dto.Valor,
-                SaldoAnterior = saldoAnterior,
-                SaldoPosterior = wallet.SaldoDisponivel,
-                DataMovimentacao = DateTime.UtcNow,
-                Descricao = $"Aporte simulado no valor de {dto.Valor:C2}",
-                UsuarioResponsavel = "Investidor"
-            };
-
-            _context.InvestorTransactions.Add(transaction);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Aporte realizado com sucesso.", saldoDisponivel = wallet.SaldoDisponivel });
-        }
-
-        // POST /api/investor/withdraw
         // GET /api/investor/yield/preview
         [HttpGet("yield/preview")]
         public async Task<IActionResult> GetYieldPreview()
@@ -278,6 +230,8 @@ namespace backend.API.Controllers
 
             try
             {
+                if (!await _context.Users.AnyAsync(u => u.Id == userId && u.Status == "Aprovado" && u.Role == "Investidor"))
+                    return StatusCode(403, new { message = "Investidor ainda não aprovado para realizar saques." });
                 var request = await _treasuryService.RequestWithdrawalAsync(userId, dto.Valor, "Saque solicitado via painel do investidor", dto.ChavePix, dto.TipoChavePix);
                 return Ok(new { message = "Solicitação de saque enviada com sucesso e aguardando aprovação.", id = request.Id });
             }

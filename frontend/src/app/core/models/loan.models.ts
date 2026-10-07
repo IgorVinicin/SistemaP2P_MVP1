@@ -79,3 +79,21 @@ export interface LimitRequest {
   dataAnalise?: string;
   observacaoAdmin?: string;
 }
+
+export interface LoanTransferStatus {
+  operationId?: string;
+  settledAt?: string | null;
+  transferId?: string;
+  status: string;
+  valor: number;
+  chavePix?: string;
+  tipoChavePix?: string;
+  message?: string;
+}
+
+export interface LoanDisbursementRequest {
+  chavePix: string;
+  tipoChavePix: string;
+  valorConfirmado: number;
+  confirmacaoDestino: boolean;
+}

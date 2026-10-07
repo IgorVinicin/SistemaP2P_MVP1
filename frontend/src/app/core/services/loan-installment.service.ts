@@ -16,10 +16,6 @@ export class LoanInstallmentService {
     return this.http.get<LoanInstallmentDto[]>(`${this.apiUrl}/loans/${loanRequestId}/installments?t=${new Date().getTime()}`);
   }
 
-  public payInstallment(installmentId: string, valorPago?: number): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/installments/${installmentId}/pay`, { valorPago });
-  }
-
   public getAdminInstallments(
     page: number = 1,
     pageSize: number = 20,

@@ -1,17 +1,20 @@
+import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { AdminRevenue } from './admin-revenue.component';
+import { AdminRevenueComponent } from './admin-revenue.component';
 
-describe('AdminRevenue', () => {
-  let component: AdminRevenue;
-  let fixture: ComponentFixture<AdminRevenue>;
+describe('AdminRevenueComponent', () => {
+  let component: AdminRevenueComponent;
+  let fixture: ComponentFixture<AdminRevenueComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [AdminRevenue],
+      imports: [AdminRevenueComponent],
+      providers: [provideHttpClient(), provideHttpClientTesting()],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(AdminRevenue);
+    fixture = TestBed.createComponent(AdminRevenueComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
   });

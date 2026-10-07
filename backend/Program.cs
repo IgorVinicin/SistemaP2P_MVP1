@@ -45,7 +45,6 @@ builder.Services.AddRateLimiter(options =>
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
-    options.ConfigureWarnings(w => w.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
 });
 
 builder.Services.AddHttpClient();
@@ -63,10 +62,13 @@ builder.Services.AddScoped<WalletDistributionService>();
 builder.Services.AddScoped<InvestorYieldService>();
 builder.Services.AddScoped<ITreasuryService, TreasuryService>();
 builder.Services.AddScoped<IAsaasService, AsaasService>();
-builder.Services.AddHostedService<DailyYieldBackgroundService>();
 
 // Configuração JWT (prioriza Variável de Ambiente JWT_KEY para produção segura)
 var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
+if (!builder.Environment.IsDevelopment() &&
+    (Encoding.UTF8.GetByteCount(jwtKey) < 32 || jwtKey == "SuperSecretKeyForP2PLendingMVP1Secret!!!"))
+    throw new InvalidOperationException("Configure JWT_KEY com uma chave exclusiva de pelo menos 32 bytes antes de iniciar fora de Development.");
+builder.Configuration["Jwt:Key"] = jwtKey;
 var key = Encoding.ASCII.GetBytes(jwtKey);
 
 builder.Services.AddAuthentication(options =>
@@ -76,7 +78,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.RequireHttpsMetadata = false;
+    options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
     options.SaveToken = true;
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -106,10 +108,9 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAngular", policy =>
     {
-        policy.SetIsOriginAllowed(origin => true) // Permite acesso via IP local (celular)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+            ?? (builder.Environment.IsDevelopment() ? new[] { "http://localhost:4200" } : Array.Empty<string>());
+        if (origins.Length > 0) policy.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod();
     });
 });
 
@@ -125,16 +126,15 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 
-// app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment()) app.UseHttpsRedirection();
 
 app.UseCors("AllowAngular");
 
 app.UseRateLimiter();
 
-app.UseMiddleware<IdempotencyMiddleware>();
-
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.MapControllers();
 
@@ -146,6 +146,11 @@ using (var scope = app.Services.CreateScope())
     {
         var context = services.GetRequiredService<AppDbContext>();
         context.Database.Migrate();
+        await backend.Infrastructure.AdminBootstrap.InitializeAsync(context, builder.Configuration);
+
+        // Dados de demonstração só são criados mediante opt-in explícito em Development.
+        if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Seed:DemoData"))
+        {
 
         // Correção de dados legados (Investidores sem carteira ou com rentabilidade zerada, e investimentos com status nulo/vazio)
         try
@@ -289,9 +294,7 @@ using (var scope = app.Services.CreateScope())
             }
             else
             {
-                admin.PasswordHash = hasher.HashPassword(admin, "Senha123!");
-                admin.Role = "Administrador";
-                admin.Status = "Aprovado";
+                // Reiniciar a API n?o redefine credenciais de usu?rios existentes.
             }
         }
 
@@ -352,9 +355,7 @@ using (var scope = app.Services.CreateScope())
             }
             else
             {
-                cliente.PasswordHash = hasher.HashPassword(cliente, "Senha123!");
-                cliente.Role = "Cliente";
-                cliente.Status = "Aprovado";
+                // Preserva o cadastro e a senha existentes.
             }
         }
 
@@ -403,9 +404,7 @@ using (var scope = app.Services.CreateScope())
             }
             else
             {
-                investidor.PasswordHash = hasher.HashPassword(investidor, "Senha123!");
-                investidor.Role = "Investidor";
-                investidor.Status = "Aprovado";
+                // Preserva o cadastro, a senha e os saldos existentes.
                 if (investidor.Wallet == null)
                 {
                     investidor.Wallet = new InvestorWallet
@@ -424,9 +423,7 @@ using (var scope = app.Services.CreateScope())
                 }
                 else
                 {
-                    investidor.Wallet.SaldoDisponivel = 50000.00m;
-                    investidor.Wallet.SaldoBloqueado = 0;
-                    investidor.Wallet.SaldoComprometido = 0;
+                    // Nenhuma restaura??o de saldo de demonstra??o em reinicializa??es.
                 }
             }
         }
@@ -553,10 +550,12 @@ using (var scope = app.Services.CreateScope())
         }
 
         context.SaveChanges();
+        }
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"Erro ao rodar seed de banco de dados: {ex.Message}");
+        app.Logger.LogCritical(ex, "Falha na inicialização do banco de dados.");
+        throw;
     }
 }
 

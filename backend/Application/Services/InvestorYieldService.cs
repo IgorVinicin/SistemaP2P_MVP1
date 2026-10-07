@@ -9,16 +9,49 @@ namespace backend.Application.Services
 {
     public class InvestorYieldService
     {
+        private const string MonthlyCloseEvent = "FECHAMENTO_RENDIMENTO_MENSAL";
         private readonly AppDbContext _context;
-        private readonly LedgerService _ledgerService;
 
-        public InvestorYieldService(AppDbContext context, LedgerService? ledgerService = null)
+        public InvestorYieldService(AppDbContext context)
         {
             _context = context;
-            _ledgerService = ledgerService ?? new LedgerService(context);
         }
 
-        public async Task<(int Processed, decimal TotalYield)> ProcessMonthlyYieldAsync(string usuarioResponsavel = "Sistema")
+        public Task<(int Processed, decimal TotalYield)> ProcessMonthlyYieldAsync(string usuarioResponsavel = "Sistema")
+            => ExecuteAtomicAsync(() => ProcessMonthlyYieldCoreAsync(usuarioResponsavel));
+
+        private async Task<(int Processed, decimal TotalYield)> ExecuteAtomicAsync(Func<Task<(int Processed, decimal TotalYield)>> action)
+        {
+            if (!_context.Database.IsRelational() || _context.Database.CurrentTransaction != null)
+                return await action();
+            await using var transaction = await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                var result = await action();
+                await transaction.CommitAsync();
+                return result;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                _context.ChangeTracker.Clear();
+                throw;
+            }
+        }
+
+        private void AddYieldLedger(InvestorTransaction investorTx, string referenceType, string usuarioResponsavel)
+        {
+            _context.LedgerTransactions.Add(new LedgerTransaction
+            {
+                Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, TransactionDate = investorTx.DataMovimentacao,
+                ContaOrigem = LedgerAccount.PlatformCash, ContaDestino = LedgerAccount.InvestorWallet,
+                Valor = investorTx.Valor, TipoMovimentacao = LedgerTransactionType.RevenueDistribution,
+                ReferenceType = referenceType, ReferenceId = investorTx.Id, UserId = investorTx.InvestorId,
+                Observacao = investorTx.Descricao, CreatedBy = usuarioResponsavel
+            });
+        }
+
+        private async Task<(int Processed, decimal TotalYield)> ProcessMonthlyYieldCoreAsync(string usuarioResponsavel)
         {
             var now = DateTime.UtcNow;
             var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
@@ -28,7 +61,8 @@ namespace backend.Application.Services
             var existingTx = await _context.InvestorTransactions
                 .AnyAsync(t => t.Tipo == "RENDIMENTO_POOL" && t.DataMovimentacao >= startOfMonth && t.DataMovimentacao <= endOfMonth);
 
-            if (existingTx)
+            if (existingTx || await _context.FinancialEventHistories.AnyAsync(e =>
+                e.EventoExecutado == MonthlyCloseEvent && e.Data >= startOfMonth && e.Data < startOfMonth.AddMonths(1)))
             {
                 throw new InvalidOperationException("A distribuição de rendimentos deste mês já foi processada anteriormente.");
             }
@@ -61,6 +95,14 @@ namespace backend.Application.Services
                 decimal saldoComprometidoTotal = wallet.SaldoInvestido + wallet.SaldoComprometido;
                 decimal rendimentoComprometido = Math.Round(saldoComprometidoTotal * (taxaComprometido / 100.0m), 2, MidpointRounding.AwayFromZero);
 
+                // Only real legacy credits are deducted; the informational estimate creates no transaction.
+                var dailyAdvances = await _context.InvestorTransactions
+                    .Where(t => t.InvestorId == wallet.Id && t.Tipo == "RENDIMENTO_DIARIO" &&
+                        t.DataMovimentacao >= startOfMonth && t.DataMovimentacao <= endOfMonth)
+                    .SumAsync(t => t.Valor);
+                decimal advancesOnAvailable = Math.Min(rendimentoDisponivel, dailyAdvances);
+                rendimentoDisponivel -= advancesOnAvailable;
+                rendimentoComprometido = Math.Max(0, rendimentoComprometido - (dailyAdvances - advancesOnAvailable));
                 decimal rendimento = rendimentoDisponivel + rendimentoComprometido;
 
                 if (rendimento <= 0)
@@ -86,130 +128,38 @@ namespace backend.Application.Services
                 };
                 _context.InvestorTransactions.Add(investorTx);
 
-                if (_ledgerService != null)
-                {
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.PlatformCash,
-                        destination: LedgerAccount.InvestorWallet,
-                        amount: rendimento,
-                        type: LedgerTransactionType.RevenueDistribution,
-                        referenceType: "Yield",
-                        referenceId: investorTx.Id,
-                        userId: wallet.Id,
-                        observacao: $"Pagamento de rendimento mensal do pool para o investidor",
-                        createdBy: usuarioResponsavel
-                    );
-                }
+                AddYieldLedger(investorTx, "Yield", usuarioResponsavel);
 
                 processedCount++;
                 totalYieldPaid += rendimento;
             }
 
+            // Persist the close even when advances already cover the entire entitlement.
+            _context.FinancialEventHistories.Add(new FinancialEventHistory
+            {
+                Id = Guid.NewGuid(), Data = now, EventoExecutado = MonthlyCloseEvent,
+                UsuarioResponsavel = usuarioResponsavel, Valor = totalYieldPaid,
+                Observacao = "Fechamento mensal de rendimentos; apenas créditos diários reais de versões anteriores descontados."
+            });
             await _context.SaveChangesAsync();
-
-            return (processedCount, totalYieldPaid);
-        }
-
-        public async Task<(int Processed, decimal TotalYield)> ProcessDailyYieldAsync(string usuarioResponsavel = "Sistema", DateTime? referenceDate = null)
-        {
-            var targetDate = (referenceDate ?? DateTime.UtcNow).Date;
-            var startOfDay = new DateTime(targetDate.Year, targetDate.Month, targetDate.Day, 0, 0, 0, DateTimeKind.Utc);
-            var endOfDay = startOfDay.AddDays(1).AddTicks(-1);
-
-            var investors = await _context.Users
-                .Where(u => u.Role == "Investidor" && u.Status == "Aprovado")
-                .Join(_context.InvestorWallets,
-                      u => u.Id,
-                      w => w.Id,
-                      (u, w) => w)
-                .ToListAsync();
-
-            int processedCount = 0;
-            decimal totalYieldPaid = 0;
-
-            foreach (var wallet in investors)
-            {
-                // Evita duplicidade no mesmo dia
-                var alreadyProcessed = await _context.InvestorTransactions
-                    .AnyAsync(t => t.InvestorId == wallet.Id && 
-                                   t.Tipo == "RENDIMENTO_DIARIO" && 
-                                   t.DataMovimentacao >= startOfDay && 
-                                   t.DataMovimentacao <= endOfDay);
-
-                if (alreadyProcessed) continue;
-
-                decimal taxaDisponivel = wallet.RentabilidadeSaldoDisponivel > 0 ? wallet.RentabilidadeSaldoDisponivel : 1.00m;
-                
-                // Cálculo exato diário proporcional (taxa mensal / 30 dias):
-                decimal taxaDiaria = (taxaDisponivel / 30.0m) / 100.0m;
-                decimal rendimentoDiario = Math.Round(wallet.SaldoDisponivel * taxaDiaria, 2, MidpointRounding.AwayFromZero);
-
-                if (rendimentoDiario <= 0) continue;
-
-                decimal saldoAnterior = wallet.SaldoDisponivel;
-                wallet.SaldoDisponivel += rendimentoDiario;
-                wallet.Rendimentos += rendimentoDiario;
-                wallet.DataAtualizacao = DateTime.UtcNow;
-
-                var investorTx = new InvestorTransaction
-                {
-                    Id = Guid.NewGuid(),
-                    InvestorId = wallet.Id,
-                    Tipo = "RENDIMENTO_DIARIO",
-                    Valor = rendimentoDiario,
-                    SaldoAnterior = saldoAnterior,
-                    SaldoPosterior = wallet.SaldoDisponivel,
-                    DataMovimentacao = DateTime.UtcNow,
-                    Descricao = $"Rendimento diário creditado sobre o saldo disponível ({taxaDisponivel:N2}% a.m. proporcional = R$ {rendimentoDiario:N2}).",
-                    UsuarioResponsavel = usuarioResponsavel
-                };
-                _context.InvestorTransactions.Add(investorTx);
-
-                if (_ledgerService != null)
-                {
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.PlatformCash,
-                        destination: LedgerAccount.InvestorWallet,
-                        amount: rendimentoDiario,
-                        type: LedgerTransactionType.RevenueDistribution,
-                        referenceType: "DailyYield",
-                        referenceId: investorTx.Id,
-                        userId: wallet.Id,
-                        observacao: $"Crédito de rendimento diário sobre saldo disponível",
-                        createdBy: usuarioResponsavel
-                    );
-                }
-
-                processedCount++;
-                totalYieldPaid += rendimentoDiario;
-            }
-
-            if (processedCount > 0)
-            {
-                await _context.SaveChangesAsync();
-            }
 
             return (processedCount, totalYieldPaid);
         }
 
         public async Task<decimal> GetDailyYieldPreviewAsync(Guid investorId)
         {
-            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-            decimal taxaBase = config?.TaxaRendimentoPool ?? 2.00m;
-
             var wallet = await _context.InvestorWallets.FirstOrDefaultAsync(w => w.Id == investorId);
             if (wallet == null) return 0;
-
-            decimal taxaDisponivel = wallet.RentabilidadeSaldoDisponivel > 0 ? wallet.RentabilidadeSaldoDisponivel : taxaBase;
-            decimal taxaComprometido = wallet.RentabilidadeSaldoComprometido > 0 
-                ? wallet.RentabilidadeSaldoComprometido 
-                : (wallet.Rentabilidade > 0 ? wallet.Rentabilidade : taxaBase);
-
-            decimal rendimentoDiarioDisponivel = Math.Round(wallet.SaldoDisponivel * ((taxaDisponivel / 30.0m) / 100.0m), 2, MidpointRounding.AwayFromZero);
-            decimal saldoComprometidoTotal = wallet.SaldoInvestido + wallet.SaldoComprometido;
-            decimal rendimentoDiarioComprometido = Math.Round(saldoComprometidoTotal * ((taxaComprometido / 30.0m) / 100.0m), 2, MidpointRounding.AwayFromZero);
-
-            return rendimentoDiarioDisponivel + rendimentoDiarioComprometido;
+            var config = await _context.CreditConfigs.FirstOrDefaultAsync();
+            decimal fallbackRate = Math.Max(0, config?.TaxaRendimentoPool ?? 2.00m);
+            if (fallbackRate <= 0) return 0;
+            decimal taxaDisponivel = wallet.RentabilidadeSaldoDisponivel > 0 ? wallet.RentabilidadeSaldoDisponivel : fallbackRate;
+            decimal taxaComprometido = wallet.RentabilidadeSaldoComprometido > 0 ? wallet.RentabilidadeSaldoComprometido :
+                (wallet.Rentabilidade > 0 ? wallet.Rentabilidade : fallbackRate);
+            // Informational estimate only: no wallet movement, transaction or ledger entry.
+            return Math.Round((Math.Max(0, wallet.SaldoDisponivel) * taxaDisponivel +
+                Math.Max(0, wallet.SaldoInvestido + wallet.SaldoComprometido) * taxaComprometido) / 3000m,
+                2, MidpointRounding.AwayFromZero);
         }
 
         public async Task<YieldPreviewDto> GetMonthlyYieldPreviewAsync(DateTime targetDate)
@@ -225,11 +175,14 @@ namespace backend.Application.Services
                 .OrderByDescending(t => t.DataMovimentacao)
                 .FirstOrDefaultAsync();
 
-            bool jaDistribuido = existingTx != null;
-            DateTime? dataDist = existingTx?.DataMovimentacao;
-            string? userResp = existingTx?.UsuarioResponsavel;
+            var closing = await _context.FinancialEventHistories
+                .Where(e => e.EventoExecutado == MonthlyCloseEvent && e.Data >= startOfMonth && e.Data < startOfMonth.AddMonths(1))
+                .OrderByDescending(e => e.Data).FirstOrDefaultAsync();
+            bool jaDistribuido = existingTx != null || closing != null;
+            DateTime? dataDist = closing?.Data ?? existingTx?.DataMovimentacao;
+            string? userResp = closing?.UsuarioResponsavel ?? existingTx?.UsuarioResponsavel;
 
-            decimal taxaParaPreview = taxaRendimento > 0 ? taxaRendimento : 2.00m;
+            decimal taxaParaPreview = Math.Max(0, taxaRendimento);
 
             var previewDto = new YieldPreviewDto
             {
@@ -240,6 +193,7 @@ namespace backend.Application.Services
                 DataDistribuicao = dataDist,
                 UsuarioResponsavel = userResp
             };
+            if (taxaRendimento <= 0) return previewDto;
 
             var investors = await _context.Users
                 .Where(u => u.Role == "Investidor" && u.Status == "Aprovado")
@@ -261,10 +215,18 @@ namespace backend.Application.Services
                 string cpf = profile?.CPF ?? "-";
 
                 decimal taxaDisp = item.Wallet.RentabilidadeSaldoDisponivel > 0 ? item.Wallet.RentabilidadeSaldoDisponivel : taxaParaPreview;
-                decimal taxaComp = item.Wallet.RentabilidadeSaldoComprometido > 0 ? item.Wallet.RentabilidadeSaldoComprometido : taxaParaPreview;
+                decimal taxaComp = item.Wallet.RentabilidadeSaldoComprometido > 0 ? item.Wallet.RentabilidadeSaldoComprometido :
+                    (item.Wallet.Rentabilidade > 0 ? item.Wallet.Rentabilidade : taxaParaPreview);
 
                 decimal rendDisp = Math.Round(item.Wallet.SaldoDisponivel * (taxaDisp / 100.0m), 2, MidpointRounding.AwayFromZero);
                 decimal rendComp = Math.Round((item.Wallet.SaldoInvestido + item.Wallet.SaldoComprometido) * (taxaComp / 100.0m), 2, MidpointRounding.AwayFromZero);
+                var dailyAdvances = await _context.InvestorTransactions
+                    .Where(t => t.InvestorId == item.User.Id && t.Tipo == "RENDIMENTO_DIARIO" &&
+                        t.DataMovimentacao >= startOfMonth && t.DataMovimentacao <= endOfMonth)
+                    .SumAsync(t => t.Valor);
+                decimal advancesOnAvailable = Math.Min(rendDisp, dailyAdvances);
+                rendDisp -= advancesOnAvailable;
+                rendComp = Math.Max(0, rendComp - (dailyAdvances - advancesOnAvailable));
                 decimal rendimento = rendDisp + rendComp;
 
                 previewDto.Itens.Add(new YieldPreviewItemDto

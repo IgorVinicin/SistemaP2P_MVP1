@@ -5,9 +5,10 @@
       <button mat-flat-button class="btn-deposit" (click)="openDepositDialog()">
         <mat-icon style="font-size: 20px; width: 20px; height: 20px;">add_circle</mat-icon> Depositar
       </button>
-      <button mat-stroked-button color="warn" class="btn-withdraw" (click)="openWithdrawDialog()" [disabled]="!wallet || wallet.saldoDisponivel <= 0">
+      <button mat-stroked-button color="warn" class="btn-withdraw" (click)="openWithdrawDialog()" [disabled]="!wallet || saldoSacavel <= 0">
         <mat-icon style="font-size: 20px; width: 20px; height: 20px;">payments</mat-icon> Solicitar Saque
       </button>
+      <span *ngIf="wallet?.saldoEmCarencia" style="font-size:0.8rem">{{ wallet?.saldoEmCarencia | currency:'BRL' }} em carência de saque de 72h</span>
     </div>
     <div class="user-badge">
       <span class="user-cpf">
@@ -22,7 +23,7 @@
         <mat-icon style="font-size: 14px; width: 14px; height: 14px; color: var(--text-secondary);">info</mat-icon>
       </div>
       <span *ngIf="!wallet || !wallet.produtoEscolhido" class="user-status">
-        <mat-icon style="font-size: 14px; width: 14px; height: 14px;">verified</mat-icon> Conta Ativa & Homologada
+        <mat-icon style="font-size: 14px; width: 14px; height: 14px;">verified</mat-icon> Conta de Investidor
       </span>
     </div>
   </div>
@@ -43,7 +44,7 @@
           {{ saldoTotal | currency:'BRL' }}
         </div>
         <span class="card-footer-light">
-          Custódia total + rendimentos acumulados
+          Total dos saldos da carteira
         </span>
       </mat-card-content>
     </mat-card>
@@ -59,7 +60,7 @@
             <span class="card-label">Saldo Disponível</span>
           </div>
           <span class="rate-badge green">
-            Rende {{ (wallet.rentabilidadeSaldoDisponivel || 1.00) | number:'1.2-2' }}% a.m.
+            Taxa estimada: {{ (wallet.rentabilidadeSaldoDisponivel ?? 0) | number:'1.2-2' }}% a.m.
           </span>
         </div>
         <div class="card-amount">
@@ -79,11 +80,11 @@
             <span class="card-label">Saldo Comprometido</span>
           </div>
           <span class="rate-badge blue">
-            Rende {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% a.m.
+            Taxa estimada: {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% a.m.
           </span>
         </div>
         <div class="card-amount">
-          {{ wallet.saldoInvestido | currency:'BRL' }}
+          {{ (wallet.saldoComprometido + wallet.saldoInvestido) | currency:'BRL' }}
         </div>
       </mat-card-content>
     </mat-card>
@@ -96,17 +97,17 @@
             <div class="card-icon-badge amber">
               <mat-icon>monetization_on</mat-icon>
             </div>
-            <span class="card-label">Rendimentos</span>
+            <span class="card-label">Rendimentos creditados</span>
           </div>
           <span class="rate-badge purple">
-            +{{ rendimentoDiarioEstimado | currency:'BRL' }}/dia
+            Estimativa: {{ rendimentoDiarioEstimado | currency:'BRL' }}/dia
           </span>
         </div>
         <div class="card-amount text-profit">
-          +{{ wallet.rendimentos | currency:'BRL' }}
+          {{ wallet.rendimentos | currency:'BRL' }}
         </div>
         <span class="card-footer">
-          Comprometido: {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% | Disponível: {{ (wallet.rentabilidadeSaldoDisponivel || 1.00) | number:'1.2-2' }}%
+          A estimativa diária não gera crédito automático. Comprometido: {{ (wallet.rentabilidadeSaldoComprometido || wallet.rentabilidade) | number:'1.2-2' }}% | Disponível: {{ (wallet.rentabilidadeSaldoDisponivel ?? 0) | number:'1.2-2' }}%
         </span>
       </mat-card-content>
     </mat-card>
@@ -200,6 +201,9 @@
 
 </div>
 
+
+
+
 <!-- Modal Dialog de Detalhes Completos do Produto de Investimento -->
 <ng-template #productDetailDialog>
   <div *ngIf="selectedDetailProduct">
@@ -271,13 +275,18 @@
   
   <mat-dialog-content class="mat-typography" style="padding-top: 0.5rem;">
     <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 1.25rem;">
-      Saldo disponível para resgate: <strong style="color: var(--text-main);">{{ wallet?.saldoDisponivel | currency:'BRL' }}</strong>
+      Saldo liberado para saque: <strong style="color: var(--text-main);">{{ saldoSacavel | currency:'BRL' }}</strong>
     </p>
 
+    <p>Depósitos ficam liberados para saque 72 horas após a confirmação do pagamento.</p>
+    <p *ngIf="wallet?.saldoEmCarencia">Em carência: {{ wallet?.saldoEmCarencia | currency:'BRL' }}.
+      <span *ngIf="wallet?.proximaLiberacaoSaque">Próxima liberação: {{ wallet?.proximaLiberacaoSaque | date:'dd/MM/yyyy HH:mm' }}.</span>
+      <span *ngIf="!wallet?.proximaLiberacaoSaque">A data de confirmação precisa ser conciliada pela administração.</span>
+    </p>
     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
       <mat-form-field appearance="outline" style="width: 100%;">
         <mat-label>Valor a Sacar (R$)</mat-label>
-        <input matInput type="number" step="0.01" [(ngModel)]="saqueValor" [max]="wallet?.saldoDisponivel ?? 0" min="1" placeholder="Ex: 1000.00" [disabled]="isProcessing" />
+        <input matInput type="number" step="0.01" [(ngModel)]="saqueValor" [max]="saldoSacavel" min="1" placeholder="Ex: 1000.00" [disabled]="isProcessing" />
         <span matPrefix style="margin-right: 4px; color: var(--text-secondary);">R$&nbsp;</span>
       </mat-form-field>
 
@@ -286,9 +295,9 @@
         <mat-select [(ngModel)]="tipoChavePix" [disabled]="isProcessing">
           <mat-option value="CPF">CPF</mat-option>
           <mat-option value="CNPJ">CNPJ</mat-option>
-          <mat-option value="Email">E-mail</mat-option>
-          <mat-option value="Telefone">Telefone</mat-option>
-          <mat-option value="Aleatoria">Chave Aleatória (EVP)</mat-option>
+          <mat-option value="EMAIL">E-mail</mat-option>
+          <mat-option value="PHONE">Telefone</mat-option>
+          <mat-option value="EVP">Chave Aleatória (EVP)</mat-option>
         </mat-select>
       </mat-form-field>
 
@@ -301,7 +310,7 @@
   
   <mat-dialog-actions align="end" style="padding: 1rem 1.25rem;">
     <button mat-button (click)="dialogRef?.close()" [disabled]="isProcessing">Cancelar</button>
-    <button mat-flat-button color="warn" (click)="makeWithdraw()" [disabled]="isProcessing || !saqueValor || saqueValor <= 0 || !chavePix">
+    <button mat-flat-button color="warn" (click)="makeWithdraw()" [disabled]="isProcessing || !saqueValor || saqueValor <= 0 || saqueValor > saldoSacavel || !chavePix">
       {{ isProcessing ? 'Processando...' : 'Confirmar Saque' }}
     </button>
   </mat-dialog-actions>
@@ -341,7 +350,7 @@
     <!-- Campo de Valor do Depósito -->
     <mat-form-field appearance="outline" style="width: 100%; font-size: 1.1rem;">
       <mat-label>Valor a Depositar (R$)</mat-label>
-      <input matInput type="number" step="100" [(ngModel)]="aporteValor" placeholder="0,00" min="1" [disabled]="isProcessing" />
+      <input matInput type="number" step="0.01" [(ngModel)]="aporteValor" placeholder="0,00" min="1" [disabled]="isProcessing" />
       <span matPrefix style="margin-right: 6px; font-weight: 700; color: var(--text-main);">R$&nbsp;</span>
     </mat-form-field>
 
@@ -359,7 +368,7 @@
       <div style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4;">
         <strong style="color: var(--text-main);">Pagamento Instantâneo via PIX</strong>
         <p style="margin: 0.2rem 0 0 0;">
-          Ao confirmar, o saldo é creditado em sua conta para distribuição entre as opções de rentabilidade.
+          O saldo será creditado somente após a confirmação do pagamento PIX.
         </p>
       </div>
     </div>
@@ -369,7 +378,7 @@
     <button mat-button (click)="dialogRef?.close()" [disabled]="isProcessing">Cancelar</button>
     <button mat-flat-button style="background-color: var(--dj-success); color: #ffffff; border-radius: 8px; font-weight: 600; padding: 0 1.5rem;" (click)="makeDeposit()" [disabled]="isProcessing || !aporteValor || aporteValor <= 0">
       <mat-icon style="margin-right: 4px; font-size: 18px; width: 18px; height: 18px;">check_circle</mat-icon>
-      {{ isProcessing ? 'Processando...' : 'Confirmar Depósito' }}
+      {{ isProcessing ? 'Processando...' : 'Gerar PIX' }}
     </button>
   </mat-dialog-actions>
 </ng-template>

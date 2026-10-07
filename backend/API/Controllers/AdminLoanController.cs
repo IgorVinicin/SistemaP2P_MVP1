@@ -67,9 +67,10 @@ namespace backend.API.Controllers
             }
 
             var totalCount = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
+            pageSize = Math.Min(pageSize, 100);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var items = await query
                 .OrderByDescending(l => l.DataCriacao)
@@ -121,7 +122,7 @@ namespace backend.API.Controllers
                 .AsNoTracking()
                 .Include(l => l.User)
                 .ThenInclude(u => u!.Profile)
-                .Where(l => l.Status == "Aprovado" || l.Status == "Ativo" || l.Status == "EmAnalise" || l.Status == "EmPagamento" || l.Status == "Inadimplente")
+                .Where(l => l.Status == "Aprovado" || l.Status == "Financiado" || l.Status == "DesembolsoPendente" || l.Status == "FalhaDesembolso" || l.Status == "Ativo" || l.Status == "EmAnalise" || l.Status == "EmPagamento" || l.Status == "Inadimplente")
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -143,9 +144,10 @@ namespace backend.API.Controllers
             }
 
             var totalCount = await query.CountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
+            pageSize = Math.Min(pageSize, 100);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var items = await query
                 .OrderByDescending(l => l.DataCriacao)
@@ -198,7 +200,7 @@ namespace backend.API.Controllers
                 .AsNoTracking()
                 .Include(l => l.User)
                 .ThenInclude(u => u!.Profile)
-                .Where(l => l.Status == "Aprovado" || l.Status == "Ativo" || l.Status == "EmAnalise" || l.Status == "EmPagamento" || l.Status == "Inadimplente")
+                .Where(l => l.Status == "Aprovado" || l.Status == "Financiado" || l.Status == "DesembolsoPendente" || l.Status == "FalhaDesembolso" || l.Status == "Ativo" || l.Status == "EmAnalise" || l.Status == "EmPagamento" || l.Status == "Inadimplente")
                 .AsQueryable();
 
             if (!string.IsNullOrWhiteSpace(search))
@@ -224,9 +226,11 @@ namespace backend.API.Controllers
             
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 10;
+            pageSize = Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             var pagedTomadorIds = await tomadorIdsQuery
+                .OrderBy(id => id)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync();
@@ -372,7 +376,12 @@ namespace backend.API.Controllers
             try
             {
                 if (dto == null) return BadRequest(new { message = "Dados de aprovação inválidos." });
+                if (dto.QuantidadeParcelas < 1 || dto.QuantidadeParcelas > 365 || dto.TaxaJuros < 0 ||
+                    (dto.ValorAprovado.HasValue && dto.ValorAprovado.Value <= 0))
+                    return BadRequest(new { message = "Valor aprovado, quantidade de parcelas ou taxa inválidos." });
 
+                await using var transaction = _context.Database.IsRelational()
+                    ? await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable) : null;
                 var loan = await _context.LoanRequests.FindAsync(id);
                 if (loan == null) return NotFound(new { message = "Solicitação de empréstimo não encontrada." });
                 if (loan.Status != "Pendente") return BadRequest(new { message = "Esta solicitação de empréstimo não está pendente de análise." });
@@ -428,22 +437,11 @@ namespace backend.API.Controllers
                             Valor = loan.ValorSolicitado
                         });
 
-                        var ledgerService = new LedgerService(_context);
-                        await ledgerService.AddTransactionAsync(
-                            source: LedgerAccount.PlatformCash,
-                            destination: LedgerAccount.BorrowerAccount,
-                            amount: loan.ValorSolicitado,
-                            type: LedgerTransactionType.LoanDisbursement,
-                            referenceType: "Loan",
-                            referenceId: loan.Id,
-                            loanId: loan.Id,
-                            userId: loan.UserId,
-                            observacao: $"Desembolso com recursos próprios da administração para empréstimo {loan.Id}",
-                            createdBy: adminEmail
-                        );
+                        // Disbursement is recorded only after the gateway confirms the transfer.
                     }
 
                     await _context.SaveChangesAsync();
+                    if (transaction != null) await transaction.CommitAsync();
                     return Ok(new { message = "Solicitação de empréstimo aprovada com sucesso.", status = loan.Status });
                 }
                 catch (Exception innerEx)
@@ -487,111 +485,5 @@ namespace backend.API.Controllers
             }
         }
 
-        // POST /api/admin/loans/{id}/finish
-        [HttpPost("{id}/finish")]
-        public async Task<IActionResult> FinishLoan(Guid id)
-        {
-            try
-            {
-                var loan = await _context.LoanRequests
-                    .Include(l => l.User)
-                    .FirstOrDefaultAsync(l => l.Id == id);
-
-                if (loan == null)
-                {
-                    return NotFound(new { message = "Solicitação de empréstimo não encontrada." });
-                }
-
-                if (loan.Status == "Quitado")
-                {
-                    return BadRequest(new { message = "Este empréstimo já está quitado." });
-                }
-
-                var installments = await _context.LoanInstallments
-                    .Where(i => i.LoanRequestId == id && i.Status != "Paga" && i.Status != "Cancelada")
-                    .ToListAsync();
-
-                try
-                {
-                    var config = await _context.CreditConfigs.FirstOrDefaultAsync();
-                    decimal defaultMulta = config?.PercentualMultaAtraso ?? 2.00m;
-                    decimal defaultJurosDiario = config?.PercentualJurosDiario ?? 0.033m;
-                    decimal percentualMulta = loan.PercentualMultaAtrasoContrato > 0 ? loan.PercentualMultaAtrasoContrato : defaultMulta;
-                    decimal percentualJurosDiario = loan.PercentualJurosDiarioContrato > 0 ? loan.PercentualJurosDiarioContrato : defaultJurosDiario;
-                    var today = DateTime.UtcNow.Date;
-                    var adminEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Administrador";
-
-                    var distService = new WalletDistributionService(_context);
-
-                    foreach (var installment in installments)
-                    {
-                        var vencimento = installment.DataVencimento.Date;
-                        if (vencimento < today)
-                        {
-                            int dias = (int)(today - vencimento).TotalDays;
-                            installment.DiasAtraso = dias;
-                            installment.Multa = Math.Round(installment.ValorParcela * (percentualMulta / 100m), 2);
-                            installment.JurosMora = Math.Round(installment.ValorParcela * (percentualJurosDiario / 100m) * dias, 2);
-                            installment.ValorPago = installment.ValorParcela + installment.Multa + installment.JurosMora;
-                        }
-                        else
-                        {
-                            installment.ValorPago = installment.ValorParcela;
-                            installment.DiasAtraso = 0;
-                            installment.Multa = 0;
-                            installment.JurosMora = 0;
-                        }
-
-                        installment.DataPagamento = DateTime.UtcNow;
-                        installment.Status = "Paga";
-                        installment.UpdatedAt = DateTime.UtcNow;
-
-                        // Registrar evento de pagamento no histórico para cada parcela
-                        _context.FinancialEventHistories.Add(new FinancialEventHistory
-                        {
-                            Id = Guid.NewGuid(),
-                            Data = DateTime.UtcNow,
-                            UsuarioResponsavel = adminEmail,
-                            EventoExecutado = "PAGAMENTO_PARCELA",
-                            Observacao = $"Parcela {installment.NumeroParcela} do Empréstimo {installment.LoanRequestId} foi paga e quitada administrativamente. Valor Pago: {installment.ValorPago:C2}.",
-                            LoanRequestId = installment.LoanRequestId,
-                            Valor = installment.ValorPago
-                        });
-
-                        // Salvar as alterações da parcela antes de rodar a distribuição
-                        await _context.SaveChangesAsync();
-
-                        // Distribuir os rendimentos aos investidores para essa parcela
-                        await distService.DistributeInstallmentPaymentAsync(installment.Id, adminEmail);
-                    }
-
-                    // Por fim, atualizar o status do empréstimo para Quitado
-                    loan.Status = "Quitado";
-                    loan.DataEncerramento = DateTime.UtcNow;
-
-                    _context.FinancialEventHistories.Add(new FinancialEventHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        Data = DateTime.UtcNow,
-                        UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "MUDANCA_STATUS",
-                        Observacao = $"Empréstimo {loan.Id} foi totalmente quitado administrativamente.",
-                        LoanRequestId = loan.Id,
-                        Valor = loan.ValorTotal
-                    });
-
-                    await _context.SaveChangesAsync();
-                    return Ok(new { message = "Empréstimo quitado com sucesso.", status = loan.Status });
-                }
-                catch (Exception innerEx)
-                {
-                    return BadRequest(new { message = innerEx.Message });
-                }
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
     }
 }

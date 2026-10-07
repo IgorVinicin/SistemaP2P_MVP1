@@ -25,7 +25,7 @@ namespace backend.Application.Services
                 query = query.Where(t => t.TransactionDate >= startDate.Value.ToUniversalTime());
             if (endDate.HasValue)
             {
-                var end = endDate.Value.ToUniversalTime().AddDays(1).AddTicks(-1);
+                var end = endDate.Value.ToUniversalTime();
                 query = query.Where(t => t.TransactionDate <= end);
             }
 
@@ -33,12 +33,14 @@ namespace backend.Application.Services
             
             // TotalEntradas = Tudo que tem Destino como PlatformCash
             var totalEntradas = await query
-                .Where(t => t.ContaDestino == LedgerAccount.PlatformCash)
+                .Where(t => t.ContaDestino == LedgerAccount.PlatformCash &&
+                    (t.ContaOrigem == LedgerAccount.ExternalGateway || t.ContaOrigem == LedgerAccount.BorrowerAccount))
                 .SumAsync(t => t.Valor);
 
             // TotalSaidas = Tudo que tem Origem como PlatformCash
             var totalSaidas = await query
-                .Where(t => t.ContaOrigem == LedgerAccount.PlatformCash)
+                .Where(t => t.ContaDestino == LedgerAccount.ExternalGateway ||
+                    (t.ContaDestino == LedgerAccount.BorrowerAccount && t.TipoMovimentacao == LedgerTransactionType.LoanDisbursement))
                 .SumAsync(t => t.Valor);
 
             // TotalRecebidoParcelas = Onde Tipo = InstallmentPayment
@@ -68,11 +70,11 @@ namespace backend.Application.Services
                 .SumAsync(t => t.Valor);
 
             var totalDepositosExternos = await query
-                .Where(t => t.TipoMovimentacao == LedgerTransactionType.InvestorDeposit)
+                .Where(t => t.TipoMovimentacao == LedgerTransactionType.InvestorDeposit && t.ContaOrigem == LedgerAccount.ExternalGateway)
                 .SumAsync(t => t.Valor);
 
             var totalSaquesExternos = await query
-                .Where(t => t.TipoMovimentacao == LedgerTransactionType.InvestorWithdrawal)
+                .Where(t => t.TipoMovimentacao == LedgerTransactionType.InvestorWithdrawal && t.ContaDestino == LedgerAccount.ExternalGateway)
                 .SumAsync(t => t.Valor);
 
             return new CashFlowSnapshot
@@ -80,7 +82,7 @@ namespace backend.Application.Services
                 SnapshotDate = endDate ?? DateTime.UtcNow,
                 TotalEntradas = totalEntradas,
                 TotalSaidas = totalSaidas,
-                SaldoOperacional = (totalEntradas + totalDepositosExternos) - (totalSaidas + totalSaquesExternos) + receitaPlataforma,
+                SaldoOperacional = totalEntradas - totalSaidas,
                 ReceitaPlataforma = receitaPlataforma,
                 TotalDistribuidoInvestidores = totalDistribuidoInvestidores,
                 TotalCobertoProtectionFund = totalCobertoProtectionFund,
@@ -92,8 +94,22 @@ namespace backend.Application.Services
             };
         }
 
+        private static (DateTime StartUtc, DateTime EndUtc) ResolvePeriodUtc(string? period, DateTime? startDate, DateTime? endDate)
+        {
+            var today = ToBrasiliaDate(DateTime.UtcNow);
+            var first = startDate?.Date ?? (period?.ToLowerInvariant() switch
+            {
+                "ontem" => today.AddDays(-1), "7dias" => today.AddDays(-6),
+                "30dias" => today.AddDays(-29), "mesatual" => new DateTime(today.Year, today.Month, 1), _ => today
+            });
+            var last = endDate?.Date ?? (period?.ToLowerInvariant() == "ontem" ? today.AddDays(-1) : today);
+            if (first > last) throw new ArgumentException("A data inicial deve ser anterior ? data final.");
+            return (GetBrasiliaDayRangeUtc(first).StartUtc, GetBrasiliaDayRangeUtc(last).EndUtc);
+        }
+
         public static DateTime ToBrasiliaDate(DateTime dt)
         {
+            if (dt.Kind == DateTimeKind.Unspecified) return dt.Date;
             var utc = dt.Kind == DateTimeKind.Utc ? dt : dt.ToUniversalTime();
             return utc.AddHours(-3).Date;
         }
@@ -135,6 +151,8 @@ namespace backend.Application.Services
             var query = _context.CashFlowSnapshots.AsNoTracking();
 
             var totalCount = await query.CountAsync();
+            page = Math.Max(1, page);
+            pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             if (page < 1) page = 1;
@@ -167,36 +185,8 @@ namespace backend.Application.Services
         {
             var query = _context.LedgerTransactions.AsNoTracking().AsQueryable();
 
-            var now = DateTime.UtcNow;
-            var today = now.Date;
-
-            if (startDate.HasValue && endDate.HasValue)
-            {
-                var end = endDate.Value.Date.AddDays(1).AddTicks(-1);
-                query = query.Where(t => t.TransactionDate >= startDate.Value.Date && t.TransactionDate <= end);
-            }
-            else if (!string.IsNullOrEmpty(period))
-            {
-                switch (period.ToLower())
-                {
-                    case "hoje":
-                        query = query.Where(t => t.TransactionDate >= today);
-                        break;
-                    case "ontem":
-                        query = query.Where(t => t.TransactionDate >= today.AddDays(-1) && t.TransactionDate < today);
-                        break;
-                    case "7dias":
-                        query = query.Where(t => t.TransactionDate >= today.AddDays(-7));
-                        break;
-                    case "30dias":
-                        query = query.Where(t => t.TransactionDate >= today.AddDays(-30));
-                        break;
-                    case "mesatual":
-                        var startOfMonth = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                        query = query.Where(t => t.TransactionDate >= startOfMonth);
-                        break;
-                }
-            }
+            var (start, end) = ResolvePeriodUtc(period, startDate, endDate);
+            query = query.Where(t => t.TransactionDate >= start && t.TransactionDate <= end);
 
             // O Fluxo de caixa de transações só importa para Empréstimos e Pagamentos (nesta visão específica)
             if (type.HasValue)
@@ -239,6 +229,8 @@ namespace backend.Application.Services
             }
 
             var totalCount = await joinedQuery.CountAsync();
+            page = Math.Max(1, page);
+            pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             if (page < 1) page = 1;
@@ -286,49 +278,17 @@ namespace backend.Application.Services
             string? tipoEmprestimo = null,
             string? tomador = null)
         {
-            DateTime start;
-            DateTime end;
-            var now = DateTime.UtcNow;
-
-            if (startDate.HasValue && endDate.HasValue)
-            {
-                start = startDate.Value.Date;
-                end = endDate.Value.Date.AddDays(1).AddTicks(-1);
-            }
-            else
-            {
-                switch (period.ToLower())
-                {
-                    case "ontem":
-                        start = now.Date.AddDays(-1);
-                        end = start.AddDays(1).AddTicks(-1);
-                        break;
-                    case "7dias":
-                        start = now.Date.AddDays(-7);
-                        end = now.Date.AddDays(1).AddTicks(-1);
-                        break;
-                    case "30dias":
-                        start = now.Date.AddDays(-30);
-                        end = now.Date.AddDays(1).AddTicks(-1);
-                        break;
-                    case "mesatual":
-                        start = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-                        end = now.Date.AddDays(1).AddTicks(-1);
-                        break;
-                    case "hoje":
-                    default:
-                        start = now.Date;
-                        end = now.Date.AddDays(1).AddTicks(-1);
-                        break;
-                }
-            }
+            var (start, end) = ResolvePeriodUtc(period, startDate, endDate);
+            // Vencimentos s?o datas contratuais; recebimentos s?o instantes UTC.
+            var startDue = start.AddHours(-3).Date;
+            var endDue = end.AddHours(-3).Date;
 
             var query = _context.LoanInstallments
                 .AsNoTracking()
                 .Include(i => i.LoanRequest)
                 .ThenInclude(l => l!.User)
                 .ThenInclude(u => u!.Profile)
-                .Where(i => (i.DataVencimento >= start && i.DataVencimento <= end) || 
+                .Where(i => (i.DataVencimento.Date >= startDue && i.DataVencimento.Date <= endDue) ||
                             (i.DataPagamento.HasValue && i.DataPagamento.Value >= start && i.DataPagamento.Value <= end))
                 .AsQueryable();
 

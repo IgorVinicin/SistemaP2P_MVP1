@@ -1,5 +1,9 @@
 export interface InvestorWalletDto {
   saldoDisponivel: number;
+  saldoBloqueado?: number;
+  saldoSacavel?: number;
+  saldoEmCarencia?: number;
+  proximaLiberacaoSaque?: string | null;
   saldoComprometido: number;
   saldoInvestido: number;
   rendimentos: number;

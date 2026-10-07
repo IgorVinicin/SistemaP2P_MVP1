@@ -28,7 +28,9 @@ namespace backend.Application.Services
 
             var unpaidInstallments = await _context.LoanInstallments
                 .Include(i => i.LoanRequest)
-                .Where(i => i.Status != "Paga" && i.Status != "Cancelada" && i.DataPagamento == null)
+                .Where(i => i.Status != "Paga" && i.Status != "Cancelada")
+                .Where(i => i.LoanRequest != null && (i.LoanRequest.Status == "EmPagamento" ||
+                    i.LoanRequest.Status == "Ativo" || i.LoanRequest.Status == "Inadimplente"))
                 .ToListAsync();
 
             bool changed = false;
@@ -44,8 +46,8 @@ namespace backend.Application.Services
                     decimal multa = inst.LoanRequest!.PercentualMultaAtrasoContrato > 0 ? inst.LoanRequest!.PercentualMultaAtrasoContrato : percentualMulta;
                     decimal juros = inst.LoanRequest!.PercentualJurosDiarioContrato > 0 ? inst.LoanRequest!.PercentualJurosDiarioContrato : percentualJurosDiario;
 
-                    decimal novaMulta = Math.Round(inst.ValorParcela * (multa / 100m), 2);
-                    decimal novoJuros = Math.Round(inst.ValorParcela * (juros / 100m) * dias, 2);
+                    decimal novaMulta = Math.Max(inst.MultaPaga, inst.MultaCarregada + Math.Round(inst.ValorParcela * (multa / 100m), 2));
+                    decimal novoJuros = Math.Max(inst.JurosMoraPagos, inst.JurosMoraCarregados + Math.Round(inst.ValorParcela * (juros / 100m) * dias, 2));
 
                     if (inst.DiasAtraso != dias || inst.Multa != novaMulta || inst.JurosMora != novoJuros)
                     {

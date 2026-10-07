@@ -11,11 +11,14 @@
       </span>
     </div>
 
+    <div *ngIf="savedPreviewUrl && !selectedFile" class="image-preview-box"><img [src]="savedPreviewUrl" alt="Documento enviado" class="preview-img"></div>
+    <a *ngIf="savedFileUrl" [href]="savedFileUrl" target="_blank" rel="noopener">Ver documento enviado</a>
+    <p *ngIf="previewError" role="status">{{ previewError }}</p>
     <!-- Preview da Imagem Selecionada -->
     <div *ngIf="previewUrl" class="image-preview-box">
       <img [src]="previewUrl" alt="Prévia do documento" class="preview-img" />
       <div class="preview-overlay">
-        <button mat-mini-fab color="warn" type="button" (click)="clearSelection()" matTooltip="Remover foto">
+        <button mat-mini-fab color="warn" type="button" (click)="clearSelection()" title="Remover foto">
           <mat-icon>delete</mat-icon>
         </button>
       </div>

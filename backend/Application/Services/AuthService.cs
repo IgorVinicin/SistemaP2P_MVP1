@@ -55,7 +55,7 @@ namespace backend.Application.Services
                 throw new Exception("É necessário ser maior de 18 anos para se cadastrar.");
             }
 
-            bool isInvestidor = dto.Role.Equals("Investidor", StringComparison.OrdinalIgnoreCase);
+            bool isInvestidor = string.Equals(dto.Role, "Investidor", StringComparison.OrdinalIgnoreCase);
 
             // Validação de E-mail
             if (!isInvestidor)
@@ -285,7 +285,8 @@ namespace backend.Application.Services
         public string GenerateJwtToken(User user)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"] ?? "SuperSecretKeyForP2PLendingMVP1Secret!!!";
+            var jwtKey = Environment.GetEnvironmentVariable("JWT_KEY") ?? _configuration["Jwt:Key"]
+                ?? throw new InvalidOperationException("Chave JWT não configurada.");
             var key = Encoding.ASCII.GetBytes(jwtKey);
 
             var claims = new[]

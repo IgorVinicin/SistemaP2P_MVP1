@@ -56,26 +56,5 @@ namespace backend.API.Controllers
             }
         }
 
-        // POST /api/admin/yield/process-daily
-        [HttpPost("process-daily")]
-        public async Task<IActionResult> ProcessDailyYield([FromQuery] DateTime? targetDate = null)
-        {
-            try
-            {
-                var usuario = User.Identity?.Name ?? "Admin";
-                var (processed, totalYield) = await _yieldService.ProcessDailyYieldAsync(usuario, targetDate);
-
-                return Ok(new 
-                { 
-                    message = "Rendimento diário processado com sucesso.", 
-                    investidoresProcessados = processed, 
-                    totalRendimentoDistribuido = totalYield 
-                });
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-        }
     }
 }

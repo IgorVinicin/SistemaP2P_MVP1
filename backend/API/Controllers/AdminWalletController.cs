@@ -44,6 +44,8 @@ namespace backend.API.Controllers
             }
 
             var totalCount = await query.CountAsync();
+            page = Math.Max(1, page);
+            pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
             if (page < 1) page = 1;
             if (pageSize < 1) pageSize = 20;
@@ -113,9 +115,9 @@ namespace backend.API.Controllers
         [HttpPost("wallet-adjustment")]
         public async Task<IActionResult> AdjustWallet([FromBody] AdminWalletAdjustmentDto dto)
         {
-            if (dto.Valor == 0)
+            if (dto.Valor == 0 || decimal.Round(dto.Valor, 2) != dto.Valor || string.IsNullOrWhiteSpace(dto.Descricao))
             {
-                return BadRequest(new { message = "O valor do ajuste não pode ser zero." });
+                return BadRequest(new { message = "Informe um ajuste com até duas casas decimais e uma justificativa." });
             }
 
             var adminIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
@@ -134,7 +136,7 @@ namespace backend.API.Controllers
             {
                 // Se não existir carteira para o investidor aprovado, cria uma
                 var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == dto.InvestorId);
-                if (user == null)
+                if (user == null || user.Role != "Investidor")
                 {
                     return NotFound(new { message = "Investidor não encontrado." });
                 }
@@ -152,7 +154,6 @@ namespace backend.API.Controllers
                     DataAtualizacao = DateTime.UtcNow
                 };
                 _context.InvestorWallets.Add(wallet);
-                await _context.SaveChangesAsync();
             }
 
             decimal saldoAnterior = wallet.SaldoDisponivel;
@@ -180,6 +181,15 @@ namespace backend.API.Controllers
             };
 
             _context.InvestorTransactions.Add(transaction);
+            _context.LedgerTransactions.Add(new LedgerTransaction
+            {
+                Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, TransactionDate = DateTime.UtcNow,
+                ContaOrigem = dto.Valor > 0 ? LedgerAccount.AdministrativeAdjustment : LedgerAccount.InvestorWallet,
+                ContaDestino = dto.Valor > 0 ? LedgerAccount.InvestorWallet : LedgerAccount.AdministrativeAdjustment,
+                Valor = Math.Abs(dto.Valor), TipoMovimentacao = LedgerTransactionType.AdministrativeAdjustment,
+                ReferenceType = "InvestorTransaction", ReferenceId = transaction.Id, UserId = dto.InvestorId,
+                Observacao = dto.Descricao.Trim(), CreatedBy = adminEmail
+            });
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Ajuste de carteira realizado com sucesso.", saldoDisponivel = wallet.SaldoDisponivel });

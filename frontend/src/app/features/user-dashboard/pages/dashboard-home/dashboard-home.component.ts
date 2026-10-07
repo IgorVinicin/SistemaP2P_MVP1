@@ -117,6 +117,10 @@ export class DashboardHomeComponent implements OnInit {
     });
   }
 
+  public getDocId(tipo: string): string | null {
+    return this.documents.find(d => d.tipoDocumento === tipo)?.id ?? null;
+  }
+
   public getDocStatus(tipo: 'Frente' | 'Verso' | 'Selfie' | 'FachadaEmpresa'): string | null {
     const doc = this.documents.find(d => d.tipoDocumento === tipo);
     return doc ? doc.status : null;

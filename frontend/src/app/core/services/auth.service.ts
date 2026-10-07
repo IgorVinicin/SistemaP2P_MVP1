@@ -31,6 +31,7 @@ export class AuthService {
     const email = localStorage.getItem('email');
     const userId = localStorage.getItem('userId');
     const nome = localStorage.getItem('nome') ?? '';
+    const cpf = localStorage.getItem('cpf') ?? undefined;
     const possuiEmpresa = localStorage.getItem('possuiEmpresa') === 'true';
 
     if (token && role && status && email && userId) {
@@ -40,6 +41,7 @@ export class AuthService {
         status,
         email,
         userId,
+        cpf,
         nome
       });
       this._possuiEmpresa.set(possuiEmpresa);
@@ -70,6 +72,7 @@ export class AuthService {
     localStorage.removeItem('email');
     localStorage.removeItem('userId');
     localStorage.removeItem('nome');
+    localStorage.removeItem('cpf');
     localStorage.removeItem('possuiEmpresa');
     this._currentUser.set(null);
     this._possuiEmpresa.set(false);
@@ -87,6 +90,8 @@ export class AuthService {
     localStorage.setItem('email', response.email);
     localStorage.setItem('userId', response.userId);
     localStorage.setItem('nome', response.nome ?? '');
+    if (response.cpf) localStorage.setItem('cpf', response.cpf);
+    else localStorage.removeItem('cpf');
     this._currentUser.set(response);
   }
 

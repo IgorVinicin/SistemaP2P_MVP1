@@ -40,20 +40,13 @@ namespace backend.Application.Services
             }
 
             // === CÁLCULO VIA STRATEGY (JUROS SIMPLES: J = C * i * t) ===
-            decimal jurosTotal = _interestStrategy.CalculateInterest(valorSolicitado, taxaJuros, timePeriod);
-            decimal valorTotal = valorSolicitado + jurosTotal;
-
-            // Cada parcela tem valor padrão aproximado (distribuído igualmente)
-            decimal valorParcelaPadrao = Math.Round(valorTotal / n, 2, MidpointRounding.AwayFromZero);
-            decimal principalPorParcela = Math.Round(valorSolicitado / n, 2, MidpointRounding.AwayFromZero);
-            decimal jurosPorParcela = Math.Round(jurosTotal / n, 2, MidpointRounding.AwayFromZero);
+            decimal jurosTotal = Math.Round(_interestStrategy.CalculateInterest(valorSolicitado, taxaJuros, timePeriod), 2, MidpointRounding.AwayFromZero);
 
             DateTime baseDate = dataPrimeiraParcela.HasValue 
                 ? new DateTime(dataPrimeiraParcela.Value.Year, dataPrimeiraParcela.Value.Month, dataPrimeiraParcela.Value.Day, 0, 0, 0, DateTimeKind.Utc) 
                 : DateTime.UtcNow.Date;
             DateTime currentDueDate = baseDate;
 
-            decimal somaParcelasAnteriores = 0;
             decimal somaPrincipalAnterior = 0;
             decimal somaJurosAnterior = 0;
 
@@ -63,23 +56,12 @@ namespace backend.Application.Services
                 decimal principal;
                 decimal juros;
 
-                if (k == n)
-                {
-                    // Na última parcela, absorve exatamente qualquer diferença de arredondamento
-                    principal = valorSolicitado - somaPrincipalAnterior;
-                    juros = jurosTotal - somaJurosAnterior;
-                    parcela = valorTotal - somaParcelasAnteriores;
-                }
-                else
-                {
-                    principal = principalPorParcela;
-                    juros = jurosPorParcela;
-                    parcela = valorParcelaPadrao;
-
-                    somaPrincipalAnterior += principal;
-                    somaJurosAnterior += juros;
-                    somaParcelasAnteriores += parcela;
-                }
+                // Rounded cumulative targets conserve totals without negative final components.
+                principal = Math.Round(valorSolicitado * k / n, 2, MidpointRounding.AwayFromZero) - somaPrincipalAnterior;
+                juros = Math.Round(jurosTotal * k / n, 2, MidpointRounding.AwayFromZero) - somaJurosAnterior;
+                parcela = principal + juros;
+                somaPrincipalAnterior += principal;
+                somaJurosAnterior += juros;
 
                 // Cálculo do vencimento com base na periodicidade e data inicial
                 string p = (periodicidade ?? "Mensal").Trim().ToLower();

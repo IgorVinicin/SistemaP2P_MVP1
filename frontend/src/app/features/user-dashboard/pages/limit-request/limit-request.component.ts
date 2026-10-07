@@ -37,6 +37,8 @@ export class LimitRequestComponent implements OnInit {
   private api = inject(LoanService);
   private snackBar = inject(MatSnackBar);
 
+  public hasFinishedLoan = false;
+  public isCheckingHistory = true;
   public eligibility: LoanEligibility | null = null;
   public myRequests: LimitRequest[] = [];
   public isLoading = false;
@@ -48,6 +50,10 @@ export class LimitRequestComponent implements OnInit {
   ngOnInit(): void {
     this.checkEligibility();
     this.loadMyRequests();
+    this.api.getMyLoans().subscribe({
+      next: loans => { this.hasFinishedLoan = loans.some(loan => loan.status === 'Finalizado'); this.isCheckingHistory = false; },
+      error: () => { this.isCheckingHistory = false; this.hasFinishedLoan = false; }
+    });
   }
 
   public checkEligibility(): void {
@@ -78,6 +84,7 @@ export class LimitRequestComponent implements OnInit {
   }
 
   public submitRequest(): void {
+    if (this.isSubmitting || this.isCheckingHistory || !this.hasFinishedLoan) return;
     if (this.requestedValue <= 0) {
       this.snackBar.open('O limite solicitado deve ser maior que zero.', 'Fechar', { duration: 3000 });
       return;

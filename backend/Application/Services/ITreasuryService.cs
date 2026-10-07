@@ -14,7 +14,7 @@ namespace backend.Application.Services
 
         // Withdrawal flows
         Task<WithdrawalRequest> RequestWithdrawalAsync(Guid investorId, decimal amount, string? observacao, string? chavePix = null, string? tipoChavePix = null);
-        Task<bool> ApproveWithdrawalAsync(Guid withdrawalId, string adminUser);
+        Task<bool> ApproveWithdrawalAsync(Guid withdrawalId, string adminUser, decimal? approvedAmount = null);
         Task<bool> RejectWithdrawalAsync(Guid withdrawalId, string adminUser, string? motivo);
         Task<bool> ConfirmWithdrawalAsync(Guid withdrawalId, string gatewayReference, string adminUser);
     }

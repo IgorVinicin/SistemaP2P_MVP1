@@ -26,6 +26,7 @@ namespace backend.Application.DTOs
         public string CpfCnpj { get; set; } = string.Empty;
 
         [JsonPropertyName("email")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public string? Email { get; set; }
 
         [JsonPropertyName("phone")]
@@ -134,6 +135,8 @@ namespace backend.Application.DTOs
     // --- Modelos de Transferência PIX (Saque) ---
     public class AsaasTransferRequestDto
     {
+        [JsonPropertyName("externalReference")]
+        public string? ExternalReference { get; set; }
         [JsonPropertyName("value")]
         public decimal Value { get; set; }
 
@@ -149,6 +152,8 @@ namespace backend.Application.DTOs
 
     public class AsaasTransferResponseDto
     {
+        [JsonPropertyName("externalReference")]
+        public string? ExternalReference { get; set; }
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 
@@ -171,6 +176,8 @@ namespace backend.Application.DTOs
     // --- Modelos do Webhook Asaas ---
     public class AsaasWebhookPayloadDto
     {
+        [JsonPropertyName("id")]
+        public string Id { get; set; } = string.Empty;
         [JsonPropertyName("event")]
         public string Event { get; set; } = string.Empty;
 
@@ -210,6 +217,10 @@ namespace backend.Application.DTOs
 
     public class AsaasWebhookTransferDto
     {
+        [JsonPropertyName("externalReference")]
+        public string? ExternalReference { get; set; }
+        [JsonPropertyName("transferFee")]
+        public decimal? TransferFee { get; set; }
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 

@@ -177,7 +177,7 @@
         <ng-container matColumnDef="acoes" stickyEnd>
           <th mat-header-cell *matHeaderCellDef> Ações </th>
           <td mat-cell *matCellDef="let inst">
-            <button mat-flat-button color="accent" size="small" *ngIf="inst.status !== 'Paga'" (click)="payInstallment(inst.id); $event.stopPropagation()">
+            <button mat-flat-button color="accent" size="small" *ngIf="inst.status !== 'Paga'" [disabled]="isCreatingPix || authService.userStatus() !== 'Aprovado'" (click)="payInstallment(inst.id); $event.stopPropagation()">
               Pagar Parcela
             </button>
           </td>

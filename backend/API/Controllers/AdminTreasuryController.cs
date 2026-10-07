@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using backend.Application.Services;
+using backend.Application.Services.Asaas;
 using backend.Infrastructure;
 
 namespace backend.API.Controllers
@@ -16,11 +17,13 @@ namespace backend.API.Controllers
     {
         private readonly ITreasuryService _treasuryService;
         private readonly AppDbContext _context;
+        private readonly IAsaasService _gateway;
 
-        public AdminTreasuryController(ITreasuryService treasuryService, AppDbContext context)
+        public AdminTreasuryController(ITreasuryService treasuryService, AppDbContext context, IAsaasService gateway)
         {
             _treasuryService = treasuryService;
             _context = context;
+            _gateway = gateway;
         }
 
         // --- DEPÓSITOS ---
@@ -32,7 +35,11 @@ namespace backend.API.Controllers
             if (!string.IsNullOrEmpty(status))
                 query = query.Where(d => d.Status == status);
 
-            var deposits = await query.OrderByDescending(d => d.CreatedAt).ToListAsync();
+            var deposits = await query.OrderByDescending(d => d.CreatedAt).Select(d => new
+            {
+                d.Id, d.InvestorId, d.Valor, d.Status, d.GatewayReference, d.CreatedAt, d.ProcessedAt, d.Observacao,
+                Investor = d.Investor == null ? null : new { d.Investor.Email }
+            }).ToListAsync();
             return Ok(deposits);
         }
 
@@ -41,9 +48,8 @@ namespace backend.API.Controllers
         {
             try
             {
-                var adminUser = User.Identity?.Name ?? "Admin";
-                var success = await _treasuryService.ConfirmDepositAsync(id, request.GatewayReference ?? "MANUAL-SIMULADO", adminUser);
-                return success ? Ok(new { message = "Depósito confirmado com sucesso." }) : BadRequest("Falha ao confirmar.");
+                await Task.CompletedTask;
+                return Conflict(new { message = "Depósitos são creditados somente após recebimento confirmado pelo webhook Asaas." });
             }
             catch (Exception ex)
             {
@@ -91,6 +97,8 @@ namespace backend.API.Controllers
                         Email = w.Investor.Email
                     },
                     w.Valor,
+                    ValorSolicitado = w.ValorSolicitado ?? w.Valor,
+                    ValorAprovado = w.Status == "Pending" || w.Status == "Rejected" ? (decimal?)null : w.Valor,
                     w.Status,
                     w.ChavePix,
                     w.TipoChavePix,
@@ -105,12 +113,12 @@ namespace backend.API.Controllers
         }
 
         [HttpPost("withdrawals/{id}/approve")]
-        public async Task<IActionResult> ApproveWithdrawal(Guid id)
+        public async Task<IActionResult> ApproveWithdrawal(Guid id, [FromBody] ApproveWithdrawalRequestDto? request)
         {
             try
             {
                 var adminUser = User.Identity?.Name ?? "Admin";
-                var success = await _treasuryService.ApproveWithdrawalAsync(id, adminUser);
+                var success = await _treasuryService.ApproveWithdrawalAsync(id, adminUser, request?.ValorAprovado);
                 return success ? Ok(new { message = "Saque aprovado e pronto para envio bancário." }) : BadRequest("Falha.");
             }
             catch (Exception ex)
@@ -139,9 +147,8 @@ namespace backend.API.Controllers
         {
             try
             {
-                var adminUser = User.Identity?.Name ?? "Admin";
-                var success = await _treasuryService.ConfirmWithdrawalAsync(id, request.GatewayReference ?? "MANUAL-SIMULADO", adminUser);
-                return success ? Ok(new { message = "Saque confirmado com sucesso no Gateway." }) : BadRequest("Falha.");
+                var transfer = await new GatewayWorkflowService(_context, _gateway, _treasuryService).SubmitWithdrawalAsync(id);
+                return Ok(new { message = "Saque enviado ao Asaas. Aguardando confirmação da transferência.", transferId = transfer.TransferId, status = transfer.Status });
             }
             catch (Exception ex)
             {
@@ -152,4 +159,5 @@ namespace backend.API.Controllers
 
     public class ConfirmRequestDto { public string? GatewayReference { get; set; } }
     public class RejectRequestDto { public string? Motivo { get; set; } }
+    public class ApproveWithdrawalRequestDto { public decimal? ValorAprovado { get; set; } }
 }

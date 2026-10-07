@@ -183,18 +183,14 @@ namespace backend.Application.Services
             // ====================================================================
             Console.WriteLine($"[ALOCACAO-LOG] Distribuindo entre {pool.Count} investidores...");
 
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
                     foreach (var item in pool)
                     {
                         var wallet = item.Wallet;
                         decimal allocatedShare = allocations[item.User.Id];
 
                         decimal saldoAnterior = wallet.SaldoDisponivel;
+                        if (wallet.SaldoDisponivel < allocatedShare)
+                            throw new InvalidOperationException("Saldo insuficiente para reserva.");
                         wallet.SaldoDisponivel -= allocatedShare;
                         wallet.SaldoComprometido += allocatedShare;
                         wallet.DataAtualizacao = DateTime.UtcNow;
@@ -242,57 +238,10 @@ namespace backend.Application.Services
                             Valor = allocatedShare
                         });
 
-                        // Registrar no Ledger (InvestorWallet -> BorrowerAccount)
-                        if (_ledgerService != null)
-                        {
-                            await _ledgerService.AddTransactionAsync(
-                                source: LedgerAccount.InvestorWallet,
-                                destination: LedgerAccount.BorrowerAccount,
-                                amount: allocatedShare,
-                                type: LedgerTransactionType.LoanDisbursement,
-                                referenceType: "Loan",
-                                referenceId: loan.Id,
-                                loanId: loan.Id,
-                                userId: item.User.Id,
-                                observacao: $"Desembolso do investidor {item.User.Email} para empréstimo {loan.Id}",
-                                createdBy: "Sistema"
-                            );
-                        }
+                        // Reservation changes wallet compartments; no borrower payment occurs here.
                     }
 
-                    // Força salvamento na própria engine já que temos que controlar concorrência Otimista
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    Console.WriteLine($"[ALOCACAO-LOG] Alocação concluída com sucesso! {pool.Count} investidores alocados.");
-                    return (true, string.Empty);
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($"[ALOCACAO-LOG] Conflito de Concorrência Detectado. Tentativa {attempt} de {maxRetries}.");
-                    if (attempt == maxRetries)
-                    {
-                        Console.WriteLine($"[ALOCACAO-LOG] Falha ao alocar após múltiplas tentativas de concorrência.");
-                        return (false, "Falha de concorrência ao atualizar saldos.");
-                    }
-                    
-                    // Atualiza a entidade do context para a versão do banco
-                    foreach (var entry in _context.ChangeTracker.Entries().Where(e => e.Entity is InvestorWallet))
-                    {
-                        await entry.ReloadAsync();
-                    }
-                    await Task.Delay(100); // Backoff leve
-                }
-                catch (Exception ex)
-                {
-                    await transaction.RollbackAsync();
-                    Console.WriteLine($"[ALOCACAO-LOG] Erro durante a alocação: {ex.Message}");
-                    return (false, $"Erro interno durante alocação: {ex.Message}");
-                }
-            }
-
-            return (false, "Falha inesperada na alocação.");
+            return (true, string.Empty);
         }
     }
 }

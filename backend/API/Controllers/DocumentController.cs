@@ -25,6 +25,7 @@ namespace backend.API.Controllers
         }
 
         [HttpPost("upload")]
+        [RequestSizeLimit(11 * 1024 * 1024)]
         [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadDocument([FromForm] IFormFile file, [FromForm] string tipoDocumento)
         {
@@ -63,6 +64,24 @@ namespace backend.API.Controllers
                 {
                     return BadRequest(new { message = "Nenhum arquivo enviado." });
                 }
+                var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+                var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp", ".pdf" };
+                if (file.Length > 10 * 1024 * 1024 || !allowedExtensions.Contains(extension))
+                    return BadRequest(new { message = "Envie imagem JPG, PNG, WebP ou PDF de até 10 MB." });
+                var signature = new byte[12];
+                await using (var input = file.OpenReadStream())
+                {
+                    var read = await input.ReadAsync(signature);
+                    bool valid = extension switch
+                    {
+                        ".jpg" or ".jpeg" => read >= 3 && signature[0] == 0xff && signature[1] == 0xd8 && signature[2] == 0xff,
+                        ".png" => read >= 8 && signature.AsSpan(0, 8).SequenceEqual(new byte[] { 137, 80, 78, 71, 13, 10, 26, 10 }),
+                        ".pdf" => read >= 5 && System.Text.Encoding.ASCII.GetString(signature, 0, 5) == "%PDF-",
+                        ".webp" => read >= 12 && System.Text.Encoding.ASCII.GetString(signature, 0, 4) == "RIFF" && System.Text.Encoding.ASCII.GetString(signature, 8, 4) == "WEBP",
+                        _ => false
+                    };
+                    if (!valid) return BadRequest(new { message = "O conteúdo do arquivo não corresponde ao formato informado." });
+                }
 
                 // Definir diretório de uploads local (para desenvolvimento)
                 var uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "uploads");
@@ -72,7 +91,7 @@ namespace backend.API.Controllers
                 }
 
                 // Gerar nome único para o arquivo
-                var fileExtension = Path.GetExtension(file.FileName);
+                var fileExtension = extension;
                 var fileName = $"{userId}_{tipoDocumento}_{Guid.NewGuid()}{fileExtension}";
                 var filePath = Path.Combine(uploadsFolder, fileName);
 
@@ -85,19 +104,10 @@ namespace backend.API.Controllers
                 // Verificar se já existe um documento do mesmo tipo para atualizar ou criar novo
                 var existingDocument = await _context.Documents
                     .FirstOrDefaultAsync(d => d.UserId == userId && d.TipoDocumento == tipoDocumento);
+                var previousPath = existingDocument?.CaminhoArquivo;
 
                 if (existingDocument != null)
                 {
-                    // Remover o arquivo antigo física/localmente se desejável, ou apenas atualizar
-                    try
-                    {
-                        if (System.IO.File.Exists(existingDocument.CaminhoArquivo))
-                        {
-                            System.IO.File.Delete(existingDocument.CaminhoArquivo);
-                        }
-                    }
-                    catch { /* ignorar erros ao deletar */ }
-
                     existingDocument.CaminhoArquivo = filePath;
                     existingDocument.Status = "Pendente";
                     existingDocument.CreatedAt = DateTime.UtcNow;
@@ -117,6 +127,12 @@ namespace backend.API.Controllers
 
                 // Atualizar o status do usuário para "EmAnalise" se os 3 (ou 4 se empresa) documentos obrigatórios forem enviados
                 await _context.SaveChangesAsync();
+                if (!string.IsNullOrEmpty(previousPath) && IsStoredUpload(previousPath))
+                {
+                    try { System.IO.File.Delete(previousPath); }
+                    catch (IOException) { /* O arquivo novo já foi persistido; limpeza pode ser retomada. */ }
+                    catch (UnauthorizedAccessException) { }
+                }
 
                 var docsEnviados = await _context.Documents
                     .Where(d => d.UserId == userId)
@@ -179,6 +195,28 @@ namespace backend.API.Controllers
                 .ToListAsync();
 
             return Ok(userDocs);
+        }
+
+        [HttpGet("{id}/file")]
+        public async Task<IActionResult> GetOwnDocument(Guid id)
+        {
+            if (!Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var userId)) return Unauthorized();
+            var document = await _context.Documents.AsNoTracking().FirstOrDefaultAsync(d => d.Id == id && d.UserId == userId);
+            if (document == null || !IsStoredUpload(document.CaminhoArquivo) || !System.IO.File.Exists(document.CaminhoArquivo))
+                return NotFound(new { message = "Documento não encontrado." });
+            var type = Path.GetExtension(document.CaminhoArquivo).ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg", ".png" => "image/png", ".webp" => "image/webp",
+                ".pdf" => "application/pdf", _ => "application/octet-stream"
+            };
+            Response.Headers["X-Content-Type-Options"] = "nosniff";
+            return PhysicalFile(Path.GetFullPath(document.CaminhoArquivo), type);
+        }
+
+        private static bool IsStoredUpload(string path)
+        {
+            var root = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "uploads")) + Path.DirectorySeparatorChar;
+            return Path.GetFullPath(path).StartsWith(root, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

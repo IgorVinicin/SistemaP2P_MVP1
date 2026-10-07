@@ -54,92 +54,28 @@ namespace backend.API.Controllers
         [HttpPost("cover-installment/{id}")]
         public async Task<IActionResult> CoverInstallmentByFund(Guid id)
         {
+            await using var transaction = _context.Database.IsRelational()
+                ? await _context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable) : null;
             try
             {
-                var installment = await _context.LoanInstallments
-                    .Include(i => i.LoanRequest)
-                    .FirstOrDefaultAsync(i => i.Id == id);
-
-                if (installment == null) return NotFound(new { message = "Parcela não encontrada." });
-
-                if (installment.Status == "Paga" || installment.Status == "Cancelada")
-                {
-                    return BadRequest(new { message = "Esta parcela já está paga ou cancelada." });
-                }
-
-                var adminEmail = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Administrador";
-
-                using var dbTransaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
-                    if (fund == null) return BadRequest(new { message = "Fundo de proteção não configurado." });
-
-                    // A cobertura paga apenas o Valor da Parcela, sem juros ou multas do tomador, ou cobre tudo?
-                    // Para simplificar, o Fundo cobre o Valor da Parcela Original.
-                    decimal amountToCover = installment.ValorParcela;
-
-                    if (fund.SaldoAtual < amountToCover)
-                    {
-                        return BadRequest(new { message = "Saldo insuficiente no Fundo de Proteção para cobrir esta parcela." });
-                    }
-
-                    // Deduzir do Fundo
-                    fund.SaldoAtual -= amountToCover;
-                    fund.TotalUtilizado += amountToCover;
-                    fund.UltimaAtualizacao = DateTime.UtcNow;
-
-                    // Marcar parcela como coberta pelo fundo
-                    installment.Status = "Paga";
-                    installment.ValorPago = amountToCover;
-                    installment.DataPagamento = DateTime.UtcNow;
-                    installment.UpdatedAt = DateTime.UtcNow;
-
-                    // 1. Ledger: ProtectionFund -> PlatformCash
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.ProtectionFund,
-                        destination: LedgerAccount.PlatformCash,
-                        amount: amountToCover,
-                        type: LedgerTransactionType.ProtectionFundDebit,
-                        referenceType: "Installment",
-                        referenceId: installment.Id,
-                        loanId: installment.LoanRequestId,
-                        installmentId: installment.Id,
-                        userId: installment.LoanRequest?.UserId,
-                        observacao: $"Fundo de proteção cobrindo parcela {installment.NumeroParcela}",
-                        createdBy: adminEmail
-                    );
-
-                    // 2. Evento Histórico Genérico
-                    _context.FinancialEventHistories.Add(new FinancialEventHistory
-                    {
-                        Id = Guid.NewGuid(),
-                        Data = DateTime.UtcNow,
-                        UsuarioResponsavel = adminEmail,
-                        EventoExecutado = "UTILIZACAO_FUNDO",
-                        Observacao = $"Fundo de proteção utilizado para cobrir a parcela {installment.NumeroParcela} do empréstimo {installment.LoanRequestId}. Valor: {amountToCover:C2}.",
-                        LoanRequestId = installment.LoanRequestId,
-                        Valor = amountToCover
-                    });
-
-                    await _context.SaveChangesAsync();
-
-                    // O WalletDistributionService já foi atualizado para registrar do PlatformCash para InvestorWallet.
-                    await _walletDistributionService.DistributeInstallmentPaymentAsync(installment.Id, adminEmail);
-
-                    // E atualizar o status do empréstimo, caso seja a última
-                    var delinquencyService = new DelinquencyService(_context);
-                    await delinquencyService.UpdateLoanStatusFromInstallmentsAsync(installment.LoanRequestId, adminEmail);
-
-                    await dbTransaction.CommitAsync();
-
-                    return Ok(new { message = "Parcela coberta pelo Fundo de Proteção com sucesso." });
-                }
-                catch (Exception innerEx)
-                {
-                    await dbTransaction.RollbackAsync();
-                    return BadRequest(new { message = innerEx.Message });
-                }
+                var installment = await _context.LoanInstallments.Include(i => i.LoanRequest).FirstOrDefaultAsync(i => i.Id == id);
+                if (installment == null) return NotFound(new { message = "Parcela nao encontrada." });
+                if (installment.Status is "Paga" or "Cancelada") return BadRequest(new { message = "Parcela encerrada." });
+                if (await _context.GatewayCharges.AnyAsync(c => c.Kind == "Installment" && c.ReferenceId == id && c.IsActive))
+                    return Conflict(new { message = "Cancele a cobrança PIX ativa antes de usar cobertura do fundo." });
+                var fund = await _context.ProtectionFunds.FirstOrDefaultAsync();
+                if (fund == null) return BadRequest(new { message = "Fundo nao configurado." });
+                // Fund covers the original remaining installment; fines remain payable by the borrower.
+                decimal amount = Math.Max(0, installment.ValorParcela - installment.ValorPago);
+                if (amount <= 0 || fund.SaldoAtual < amount) return BadRequest(new { message = "Saldo insuficiente ou nenhuma cobertura pendente." });
+                var actor = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value ?? "Administrador";
+                fund.SaldoAtual -= amount;
+                fund.TotalUtilizado += amount;
+                fund.UltimaAtualizacao = DateTime.UtcNow;
+                _context.FinancialEventHistories.Add(new FinancialEventHistory { Id = Guid.NewGuid(), Data = DateTime.UtcNow, UsuarioResponsavel = actor, EventoExecutado = "UTILIZACAO_FUNDO", LoanRequestId = installment.LoanRequestId, Valor = amount, Observacao = "Cobertura do saldo original da parcela pelo fundo." });
+                await new InstallmentPaymentService(_context).ApplyPaymentAsync(id, amount, actor, LedgerAccount.ProtectionFund);
+                if (transaction != null) await transaction.CommitAsync();
+                return Ok(new { message = "Cobertura confirmada pelo fundo.", installment.Status });
             }
             catch (Exception ex)
             {

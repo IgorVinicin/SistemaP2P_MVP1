@@ -151,16 +151,16 @@ export class AdminCashFlowService {
     return this.http.get<AdminWithdrawalRequestDto[]>(`${environment.apiUrl}/admin/treasury/withdrawals`, { params });
   }
 
-  approveWithdrawal(id: string): Observable<any> {
-    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/approve`, {});
+  approveWithdrawal(id: string, valorAprovado: number): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/approve`, { valorAprovado });
   }
 
   rejectWithdrawal(id: string, motivo: string): Observable<any> {
     return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/reject`, { motivo });
   }
 
-  confirmWithdrawal(id: string, gatewayReference: string): Observable<any> {
-    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/confirm`, { gatewayReference });
+  confirmWithdrawal(id: string): Observable<any> {
+    return this.http.post<any>(`${environment.apiUrl}/admin/treasury/withdrawals/${id}/confirm`, {});
   }
 }
 
@@ -173,6 +173,8 @@ export interface AdminWithdrawalRequestDto {
     email?: string;
   };
   valor: number;
+  valorSolicitado?: number;
+  valorAprovado?: number | null;
   status: string;
   chavePix?: string;
   tipoChavePix?: string;

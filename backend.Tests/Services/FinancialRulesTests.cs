@@ -37,6 +37,7 @@ namespace backend.Tests.Services
             var treasuryService = new TreasuryService(context);
 
             var investorId = Guid.NewGuid();
+            context.Users.Add(new User { Id = investorId, Role = "Investidor", Status = "Aprovado" });
             var wallet = new InvestorWallet
             {
                 Id = investorId,
@@ -45,6 +46,7 @@ namespace backend.Tests.Services
                 TotalSacado = 0m
             };
             context.InvestorWallets.Add(wallet);
+            context.DepositRequests.Add(new DepositRequest { Id = Guid.NewGuid(), InvestorId = investorId, Valor = 10000m, Status = "Completed", ProcessedAt = DateTime.UtcNow.AddHours(-100) });
             await context.SaveChangesAsync();
 
             // Act: Investidor solicita saque de R$ 3.000,00
@@ -60,7 +62,7 @@ namespace backend.Tests.Services
         }
 
         [Fact]
-        public async Task AprovacaoSaque_DeveDeduzirSaldoBloqueado_EIncrementarTotalSacado()
+        public async Task TransferenciaConfirmada_DeveDeduzirSaldoBloqueado_EIncrementarTotalSacado()
         {
             // Arrange
             using var context = GetInMemoryDbContext();
@@ -87,8 +89,13 @@ namespace backend.Tests.Services
             context.WithdrawalRequests.Add(withdrawal);
             await context.SaveChangesAsync();
 
-            // Act: Admin confirma/liquida o saque
+            // Pending requests cannot be settled manually. Only the exact submitted transfer can settle.
+            await Assert.ThrowsAsync<InvalidOperationException>(() => treasuryService.ConfirmWithdrawalAsync(withdrawal.Id, "PIX-GATEWAY-123", "AdminTest"));
+            withdrawal.Status = "Processing";
+            withdrawal.GatewayReference = "PIX-GATEWAY-123";
+            await context.SaveChangesAsync();
             var success = await treasuryService.ConfirmWithdrawalAsync(withdrawal.Id, "PIX-GATEWAY-123", "AdminTest");
+            Assert.True(await treasuryService.ConfirmWithdrawalAsync(withdrawal.Id, "PIX-GATEWAY-123", "AdminTest"));
 
             // Assert
             var updatedWallet = await context.InvestorWallets.FindAsync(investorId);
@@ -151,6 +158,7 @@ namespace backend.Tests.Services
             var treasuryService = new TreasuryService(context);
 
             var investorId = Guid.NewGuid();
+            context.Users.Add(new User { Id = investorId, Role = "Investidor", Status = "Aprovado" });
             var wallet = new InvestorWallet
             {
                 Id = investorId,
@@ -158,11 +166,12 @@ namespace backend.Tests.Services
                 SaldoBloqueado = 0m
             };
             context.InvestorWallets.Add(wallet);
+            context.DepositRequests.Add(new DepositRequest { Id = Guid.NewGuid(), InvestorId = investorId, Valor = 500m, Status = "Completed", ProcessedAt = DateTime.UtcNow.AddHours(-100) });
             await context.SaveChangesAsync();
 
             // Act & Assert
-            var ex = await Assert.ThrowsAsync<Exception>(() =>
-                treasuryService.RequestWithdrawalAsync(investorId, 1000.00m, "Saque maior que saldo"));
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                treasuryService.RequestWithdrawalAsync(investorId, 1000.00m, "Saque maior que saldo", "investor@example.com", "EMAIL"));
 
             Assert.Contains("insuficiente", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -195,10 +204,10 @@ namespace backend.Tests.Services
             await context.SaveChangesAsync();
 
             // Act & Assert: Tentar recusar ou confirmar novamente deve lançar exceção
-            await Assert.ThrowsAsync<Exception>(() =>
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 treasuryService.ConfirmWithdrawalAsync(withdrawal.Id, "GATEWAY-DUP", "Admin"));
 
-            await Assert.ThrowsAsync<Exception>(() =>
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 treasuryService.RejectWithdrawalAsync(withdrawal.Id, "Admin", "Tentativa de recusar saque já pago"));
         }
 
@@ -244,7 +253,7 @@ namespace backend.Tests.Services
         }
 
         [Fact]
-        public async Task RentabilidadeDiaria_CreditaExatamenteProporcionalAoSaldoDisponivel()
+        public async Task RentabilidadeDiaria_ApenasEstimaSemAlterarSaldo()
         {
             // Arrange
             using var context = GetInMemoryDbContext();
@@ -270,20 +279,12 @@ namespace backend.Tests.Services
             context.InvestorWallets.Add(wallet);
             await context.SaveChangesAsync();
 
-            // Act: Processa o rendimento diário de hoje
-            var (processed, totalYield) = await yieldService.ProcessDailyYieldAsync("RoboDiario");
-
-            // Assert
-            var updatedWallet = await context.InvestorWallets.FindAsync(investor.Id);
-            Assert.Equal(1, processed);
-            Assert.Equal(10.00m, totalYield); // 30.000 * (1% / 30) = 10,00
-            Assert.Equal(30010.00m, updatedWallet!.SaldoDisponivel); // Saldo aumentou R$ 10,00 no dia
-            Assert.Equal(10.00m, updatedWallet.Rendimentos);
-
-            // Act 2: Tentar rodar novamente no mesmo dia não deve duplicar o crédito
-            var (processed2, totalYield2) = await yieldService.ProcessDailyYieldAsync("RoboDiario");
-            Assert.Equal(0, processed2);
-            Assert.Equal(0m, totalYield2);
+            Assert.Equal(10m, await yieldService.GetDailyYieldPreviewAsync(investor.Id));
+            Assert.Equal(10m, await yieldService.GetDailyYieldPreviewAsync(investor.Id));
+            Assert.Equal(30000m, wallet.SaldoDisponivel);
+            Assert.Equal(0m, wallet.Rendimentos);
+            Assert.Empty(context.InvestorTransactions);
+            Assert.Empty(context.LedgerTransactions);
         }
 
         [Fact]

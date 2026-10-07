@@ -1,407 +1,158 @@
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using System.Data;
+using backend.Application.Services.Asaas;
 using backend.Domain.Entities;
 using backend.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
-namespace backend.Application.Services
+namespace backend.Application.Services;
+
+public class TreasuryService(AppDbContext context, LedgerService? ledgerService = null) : ITreasuryService
 {
-    public class TreasuryService : ITreasuryService
+    private readonly LedgerService _ledger = ledgerService ?? new LedgerService(context);
+    private async Task<IDbContextTransaction?> BeginAsync() => context.Database.IsRelational() && context.Database.CurrentTransaction == null
+        ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable) : null;
+
+    public async Task<DepositRequest> RequestDepositAsync(Guid investorId, decimal amount, string? observacao)
     {
-        private readonly AppDbContext _context;
-        private readonly LedgerService _ledgerService;
-
-        public TreasuryService(AppDbContext context, LedgerService? ledgerService = null)
+        GatewayWorkflowService.ValidateMoney(amount);
+        await EnsureApprovedInvestorAsync(investorId);
+        if (!await context.InvestorWallets.AnyAsync(w => w.Id == investorId)) throw new ArgumentException("Carteira do investidor não encontrada.");
+        var request = new DepositRequest { Id = Guid.NewGuid(), InvestorId = investorId, Valor = amount, Observacao = observacao };
+        context.DepositRequests.Add(request);
+        await context.SaveChangesAsync();
+        return request;
+    }
+    public async Task<bool> ConfirmDepositAsync(Guid depositId, string gatewayReference, string adminUser)
+    {
+        if (string.IsNullOrWhiteSpace(gatewayReference)) throw new ArgumentException("Referência do gateway obrigatória.");
+        await using var tx = await BeginAsync();
+        var request = await context.DepositRequests.FindAsync(depositId) ?? throw new ArgumentException("Depósito não encontrado.");
+        if (request.Status == "Completed" && request.GatewayReference == gatewayReference) return true;
+        if (request.Status is not ("Pending" or "Processing")) throw new InvalidOperationException("Depósito não está pendente.");
+        if (request.GatewayReference != gatewayReference) throw new InvalidOperationException("Referência de pagamento não corresponde ao depósito.");
+        var wallet = await context.InvestorWallets.FindAsync(request.InvestorId) ?? throw new ArgumentException("Carteira não encontrada.");
+        var previous = wallet.SaldoDisponivel;
+        wallet.SaldoDisponivel += request.Valor; wallet.TotalAportado += request.Valor; wallet.DataAtualizacao = DateTime.UtcNow;
+        request.Status = "Completed"; request.ProcessedAt = DateTime.UtcNow;
+        AddMovement(wallet, "APORTE", request.Valor, previous, $"Depósito confirmado pelo gateway: {gatewayReference}", adminUser);
+        await _ledger.AddTransactionAsync(LedgerAccount.ExternalGateway, LedgerAccount.PlatformCash, request.Valor, LedgerTransactionType.InvestorDeposit,
+            "DepositRequest", request.Id, userId: request.InvestorId, createdBy: adminUser);
+        await _ledger.AddTransactionAsync(LedgerAccount.PlatformCash, LedgerAccount.InvestorWallet, request.Valor, LedgerTransactionType.InvestorDeposit,
+            "DepositRequest", request.Id, userId: request.InvestorId, createdBy: adminUser);
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return true;
+    }
+    public async Task<bool> CancelDepositAsync(Guid depositId, string adminUser, string? motivo)
+    {
+        await using var tx = await BeginAsync();
+        var request = await context.DepositRequests.FindAsync(depositId) ?? throw new ArgumentException("Depósito não encontrado.");
+        if (request.Status != "Pending") throw new InvalidOperationException("Depósito com cobrança enviada deve ser cancelado no gateway antes da baixa local.");
+        if (await context.GatewayCharges.AnyAsync(c => c.Kind == "Deposit" && c.ReferenceId == depositId))
+            throw new InvalidOperationException("Concilie ou cancele a cobrança no Asaas antes de cancelar o depósito.");
+        request.Status = "Cancelled"; request.ProcessedAt = DateTime.UtcNow; request.Observacao += $" | Cancelado por {adminUser}: {motivo}";
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return true;
+    }
+    public async Task<WithdrawalRequest> RequestWithdrawalAsync(Guid investorId, decimal amount, string? observacao, string? chavePix = null, string? tipoChavePix = null)
+    {
+        GatewayWorkflowService.ValidateMoney(amount); GatewayWorkflowService.ValidatePix(chavePix, tipoChavePix);
+        await EnsureApprovedInvestorAsync(investorId);
+        await using var tx = await BeginAsync();
+        if (await context.GatewayWebhookEvents.AnyAsync(e => e.Status == "NeedsReview")) throw new InvalidOperationException("Saques temporariamente bloqueados até conciliação das ocorrências do gateway.");
+        var wallet = await context.InvestorWallets.FindAsync(investorId) ?? throw new ArgumentException("Carteira não encontrada.");
+        var availability = await new WithdrawalAvailabilityService(context).GetAsync(wallet);
+        if (availability.SaldoSacavel < amount)
+            throw new InvalidOperationException("Saldo sacável insuficiente. Depósitos ficam disponíveis para saque 72 horas após a confirmação.");
+        var previous = wallet.SaldoDisponivel;
+        wallet.SaldoDisponivel -= amount; wallet.SaldoBloqueado += amount; wallet.DataAtualizacao = DateTime.UtcNow;
+        var request = new WithdrawalRequest { Id = Guid.NewGuid(), InvestorId = investorId, Valor = amount, ValorSolicitado = amount, Observacao = observacao,
+            ChavePix = chavePix!.Trim(), TipoChavePix = AsaasService.NormalizePixKeyType(tipoChavePix) };
+        context.WithdrawalRequests.Add(request);
+        AddMovement(wallet, "SOLICITACAO_SAQUE", -amount, previous, "Saldo reservado para saque PIX", "Investidor");
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return request;
+    }
+    public async Task<bool> ApproveWithdrawalAsync(Guid withdrawalId, string adminUser, decimal? approvedAmount = null)
+    {
+        await using var tx = await BeginAsync();
+        var request = await context.WithdrawalRequests.FindAsync(withdrawalId) ?? throw new ArgumentException("Saque não encontrado.");
+        if (request.Status != "Pending") throw new InvalidOperationException("Saque não está pendente.");
+        GatewayWorkflowService.ValidatePix(request.ChavePix, request.TipoChavePix);
+        var approved = approvedAmount ?? request.Valor;
+        GatewayWorkflowService.ValidateMoney(approved);
+        if (approved > request.Valor) throw new InvalidOperationException("O valor aprovado não pode exceder o valor solicitado.");
+        var wallet = await context.InvestorWallets.FindAsync(request.InvestorId) ?? throw new ArgumentException("Carteira não encontrada.");
+        if (wallet.SaldoBloqueado < request.Valor) throw new InvalidOperationException("Reserva de saque inconsistente. Conciliação necessária.");
+        var original = request.ValorSolicitado ?? request.Valor;
+        var difference = request.Valor - approved;
+        if (difference > 0)
         {
-            _context = context;
-            _ledgerService = ledgerService ?? new LedgerService(context);
+            var previous = wallet.SaldoDisponivel;
+            wallet.SaldoBloqueado -= difference;
+            wallet.SaldoDisponivel += difference;
+            wallet.DataAtualizacao = DateTime.UtcNow;
+            AddMovement(wallet, "ESTORNO_PARCIAL_SAQUE", difference, previous,
+                $"Saque {request.Id}: solicitado {original:C2}, aprovado {approved:C2}; diferença liberada.", adminUser);
         }
-
-        public async Task<DepositRequest> RequestDepositAsync(Guid investorId, decimal amount, string? observacao)
-        {
-            if (amount <= 0) throw new ArgumentException("O valor do depósito deve ser maior que zero.");
-
-            var request = new DepositRequest
-            {
-                Id = Guid.NewGuid(),
-                InvestorId = investorId,
-                Valor = amount,
-                Status = "Pending",
-                CreatedAt = DateTime.UtcNow,
-                Observacao = observacao
-            };
-
-            _context.DepositRequests.Add(request);
-            await _context.SaveChangesAsync();
-            return request;
-        }
-
-        public async Task<bool> ConfirmDepositAsync(Guid depositId, string gatewayReference, string adminUser)
-        {
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var request = await _context.DepositRequests.FindAsync(depositId);
-                    if (request == null) throw new Exception("Depósito não encontrado.");
-                    if (request.Status != "Pending" && request.Status != "Processing")
-                    {
-                        throw new Exception($"O depósito não pode ser confirmado pois está com status: {request.Status}");
-                    }
-
-                    var wallet = await _context.InvestorWallets.FindAsync(request.InvestorId);
-                    if (wallet == null) throw new Exception("Carteira do investidor não encontrada.");
-
-                    // Atualiza status e carteira
-                    request.Status = "Completed";
-                    request.GatewayReference = gatewayReference;
-                    request.ProcessedAt = DateTime.UtcNow;
-
-                    decimal saldoAnterior = wallet.SaldoDisponivel;
-                    wallet.SaldoDisponivel += request.Valor;
-                    wallet.TotalAportado += request.Valor;
-                    wallet.DataAtualizacao = DateTime.UtcNow;
-
-                    // Registro no InvestorTransaction
-                    _context.InvestorTransactions.Add(new InvestorTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = wallet.Id,
-                        Tipo = "APORTE",
-                        Valor = request.Valor,
-                        SaldoAnterior = saldoAnterior,
-                        SaldoPosterior = wallet.SaldoDisponivel,
-                        DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Depósito confirmado pelo administrador. Ref Gateway: {gatewayReference}",
-                        UsuarioResponsavel = adminUser
-                    });
-
-                    // Ledger: ExternalGateway -> PlatformCash -> InvestorWallet
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.ExternalGateway,
-                        destination: LedgerAccount.PlatformCash,
-                        amount: request.Valor,
-                        type: LedgerTransactionType.InvestorDeposit,
-                        referenceType: "DepositRequest",
-                        referenceId: request.Id,
-                        userId: request.InvestorId,
-                        observacao: $"Entrada de dinheiro externo na conta bancária",
-                        createdBy: adminUser
-                    );
-
-                    await _ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.PlatformCash,
-                        destination: LedgerAccount.InvestorWallet,
-                        amount: request.Valor,
-                        type: LedgerTransactionType.InvestorDeposit,
-                        referenceType: "DepositRequest",
-                        referenceId: request.Id,
-                        userId: request.InvestorId,
-                        observacao: $"Crédito do depósito na carteira do investidor",
-                        createdBy: adminUser
-                    );
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    return true;
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao tentar confirmar o depósito.");
-                    foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
-                    await Task.Delay(100);
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-            return false;
-        }
-
-        public async Task<bool> CancelDepositAsync(Guid depositId, string adminUser, string? motivo)
-        {
-            var request = await _context.DepositRequests.FindAsync(depositId);
-            if (request == null) throw new Exception("Depósito não encontrado.");
-            if (request.Status != "Pending") throw new Exception("Apenas depósitos pendentes podem ser cancelados.");
-
-            request.Status = "Cancelled";
-            request.ProcessedAt = DateTime.UtcNow;
-            request.Observacao += $" | Cancelado por: {adminUser}. Motivo: {motivo}";
-
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<WithdrawalRequest> RequestWithdrawalAsync(Guid investorId, decimal amount, string? observacao, string? chavePix = null, string? tipoChavePix = null)
-        {
-            if (amount <= 0) throw new ArgumentException("O valor do saque deve ser maior que zero.");
-
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var wallet = await _context.InvestorWallets.FindAsync(investorId);
-                    if (wallet == null) throw new Exception("Carteira não encontrada.");
-
-                    if (wallet.SaldoDisponivel < amount)
-                    {
-                        throw new Exception("Saldo disponível insuficiente para solicitar este saque.");
-                    }
-
-                    decimal saldoAnt = wallet.SaldoDisponivel;
-
-                    // Reserva/bloqueia o valor imediatamente do saldo disponível
-                    wallet.SaldoDisponivel -= amount;
-                    wallet.SaldoBloqueado += amount;
-                    wallet.DataAtualizacao = DateTime.UtcNow;
-
-                    var request = new WithdrawalRequest
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = investorId,
-                        Valor = amount,
-                        Status = "Pending",
-                        CreatedAt = DateTime.UtcNow,
-                        Observacao = observacao,
-                        ChavePix = chavePix,
-                        TipoChavePix = tipoChavePix
-                    };
-
-                    _context.WithdrawalRequests.Add(request);
-
-                    _context.InvestorTransactions.Add(new InvestorTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = wallet.Id,
-                        Tipo = "SOLICITACAO_SAQUE",
-                        Valor = -amount,
-                        SaldoAnterior = saldoAnt,
-                        SaldoPosterior = wallet.SaldoDisponivel,
-                        DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Solicitação de saque PIX no valor de {amount:C2} (Saldo reservado para análise)",
-                        UsuarioResponsavel = "Investidor"
-                    });
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-
-                    return request;
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao processar solicitação de saque.");
-                    foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
-                    await Task.Delay(100);
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-
-            throw new Exception("Falha ao registrar solicitação de saque.");
-        }
-
-        public async Task<bool> ApproveWithdrawalAsync(Guid withdrawalId, string adminUser)
-        {
-            var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
-            if (request == null) throw new Exception("Saque não encontrado.");
-            if (request.Status != "Pending") throw new Exception($"Saque não está pendente de análise. Status atual: {request.Status}.");
-
-            request.Status = "Approved";
-            request.Observacao += $" | Aprovado por {adminUser}. Aguardando gateway/processamento.";
-            
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<bool> RejectWithdrawalAsync(Guid withdrawalId, string adminUser, string? motivo)
-        {
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
-                    if (request == null) throw new Exception("Saque não encontrado.");
-
-                    if (request.Status == "Completed")
-                    {
-                        throw new Exception("Não é possível recusar um saque já concluído e liquidado.");
-                    }
-                    if (request.Status == "Rejected" || request.Status == "Cancelled")
-                    {
-                        throw new Exception($"Este saque já se encontra com status {request.Status}.");
-                    }
-                    if (request.Status != "Pending" && request.Status != "Approved")
-                    {
-                        throw new Exception($"Não é possível rejeitar um saque no status {request.Status}.");
-                    }
-
-                    var wallet = await _context.InvestorWallets.FindAsync(request.InvestorId);
-                    if (wallet == null) throw new Exception("Carteira não encontrada.");
-
-                    decimal saldoAnt = wallet.SaldoDisponivel;
-
-                    // Estorna o valor reservado/bloqueado de volta para o saldo disponível
-                    if (wallet.SaldoBloqueado >= request.Valor)
-                    {
-                        wallet.SaldoBloqueado -= request.Valor;
-                    }
-                    else
-                    {
-                        wallet.SaldoBloqueado = 0;
-                    }
-
-                    wallet.SaldoDisponivel += request.Valor;
-                    wallet.DataAtualizacao = DateTime.UtcNow;
-
-                    request.Status = "Rejected";
-                    request.ProcessedAt = DateTime.UtcNow;
-                    request.Observacao += $" | Rejeitado por {adminUser}. Motivo: {motivo}";
-
-                    _context.InvestorTransactions.Add(new InvestorTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = wallet.Id,
-                        Tipo = "ESTORNO_SAQUE",
-                        Valor = request.Valor,
-                        SaldoAnterior = saldoAnt,
-                        SaldoPosterior = wallet.SaldoDisponivel,
-                        DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Estorno de saque recusado pelo administrador: {motivo}",
-                        UsuarioResponsavel = adminUser
-                    });
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    return true;
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao recusar o saque.");
-                    foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
-                    await Task.Delay(100);
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-            return false;
-        }
-
-        public async Task<bool> ConfirmWithdrawalAsync(Guid withdrawalId, string gatewayReference, string adminUser)
-        {
-            int maxRetries = 3;
-            for (int attempt = 1; attempt <= maxRetries; attempt++)
-            {
-                using var transaction = await _context.Database.BeginTransactionAsync();
-                try
-                {
-                    var request = await _context.WithdrawalRequests.FindAsync(withdrawalId);
-                    if (request == null) throw new Exception("Saque não encontrado.");
-
-                    if (request.Status == "Completed")
-                    {
-                        throw new Exception("Este saque já foi concluído anteriormente.");
-                    }
-                    if (request.Status == "Rejected" || request.Status == "Cancelled")
-                    {
-                        throw new Exception($"Não é possível confirmar um saque com status {request.Status}.");
-                    }
-                    if (request.Status != "Pending" && request.Status != "Approved")
-                    {
-                        throw new Exception($"Não é possível confirmar um saque no status {request.Status}.");
-                    }
-
-                    var wallet = await _context.InvestorWallets.FindAsync(request.InvestorId);
-                    if (wallet == null) throw new Exception("Carteira não encontrada.");
-
-                    // Baixa definitiva do Saldo Bloqueado
-                    if (wallet.SaldoBloqueado >= request.Valor)
-                    {
-                        wallet.SaldoBloqueado -= request.Valor;
-                    }
-                    else
-                    {
-                        decimal diff = request.Valor - wallet.SaldoBloqueado;
-                        wallet.SaldoBloqueado = 0;
-                        if (wallet.SaldoDisponivel >= diff)
-                        {
-                            wallet.SaldoDisponivel -= diff;
-                        }
-                        else
-                        {
-                            throw new Exception("Saldo insuficiente na carteira para liquidar o saque.");
-                        }
-                    }
-
-                    wallet.TotalSacado += request.Valor;
-                    wallet.DataAtualizacao = DateTime.UtcNow;
-
-                    request.Status = "Completed";
-                    request.ProcessedAt = DateTime.UtcNow;
-                    request.GatewayReference = gatewayReference;
-                    request.Observacao += $" | Confirmado e liquidado por {adminUser}. Ref: {gatewayReference}";
-
-                    _context.InvestorTransactions.Add(new InvestorTransaction
-                    {
-                        Id = Guid.NewGuid(),
-                        InvestorId = wallet.Id,
-                        Tipo = "SAQUE",
-                        Valor = -request.Valor,
-                        SaldoAnterior = wallet.SaldoDisponivel,
-                        SaldoPosterior = wallet.SaldoDisponivel,
-                        DataMovimentacao = DateTime.UtcNow,
-                        Descricao = $"Saque PIX liquidado e transferido. Gateway ref: {gatewayReference}",
-                        UsuarioResponsavel = adminUser
-                    });
-
-                    var ledgerService = new LedgerService(_context);
-                    await ledgerService.AddTransactionAsync(
-                        source: LedgerAccount.InvestorWallet,
-                        destination: LedgerAccount.ExternalGateway,
-                        amount: request.Valor,
-                        type: LedgerTransactionType.InvestorWithdrawal,
-                        referenceType: "Withdrawal",
-                        referenceId: request.Id,
-                        userId: request.InvestorId,
-                        observacao: $"Saque PIX liquidado para investidor - Ref: {gatewayReference}",
-                        createdBy: adminUser
-                    );
-
-                    await _context.SaveChangesAsync();
-                    await transaction.CommitAsync();
-                    return true;
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    await transaction.RollbackAsync();
-                    if (attempt == maxRetries) throw new Exception("Erro de concorrência ao confirmar o saque.");
-                    foreach (var entry in _context.ChangeTracker.Entries()) await entry.ReloadAsync();
-                    await Task.Delay(100);
-                }
-                catch
-                {
-                    await transaction.RollbackAsync();
-                    throw;
-                }
-            }
-            return false;
-        }
+        request.ValorSolicitado = original;
+        request.Valor = approved;
+        request.Status = "Approved";
+        request.Observacao += $" | Aprovado por {adminUser}: {approved:C2} de {original:C2}; diferença devolvida {difference:C2}.";
+        context.FinancialEventHistories.Add(new FinancialEventHistory {
+            Id = Guid.NewGuid(), Data = DateTime.UtcNow, UsuarioResponsavel = adminUser,
+            EventoExecutado = "APROVACAO_SAQUE", Valor = approved,
+            Observacao = $"Saque {request.Id}, investidor {request.InvestorId}: solicitado {original:C2}; aprovado {approved:C2}; liberado {difference:C2}."
+        });
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return true;
+    }
+    public async Task<bool> RejectWithdrawalAsync(Guid withdrawalId, string adminUser, string? motivo)
+    {
+        await using var tx = await BeginAsync();
+        var request = await context.WithdrawalRequests.FindAsync(withdrawalId) ?? throw new ArgumentException("Saque não encontrado.");
+        if (request.Status == "Rejected") return true;
+        if (request.Status is not ("Pending" or "Approved" or "Failed")) throw new InvalidOperationException("Saque enviado ao gateway não pode ser rejeitado manualmente.");
+        var wallet = await context.InvestorWallets.FindAsync(request.InvestorId) ?? throw new ArgumentException("Carteira não encontrada.");
+        if (wallet.SaldoBloqueado < request.Valor) throw new InvalidOperationException("Reserva de saque inconsistente. Conciliação necessária.");
+        var previous = wallet.SaldoDisponivel;
+        wallet.SaldoBloqueado -= request.Valor; wallet.SaldoDisponivel += request.Valor; wallet.DataAtualizacao = DateTime.UtcNow;
+        request.Status = "Rejected"; request.ProcessedAt = DateTime.UtcNow; request.Observacao += $" | Rejeitado por {adminUser}: {motivo}";
+        AddMovement(wallet, "ESTORNO_SAQUE", request.Valor, previous, $"Reserva de saque devolvida: {motivo}", adminUser);
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return true;
+    }
+    public async Task<bool> ConfirmWithdrawalAsync(Guid withdrawalId, string gatewayReference, string adminUser)
+    {
+        await using var tx = await BeginAsync();
+        var request = await context.WithdrawalRequests.FindAsync(withdrawalId) ?? throw new ArgumentException("Saque não encontrado.");
+        if (request.Status == "Completed" && request.GatewayReference == gatewayReference) return true;
+        if (request.Status != "Processing" || string.IsNullOrWhiteSpace(gatewayReference) || request.GatewayReference != gatewayReference)
+            throw new InvalidOperationException("Somente a transferência autorizada em processamento pode liquidar o saque.");
+        var wallet = await context.InvestorWallets.FindAsync(request.InvestorId) ?? throw new ArgumentException("Carteira não encontrada.");
+        if (wallet.SaldoBloqueado < request.Valor) throw new InvalidOperationException("Reserva de saque inconsistente. Conciliação necessária.");
+        wallet.SaldoBloqueado -= request.Valor; wallet.TotalSacado += request.Valor; wallet.DataAtualizacao = DateTime.UtcNow;
+        request.Status = "Completed"; request.ProcessedAt = DateTime.UtcNow;
+        AddMovement(wallet, "SAQUE", -request.Valor, wallet.SaldoDisponivel, $"Transferência PIX confirmada: {gatewayReference}", adminUser);
+        await _ledger.AddTransactionAsync(LedgerAccount.InvestorWallet, LedgerAccount.ExternalGateway, request.Valor, LedgerTransactionType.InvestorWithdrawal,
+            "Withdrawal", request.Id, userId: request.InvestorId, createdBy: adminUser);
+        await context.SaveChangesAsync();
+        if (tx != null) await tx.CommitAsync();
+        return true;
+    }
+    private void AddMovement(InvestorWallet wallet, string type, decimal amount, decimal previous, string description, string actor) => context.InvestorTransactions.Add(new InvestorTransaction
+    {
+        Id = Guid.NewGuid(), InvestorId = wallet.Id, Tipo = type, Valor = amount, SaldoAnterior = previous, SaldoPosterior = wallet.SaldoDisponivel,
+        DataMovimentacao = DateTime.UtcNow, Descricao = description, UsuarioResponsavel = actor
+    });
+    private async Task EnsureApprovedInvestorAsync(Guid investorId)
+    {
+        if (!await context.Users.AnyAsync(u => u.Id == investorId && u.Role == "Investidor" && u.Status == "Aprovado"))
+            throw new InvalidOperationException("Investidor ainda não aprovado para movimentações financeiras.");
     }
 }

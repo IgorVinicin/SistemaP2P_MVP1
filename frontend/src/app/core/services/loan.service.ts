@@ -1,7 +1,8 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { LoanRequest, LoanEligibility, AdminReproveLoan, LimitRequest } from '../models/loan.models';
+import { PixPayment } from '../models/pix-payment.models';
+import { LoanRequest, LoanEligibility, AdminReproveLoan, LimitRequest, LoanTransferStatus, LoanDisbursementRequest } from '../models/loan.models';
 import { PagedResult } from '../models/user.models';
 import { environment } from '../../../environments/environment';
 
@@ -92,8 +93,12 @@ export class LoanService {
     return this.http.post<any>(`${this.apiUrl}/admin/loans/${id}/reprove`, dto);
   }
 
-  public finishLoan(id: string): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/admin/loans/${id}/finish`, {});
+  public disburseLoan(id: string, request: LoanDisbursementRequest): Observable<LoanTransferStatus> {
+    return this.http.post<LoanTransferStatus>(`${this.apiUrl}/admin/gateway/loans/${id}/disburse`, request);
+  }
+
+  public getLoanTransferStatus(id: string): Observable<LoanTransferStatus> {
+    return this.http.get<LoanTransferStatus>(`${this.apiUrl}/admin/gateway/loans/${id}/transfer/status`);
   }
 
   // Métodos de Solicitação de Aumento de Limite
@@ -125,12 +130,13 @@ export class LoanService {
     return this.http.post<any>(`${this.apiUrl}/limits/admin/${id}/reject`, { observacaoAdmin });
   }
 
-  // Métodos de Pagamento em Lote de Parcelas
-  public getPendingUserInstallments(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/loans/installments/pending-user`);
+  // Cobrança PIX de parcela
+  public createInstallmentPix(id: string, valor: number): Observable<PixPayment> {
+    return this.http.post<PixPayment>(`${this.apiUrl}/loans/installments/${id}/pix`, { valor });
   }
 
-  public payInstallmentsBatch(items: { installmentId: string, valorPago: number }[]): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/loans/installments/pay-batch`, { items });
+  public getInstallmentPixStatus(id: string): Observable<PixPayment> {
+    return this.http.get<PixPayment>(`${this.apiUrl}/loans/installments/${id}/pix/status`);
   }
+
 }

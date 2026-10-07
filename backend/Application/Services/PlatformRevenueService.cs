@@ -116,6 +116,8 @@ namespace backend.Application.Services
             }
 
             var totalCount = await query.CountAsync();
+            page = Math.Max(1, page);
+            pageSize = pageSize < 1 ? 20 : Math.Min(pageSize, 100);
             var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
 
             if (page < 1) page = 1;

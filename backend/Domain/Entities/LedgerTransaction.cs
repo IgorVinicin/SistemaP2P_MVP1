@@ -24,7 +24,8 @@ namespace backend.Domain.Entities
         ProtectionFundDebit,
         AdministrativeAdjustment,
         InternalTransfer,
-        ManualEntry
+        ManualEntry,
+        GatewayFee
     }
 
     public class LedgerTransaction

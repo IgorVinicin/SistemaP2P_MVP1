@@ -203,28 +203,28 @@
       <app-document-upload-card class="grid-item"
         tipoDocumento="Frente"
         label="Documento (Frente)"
-        [currentStatus]="getDocStatus('Frente')"
+        [documentId]="getDocId('Frente')" [currentStatus]="getDocStatus('Frente')"
         (uploadSuccess)="onUploadSuccess($event)">
       </app-document-upload-card>
 
       <app-document-upload-card class="grid-item"
         tipoDocumento="Verso"
         label="Documento (Verso)"
-        [currentStatus]="getDocStatus('Verso')"
+        [documentId]="getDocId('Verso')" [currentStatus]="getDocStatus('Verso')"
         (uploadSuccess)="onUploadSuccess($event)">
       </app-document-upload-card>
 
       <app-document-upload-card class="grid-item"
         tipoDocumento="Selfie"
         label="Selfie com Documento"
-        [currentStatus]="getDocStatus('Selfie')"
+        [documentId]="getDocId('Selfie')" [currentStatus]="getDocStatus('Selfie')"
         (uploadSuccess)="onUploadSuccess($event)">
       </app-document-upload-card>
 
       <app-document-upload-card class="grid-item" *ngIf="authService.possuiEmpresa()"
         tipoDocumento="FachadaEmpresa"
         label="Fachada da Empresa"
-        [currentStatus]="getDocStatus('FachadaEmpresa')"
+        [documentId]="getDocId('FachadaEmpresa')" [currentStatus]="getDocStatus('FachadaEmpresa')"
         (uploadSuccess)="onUploadSuccess($event)">
       </app-document-upload-card>
     </div>

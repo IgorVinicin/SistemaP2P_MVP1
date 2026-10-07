@@ -66,6 +66,11 @@ namespace backend.API.Controllers
                     start = startUtc;
                     end = endUtc;
                 }
+                else
+                {
+                    if (startDate.HasValue) start = CashFlowService.GetBrasiliaDayRangeUtc(startDate.Value).StartUtc;
+                    if (endDate.HasValue) end = CashFlowService.GetBrasiliaDayRangeUtc(endDate.Value).EndUtc;
+                }
 
                 var summary = await _cashFlowService.GetSummaryAsync(start, end);
                 return Ok(summary);

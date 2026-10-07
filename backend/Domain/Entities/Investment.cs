@@ -1,10 +1,13 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace backend.Domain.Entities
 {
     public class Investment
     {
         public Guid Id { get; set; }
+        [ConcurrencyCheck]
+        public uint Version { get; set; }
         public Guid InvestorId { get; set; }
         public Guid LoanId { get; set; }
         public decimal ValorInvestido { get; set; }

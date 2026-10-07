@@ -33,6 +33,13 @@
         </div>
       </div>
 
+      <div class="detail-section" *ngIf="selectedLoan.status !== 'Pendente' && selectedLoan.status !== 'Reprovado'">
+        <h4>Envio do empréstimo ao tomador</h4>
+        <p role="status">{{ isCheckingTransfer ? 'Consultando envio...' : transferLabel() }}</p>
+        <p *ngIf="transfer">Valor: {{ transfer.valor | currency:'BRL' }}. Referência: {{ transfer.transferId || transfer.operationId || 'Em conciliação' }}.</p>
+        <p *ngIf="transferError" role="alert">{{ transferError }}</p>
+        <button mat-stroked-button (click)="refreshTransferStatus()" [disabled]="isCheckingTransfer || isActionProcessing">Consultar status</button>
+      </div>
       <!-- Histórico de Empréstimos -->
       <div class="detail-section" style="margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
         <h4 style="margin-bottom: 0.75rem; color: var(--text-main); font-weight: 600;">Histórico de Empréstimos do Cliente</h4>
@@ -182,6 +189,8 @@
   <mat-dialog-actions class="dialog-actions" *ngIf="selectedLoan">
     <button mat-button mat-dialog-close [disabled]="isActionProcessing">Fechar</button>
     <span class="spacer"></span>
+    <button mat-flat-button color="primary" *ngIf="canSendLoan" (click)="openDisburseDialog()">Enviar empréstimo via PIX</button>
+    <button mat-stroked-button *ngIf="canReconcileLoan" (click)="openDisburseDialog()">Atualizar envio</button>
     <ng-container *ngIf="selectedLoan.status === 'Pendente'">
       <button mat-flat-button color="warn" (click)="openReproveDialog()" [disabled]="isActionProcessing">
         Reprovar
@@ -190,11 +199,7 @@
         Aprovar Solicitação
       </button>
     </ng-container>
-    <ng-container *ngIf="selectedLoan.status === 'Aprovado' || selectedLoan.status === 'Ativo' || selectedLoan.status === 'EmAnalise' || selectedLoan.status === 'EmPagamento' || selectedLoan.status === 'Inadimplente'">
-      <button mat-flat-button style="background-color: #2e7d32; color: white;" (click)="finishLoan(selectedLoan.id!)" [disabled]="isActionProcessing">
-        Finalizar / Quitar Empréstimo
-      </button>
-    </ng-container>
+
   </mat-dialog-actions>
 </ng-template>
 
@@ -217,6 +222,9 @@
         <mat-option value="">Todos</mat-option>
         <mat-option value="EmAnalise">Em Análise</mat-option>
         <mat-option value="Aprovado">Aprovado</mat-option>
+        <mat-option value="Financiado">Financiado</mat-option>
+        <mat-option value="DesembolsoPendente">Desembolso pendente</mat-option>
+        <mat-option value="FalhaDesembolso">Falha no desembolso</mat-option>
         <mat-option value="Ativo">Ativo</mat-option>
         <mat-option value="EmPagamento">Em Pagamento</mat-option>
         <mat-option value="Inadimplente">Inadimplente</mat-option>
@@ -274,7 +282,6 @@
                 </div>
                 <div class="actions" style="margin-left: auto;">
                   <button mat-button color="primary" size="small" (click)="openDetailDialog(loan.id); $event.stopPropagation()">Analisar</button>
-                  <button mat-button color="accent" size="small" (click)="finishLoan(loan.id); $event.stopPropagation()">Quitar</button>
                 </div>
               </mat-panel-description>
             </mat-expansion-panel-header>
@@ -512,8 +519,8 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="form-field-full">
-        <mat-label>Observação / Anotação Administrativa</mat-label>
-        <textarea matInput rows="3" [(ngModel)]="settleForm.observacao" placeholder="Ex: Pagamento recebido via PIX direto na conta da empresa. Comprovante anexado."></textarea>
+        <mat-label>Referência do comprovante / justificativa (obrigatória)</mat-label>
+        <textarea matInput rows="3" [(ngModel)]="settleForm.observacao" required placeholder="Ex: Pagamento recebido via PIX direto na conta da empresa. Comprovante anexado."></textarea>
         <mat-hint>Registra um histórico explicativo sobre a quitação desta parcela.</mat-hint>
       </mat-form-field>
     </div>
@@ -521,8 +528,26 @@
 
   <mat-dialog-actions align="end" style="padding: 1rem 1.5rem;">
     <button mat-button (click)="subDialogRef?.close()" [disabled]="isActionProcessing">Cancelar</button>
-    <button mat-raised-button color="primary" [disabled]="isActionProcessing || !settleForm.valorPago || settleForm.valorPago <= 0" (click)="confirmSettleInstallment()">
+    <button mat-raised-button color="primary" [disabled]="isActionProcessing || !settleForm.valorPago || settleForm.valorPago <= 0 || !settleForm.observacao.trim()" (click)="confirmSettleInstallment()">
       Confirmar Quitação
     </button>
+  </mat-dialog-actions>
+</ng-template>
+
+
+<ng-template #disburseDialog>
+  <h2 mat-dialog-title>{{ selectedLoan?.status === 'DesembolsoPendente' ? 'Atualizar envio registrado' : 'Enviar empréstimo via PIX' }}</h2>
+  <mat-dialog-content>
+    <p>Tomador: <strong>{{ selectedLoan?.userProfile?.nome || selectedLoan?.nome }}</strong></p>
+    <p>Chave PIX CPF: <strong>{{ borrowerCpf }}</strong></p>
+    <p>Valor aprovado a enviar: <strong>{{ selectedLoan?.valorSolicitado | currency:'BRL' }}</strong></p>
+    <p>A chave CPF do tomador deve estar cadastrada no banco. Confira os dados antes de confirmar o envio.</p>
+    <p *ngIf="selectedLoan?.status === 'DesembolsoPendente'">Esta ação concilia a transferência registrada. Não cria outro envio.</p>
+    <label style="display:flex;gap:8px;align-items:flex-start"><input type="checkbox" [(ngModel)]="destinationConfirmed" [disabled]="isActionProcessing">Confirmo o tomador, a chave CPF e o valor aprovado apresentados acima.</label>
+    <p *ngIf="transferError" role="alert">{{ transferError }}</p>
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close [disabled]="isActionProcessing">Cancelar</button>
+    <button mat-flat-button color="primary" (click)="submitDisbursement()" [disabled]="isActionProcessing || !destinationConfirmed || (!canSendLoan && !canReconcileLoan)">{{ isActionProcessing ? 'Processando...' : (selectedLoan?.status === 'DesembolsoPendente' ? 'Atualizar envio' : 'Confirmar envio PIX') }}</button>
   </mat-dialog-actions>
 </ng-template>

@@ -79,6 +79,12 @@ namespace backend.API.Controllers
         {
             try
             {
+                if (dto.Answers == null || dto.Answers.Count == 0 ||
+                    dto.Answers.Select(a => a.QuestionId).Distinct().Count() != dto.Answers.Count)
+                    return BadRequest(new { message = "Responda cada pergunta uma única vez." });
+                var activeQuestions = await _context.Questions.Where(q => q.Ativa).Select(q => q.Id).ToListAsync();
+                if (activeQuestions.Count != dto.Answers.Count || dto.Answers.Any(a => !activeQuestions.Contains(a.QuestionId)))
+                    return BadRequest(new { message = "Responda todas as perguntas ativas do formulário." });
                 var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
                 if (string.IsNullOrEmpty(userIdString) || !Guid.TryParse(userIdString, out var userId))
                 {
